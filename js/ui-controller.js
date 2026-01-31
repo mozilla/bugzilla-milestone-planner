@@ -36,7 +36,8 @@ export class UIController {
       mismatchTable: document.getElementById('mismatch-table'),
       risksTable: document.getElementById('risks-table'),
       errorsMarkdown: document.getElementById('errors-markdown'),
-      legend: document.getElementById('legend')
+      legend: document.getElementById('legend'),
+      milestoneCards: document.getElementById('milestone-cards')
     };
 
     // Initialize milestone status
@@ -168,6 +169,75 @@ export class UIController {
     }
 
     this.elements.recentBugs.appendChild(item);
+  }
+
+  /**
+   * Render milestone cards with estimated completion dates
+   * @param {Array} milestones - Milestone definitions
+   * @param {Map} estimatedCompletions - Map of bugId to estimated completion date
+   */
+  renderMilestoneCards(milestones, estimatedCompletions) {
+    if (!this.elements.milestoneCards) return;
+
+    let html = '';
+    for (const milestone of milestones) {
+      const estimated = estimatedCompletions.get(String(milestone.bugId));
+      const deadlineStr = this.formatDateLong(milestone.deadline);
+      const freezeStr = this.formatDateShort(milestone.freezeDate);
+
+      let statusClass = '';
+      let estimatedStr = 'Not scheduled';
+      let statusIcon = '';
+
+      if (estimated) {
+        estimatedStr = this.formatDateLong(estimated);
+
+        if (estimated <= milestone.freezeDate) {
+          statusClass = 'milestone-on-track';
+          statusIcon = '<span class="status-icon on-track">&#10003;</span>';
+        } else if (estimated <= milestone.deadline) {
+          statusClass = 'milestone-at-risk';
+          statusIcon = '<span class="status-icon at-risk">&#9888;</span>';
+        } else {
+          statusClass = 'milestone-late';
+          statusIcon = '<span class="status-icon late">&#10007;</span>';
+        }
+      }
+
+      html += `
+        <div class="milestone-card ${statusClass}">
+          <h4>${milestone.name} ${statusIcon}</h4>
+          <div class="deadline">Deadline: ${deadlineStr}</div>
+          <div class="freeze">Feature Freeze: ${freezeStr}</div>
+          <div class="estimated">Est. Completion: <strong>${estimatedStr}</strong></div>
+        </div>
+      `;
+    }
+
+    this.elements.milestoneCards.innerHTML = html;
+  }
+
+  /**
+   * Format date as "Month Day, Year"
+   */
+  formatDateLong(date) {
+    if (!date) return 'N/A';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+
+  /**
+   * Format date as "Mon Day"
+   */
+  formatDateShort(date) {
+    if (!date) return 'N/A';
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
   }
 
   /**

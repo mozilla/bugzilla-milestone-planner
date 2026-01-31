@@ -316,6 +316,18 @@ header p {
   padding: 40px;
 }
 
+.zoom-hint {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 0 0;
+}
+
+#gantt-container:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Gantt Color Coding */
 .gantt-normal .bar {
   fill: var(--color-normal) !important;
@@ -339,33 +351,64 @@ header p {
   fill: var(--color-at-risk) !important;
 }
 
-/* Gantt Popup */
+/* Gantt Popup - Override Frappe Gantt's dark popup */
+.popup-wrapper {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.popup-wrapper .title {
+  background: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.popup-wrapper .subtitle {
+  color: var(--text-secondary) !important;
+}
+
+.popup-wrapper .pointer {
+  border-top-color: var(--bg-primary) !important;
+}
+
 .gantt-popup {
   padding: 12px;
   max-width: 300px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .gantt-popup h4 {
   margin: 0 0 12px;
   font-size: 14px;
   word-break: break-word;
+  color: var(--text-primary);
 }
 
 .popup-details p {
   margin: 4px 0;
   font-size: 13px;
+  color: var(--text-primary);
+}
+
+.popup-details strong {
+  color: var(--text-secondary);
 }
 
 .popup-link {
   display: inline-block;
   margin-top: 12px;
-  color: var(--color-primary);
+  color: #2563eb;
   text-decoration: none;
   font-size: 13px;
+  font-weight: 500;
 }
 
 .popup-link:hover {
   text-decoration: underline;
+  color: #1d4ed8;
 }
 
 /* Legend */
@@ -544,10 +587,51 @@ header p {
   color: var(--text-secondary);
 }
 
+.milestone-card .deadline {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
 .milestone-card .freeze {
   font-size: 13px;
   color: var(--color-warning);
   margin-top: 4px;
+}
+
+.milestone-card .estimated {
+  font-size: 14px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.milestone-card.milestone-on-track {
+  border-left-color: var(--color-success);
+}
+
+.milestone-card.milestone-at-risk {
+  border-left-color: var(--color-warning);
+}
+
+.milestone-card.milestone-late {
+  border-left-color: var(--color-danger);
+}
+
+.milestone-card .status-icon {
+  font-size: 14px;
+  margin-left: 6px;
+}
+
+.milestone-card .status-icon.on-track {
+  color: var(--color-success);
+}
+
+.milestone-card .status-icon.at-risk {
+  color: var(--color-warning);
+}
+
+.milestone-card .status-icon.late {
+  color: var(--color-danger);
 }
 
 /* Optimization Status */

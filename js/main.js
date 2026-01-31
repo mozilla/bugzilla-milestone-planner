@@ -161,7 +161,13 @@ class EnterprisePlanner {
     const orphaned = this.graph.findOrphanedDependencies();
     const duplicates = this.graph.findDuplicateSummaries();
     const missingAssignees = this.graph.findMissingAssignees();
-    const missingSizes = this.graph.findMissingSizes();
+
+    // Find bugs missing sizes in BOTH Bugzilla whiteboard AND manual estimates
+    const allMissingSizes = this.graph.findMissingSizes();
+    const missingSizes = allMissingSizes.filter(bug => {
+      // Check if we have a manual estimate for this bug
+      return !this.sizeEstimates[bug.id] && !this.sizeEstimates[String(bug.id)];
+    });
 
     return {
       cycles,
@@ -178,6 +184,10 @@ class EnterprisePlanner {
   renderResults(schedule, errors, risks) {
     // Render Gantt chart
     this.gantt.render(schedule, this.graph);
+
+    // Render milestone cards with estimated completions
+    const milestoneCompletions = this.calculateMilestoneCompletions(schedule);
+    this.ui.renderMilestoneCards(MILESTONES, milestoneCompletions);
 
     // Render statistics
     const stats = this.scheduler.getStats();
@@ -199,6 +209,71 @@ class EnterprisePlanner {
     console.log('Schedule stats:', stats);
     console.log('Errors:', errors);
     console.log('Risks:', risks.length);
+  }
+
+  /**
+   * Calculate estimated completion dates for each milestone
+   * A milestone is complete when all its dependencies are complete
+   */
+  calculateMilestoneCompletions(schedule) {
+    const completions = new Map();
+
+    for (const milestone of MILESTONES) {
+      const bugId = String(milestone.bugId);
+
+      // Find the milestone task in the schedule
+      const milestoneTask = schedule.find(t => String(t.bug.id) === bugId);
+
+      if (milestoneTask) {
+        if (milestoneTask.completed) {
+          // Already completed
+          completions.set(bugId, new Date());
+        } else if (milestoneTask.endDate) {
+          completions.set(bugId, milestoneTask.endDate);
+        }
+      }
+
+      // Also check all dependencies - milestone completes when last dependency completes
+      const deps = this.getAllDependencies(bugId);
+      let latestEnd = completions.get(bugId) || null;
+
+      for (const depId of deps) {
+        const depTask = schedule.find(t => String(t.bug.id) === depId);
+        if (depTask && depTask.endDate && (!latestEnd || depTask.endDate > latestEnd)) {
+          latestEnd = depTask.endDate;
+        }
+      }
+
+      if (latestEnd) {
+        completions.set(bugId, latestEnd);
+      }
+    }
+
+    return completions;
+  }
+
+  /**
+   * Get all dependencies (transitive) for a bug
+   */
+  getAllDependencies(bugId) {
+    const visited = new Set();
+    const queue = [bugId];
+
+    while (queue.length > 0) {
+      const id = queue.shift();
+      if (visited.has(id)) continue;
+      visited.add(id);
+
+      const deps = this.graph.getDependencies(id);
+      for (const depId of deps) {
+        if (!visited.has(depId)) {
+          queue.push(depId);
+        }
+      }
+    }
+
+    visited.delete(bugId); // Don't include the bug itself
+    return visited;
   }
 
   /**
@@ -409,8 +484,10 @@ class EnterprisePlanner {
     if (schedule) {
       this.gantt.render(schedule, this.graph);
 
-      // Recalculate risks for the selected schedule
-      // Note: would need to rebuild scheduler state for accurate risks
+      // Update milestone cards with new completion dates
+      const milestoneCompletions = this.calculateMilestoneCompletions(schedule);
+      this.ui.renderMilestoneCards(MILESTONES, milestoneCompletions);
+
       console.log(`Switched to ${type} schedule`);
     }
   }
@@ -418,9 +495,19 @@ class EnterprisePlanner {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded, starting Enterprise Planner...');
   const app = new EnterprisePlanner();
   app.init().catch(error => {
     console.error('Application initialization failed:', error);
+    // Show error in UI (use global error container which is visible during loading)
+    const globalErrors = document.getElementById('global-errors');
+    if (globalErrors) {
+      globalErrors.innerHTML = `
+        <strong>Initialization Error:</strong> ${error.message}<br>
+        <small>Check browser console for details (F12)</small>
+      `;
+      globalErrors.style.display = 'block';
+    }
   });
 });
 

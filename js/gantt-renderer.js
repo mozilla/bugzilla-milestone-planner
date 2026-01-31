@@ -31,6 +31,78 @@ export class GanttRenderer {
     this.gantt = null;
     this.tasks = [];
     this.viewMode = 'Week';
+    // Valid Frappe Gantt modes: 'Quarter Day', 'Half Day', 'Day', 'Week', 'Month', 'Year'
+    this.viewModes = ['Day', 'Week', 'Month', 'Year'];
+    this.zoomTimeout = null;
+    this.earliestTaskDate = null;
+    this.setupZoomHandler();
+  }
+
+  /**
+   * Set up trackpad/mouse wheel zoom handler
+   */
+  setupZoomHandler() {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+
+    // Trackpad pinch zoom
+    container.addEventListener('wheel', (e) => {
+      // Detect pinch zoom (ctrlKey is set for trackpad pinch gestures)
+      if (e.ctrlKey) {
+        e.preventDefault();
+        this.handleZoom(e.deltaY > 0 ? 'out' : 'in');
+      }
+    }, { passive: false });
+
+    // Keyboard zoom (+/- keys) when hovering over chart
+    container.setAttribute('tabindex', '0');
+    container.addEventListener('keydown', (e) => {
+      if (e.key === '+' || e.key === '=' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.handleZoom('in');
+      } else if (e.key === '-' || e.key === '_' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.handleZoom('out');
+      }
+    });
+  }
+
+  /**
+   * Handle zoom in/out
+   */
+  handleZoom(direction) {
+    // Debounce zoom changes
+    if (this.zoomTimeout) return;
+
+    this.zoomTimeout = setTimeout(() => {
+      this.zoomTimeout = null;
+    }, 150);
+
+    const currentIndex = this.viewModes.indexOf(this.viewMode);
+
+    if (direction === 'in') {
+      // Zoom in - more detail (Day)
+      if (currentIndex > 0) {
+        this.setViewMode(this.viewModes[currentIndex - 1]);
+        this.updateViewModeSelect();
+      }
+    } else {
+      // Zoom out - less detail (Quarter)
+      if (currentIndex < this.viewModes.length - 1) {
+        this.setViewMode(this.viewModes[currentIndex + 1]);
+        this.updateViewModeSelect();
+      }
+    }
+  }
+
+  /**
+   * Update the view mode dropdown to match current zoom level
+   */
+  updateViewModeSelect() {
+    const select = document.getElementById('view-mode');
+    if (select) {
+      select.value = this.viewMode;
+    }
   }
 
   /**
@@ -139,6 +211,15 @@ export class GanttRenderer {
       return;
     }
 
+    // Find the earliest start date for scrolling
+    const startDates = ganttTasks
+      .filter(t => t.progress < 100)
+      .map(t => new Date(t.start))
+      .filter(d => !isNaN(d));
+    this.earliestTaskDate = startDates.length > 0
+      ? new Date(Math.min(...startDates))
+      : new Date();
+
     this.gantt = new Gantt(`#${this.containerId}`, ganttTasks, {
       view_mode: this.viewMode,
       date_format: 'YYYY-MM-DD',
@@ -151,6 +232,57 @@ export class GanttRenderer {
 
     // Add milestone markers
     this.addMilestoneMarkers();
+
+    // Scroll to show the earliest task start date
+    this.scrollToDate(this.earliestTaskDate);
+  }
+
+  /**
+   * Scroll the Gantt chart to show a specific date
+   */
+  scrollToDate(date) {
+    setTimeout(() => {
+      const container = document.getElementById(this.containerId);
+      if (!container) return;
+
+      const svg = container.querySelector('svg');
+      if (!svg) return;
+
+      // Get the date columns to calculate position
+      const dateTexts = svg.querySelectorAll('.lower-text');
+      if (dateTexts.length === 0) return;
+
+      // Find approximate column width based on view mode
+      const columnWidths = {
+        'Day': 38,
+        'Week': 140,
+        'Month': 120,
+        'Year': 120
+      };
+      const columnWidth = columnWidths[this.viewMode] || 140;
+
+      // Calculate days from gantt start to target date
+      // Frappe Gantt adds ~1 month padding, so account for that
+      const ganttStart = this.gantt.gantt_start;
+      if (!ganttStart) return;
+
+      const daysDiff = Math.floor((date - ganttStart) / (1000 * 60 * 60 * 24));
+
+      // Calculate scroll position based on view mode
+      let scrollX = 0;
+      if (this.viewMode === 'Day') {
+        scrollX = daysDiff * columnWidth;
+      } else if (this.viewMode === 'Week') {
+        scrollX = (daysDiff / 7) * columnWidth;
+      } else if (this.viewMode === 'Month') {
+        scrollX = (daysDiff / 30) * columnWidth;
+      } else if (this.viewMode === 'Year') {
+        scrollX = (daysDiff / 365) * columnWidth;
+      }
+
+      // Scroll with a small offset to show some context before the date
+      container.scrollLeft = Math.max(0, scrollX - columnWidth);
+    }, 100);
   }
 
   /**
@@ -248,12 +380,16 @@ export class GanttRenderer {
 
   /**
    * Set view mode
-   * @param {string} mode - 'Day', 'Week', 'Month', 'Quarter', 'Year'
+   * @param {string} mode - 'Day', 'Week', 'Month', 'Year' (valid Frappe Gantt modes)
    */
   setViewMode(mode) {
     this.viewMode = mode;
     if (this.gantt) {
       this.gantt.change_view_mode(mode);
+      // Re-scroll to earliest task after view change
+      if (this.earliestTaskDate) {
+        this.scrollToDate(this.earliestTaskDate);
+      }
     }
   }
 

@@ -93,12 +93,20 @@ export class BugzillaAPI {
 
     const url = `${BUGZILLA_API_BASE}/bug?id=${uncachedIds.join(',')}&include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product`;
 
+    console.log(`[BugzillaAPI] Fetching URL: ${url.substring(0, 100)}...`);
+
     try {
       const response = await fetch(url);
+      console.log(`[BugzillaAPI] Response status: ${response.status}`);
+
       if (!response.ok) {
+        const text = await response.text();
+        console.error(`[BugzillaAPI] Error response: ${text.substring(0, 200)}`);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+
       const data = await response.json();
+      console.log(`[BugzillaAPI] Received ${data.bugs ? data.bugs.length : 0} bugs in response`);
 
       if (data.bugs) {
         for (const rawBug of data.bugs) {
@@ -112,9 +120,14 @@ export class BugzillaAPI {
         }
       }
 
+      // Handle faults (bugs that couldn't be retrieved)
+      if (data.faults && data.faults.length > 0) {
+        console.warn(`[BugzillaAPI] ${data.faults.length} faults reported:`, data.faults);
+      }
+
       return bugIds.map(id => this.cache.get(String(id))).filter(Boolean);
     } catch (error) {
-      console.error(`Error fetching bugs:`, error);
+      console.error(`[BugzillaAPI] Error fetching bugs:`, error);
       throw error;
     }
   }
@@ -189,13 +202,20 @@ export class BugzillaAPI {
     const allBugs = new Map();
     const toFetch = new Set(rootBugIds.map(String));
     const fetched = new Set();
+    const failedIds = new Set();
 
     this.fetchedCount = 0;
     this.totalDiscovered = rootBugIds.length;
 
+    console.log(`[BugzillaAPI] Starting fetch with milestones: ${rootBugIds.join(', ')}`);
     this.reportProgress('starting', `Starting with ${rootBugIds.length} milestone bugs...`);
 
-    while (toFetch.size > 0) {
+    let iteration = 0;
+    const MAX_ITERATIONS = 1000; // Safety limit
+
+    while (toFetch.size > 0 && iteration < MAX_ITERATIONS) {
+      iteration++;
+
       // Get next batch to fetch
       const batch = Array.from(toFetch).slice(0, BATCH_SIZE);
       batch.forEach(id => {
@@ -203,18 +223,24 @@ export class BugzillaAPI {
         fetched.add(id);
       });
 
+      console.log(`[BugzillaAPI] Iteration ${iteration}: Fetching batch of ${batch.length} bugs: ${batch.slice(0, 5).join(', ')}${batch.length > 5 ? '...' : ''}`);
       this.reportProgress('fetching', `Fetching batch of ${batch.length} bugs...`);
 
       try {
         const bugs = await this.fetchBugs(batch);
+        console.log(`[BugzillaAPI] Received ${bugs.length} bugs`);
 
         for (const bug of bugs) {
+          if (!bug) continue;
           allBugs.set(String(bug.id), bug);
 
           // Add dependencies to fetch queue
+          if (bug.dependsOn.length > 0) {
+            console.log(`[BugzillaAPI] Bug ${bug.id} (${bug.product}) depends on: ${bug.dependsOn.join(', ')}`);
+          }
           for (const depId of bug.dependsOn) {
             const depIdStr = String(depId);
-            if (!fetched.has(depIdStr) && !toFetch.has(depIdStr)) {
+            if (!fetched.has(depIdStr) && !toFetch.has(depIdStr) && !failedIds.has(depIdStr)) {
               toFetch.add(depIdStr);
               this.totalDiscovered++;
             }
@@ -228,12 +254,20 @@ export class BugzillaAPI {
           await this.delay(100);
         }
       } catch (error) {
-        console.error('Error fetching batch:', error);
+        console.error(`[BugzillaAPI] Error fetching batch:`, error);
+        // Mark failed IDs so we don't retry them
+        batch.forEach(id => failedIds.add(id));
         this.reportProgress('error', `Error: ${error.message}`);
+        // Continue with remaining bugs
       }
     }
 
-    this.reportProgress('complete', `Fetched all ${this.fetchedCount} bugs`);
+    if (iteration >= MAX_ITERATIONS) {
+      console.warn(`[BugzillaAPI] Reached max iterations (${MAX_ITERATIONS}), stopping`);
+    }
+
+    console.log(`[BugzillaAPI] Complete: ${allBugs.size} bugs fetched, ${failedIds.size} failed`);
+    this.reportProgress('complete', `Fetched ${allBugs.size} bugs (${failedIds.size} failed)`);
     return allBugs;
   }
 
