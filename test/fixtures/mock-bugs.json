@@ -1,0 +1,209 @@
+{
+  "description": "Mock bug data for testing - deterministic set with known graph structure",
+  "bugs": [
+    {
+      "id": 1980342,
+      "summary": "Foxfooding Milestone",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "gcp@example.com",
+      "depends_on": [1000001, 1000002, 1000003],
+      "blocks": [],
+      "whiteboard": "[size=1]",
+      "component": "Enterprise",
+      "product": "Firefox"
+    },
+    {
+      "id": 2012055,
+      "summary": "Customer Pilot Milestone",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "alissy@example.com",
+      "depends_on": [1000004, 1000005],
+      "blocks": [],
+      "whiteboard": "[size=1]",
+      "component": "Enterprise",
+      "product": "Firefox"
+    },
+    {
+      "id": 1980739,
+      "summary": "MVP Milestone",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "janika@example.com",
+      "depends_on": [1980342, 2012055, 1000006],
+      "blocks": [],
+      "whiteboard": "[size=1]",
+      "component": "Enterprise",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000001,
+      "summary": "Implement SSO integration",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "janika@example.com",
+      "depends_on": [1000007],
+      "blocks": [1980342],
+      "whiteboard": "[size=3]",
+      "component": "Authentication",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000002,
+      "summary": "Add admin dashboard UI",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assigned_to": "jonathan@example.com",
+      "depends_on": [],
+      "blocks": [1980342],
+      "whiteboard": "[size=2]",
+      "component": "Frontend",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000003,
+      "summary": "Backend API for policy management",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "alissy@example.com",
+      "depends_on": [1000007],
+      "blocks": [1980342],
+      "whiteboard": "[size=4]",
+      "component": "Backend Rust",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000004,
+      "summary": "Customer onboarding flow",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "gcp@example.com",
+      "depends_on": [1000001],
+      "blocks": [2012055],
+      "whiteboard": "[size=2]",
+      "component": "Frontend",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000005,
+      "summary": "Data export feature",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": null,
+      "depends_on": [],
+      "blocks": [2012055],
+      "whiteboard": "",
+      "component": "Core C++",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000006,
+      "summary": "Final QA automation",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "jonathan@example.com",
+      "depends_on": [1000004, 1000005],
+      "blocks": [1980739],
+      "whiteboard": "[size=3]",
+      "component": "QA",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000007,
+      "summary": "Core authentication module",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "gcp@example.com",
+      "depends_on": [],
+      "blocks": [1000001, 1000003],
+      "whiteboard": "[size=3]",
+      "component": "Backend Rust",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000008,
+      "summary": "Performance optimization",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "alissy@example.com",
+      "depends_on": [1000003],
+      "blocks": [],
+      "whiteboard": "[size=2]",
+      "component": "Core C++",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000009,
+      "summary": "Documentation updates",
+      "status": "VERIFIED",
+      "resolution": "FIXED",
+      "assigned_to": "janika@example.com",
+      "depends_on": [],
+      "blocks": [],
+      "whiteboard": "[size=1]",
+      "component": "Documentation",
+      "product": "Firefox"
+    },
+    {
+      "id": 1000010,
+      "summary": "Logging infrastructure",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": null,
+      "depends_on": [],
+      "blocks": [1000003],
+      "whiteboard": "[size=2]",
+      "component": "Backend Rust",
+      "product": "Firefox"
+    }
+  ],
+  "cycle_bugs": [
+    {
+      "id": 9000001,
+      "summary": "Cycle Bug A - depends on B",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "test@example.com",
+      "depends_on": [9000002],
+      "blocks": [],
+      "whiteboard": "[size=1]",
+      "component": "Test",
+      "product": "Firefox"
+    },
+    {
+      "id": 9000002,
+      "summary": "Cycle Bug B - depends on A",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "test@example.com",
+      "depends_on": [9000001],
+      "blocks": [],
+      "whiteboard": "[size=1]",
+      "component": "Test",
+      "product": "Firefox"
+    }
+  ],
+  "orphan_bugs": [
+    {
+      "id": 8000001,
+      "summary": "Bug with missing dependency",
+      "status": "NEW",
+      "resolution": null,
+      "assigned_to": "test@example.com",
+      "depends_on": [9999999],
+      "blocks": [],
+      "whiteboard": "[size=1]",
+      "component": "Test",
+      "product": "Firefox"
+    }
+  ],
+  "_test_expectations": {
+    "total_normal_bugs": 13,
+    "completed_bugs": 2,
+    "bugs_with_missing_size": 1,
+    "bugs_with_missing_assignee": 2,
+    "expected_topological_order": "1000007 must come before 1000001 and 1000003",
+    "cycle_detection": "9000001 and 9000002 form a cycle"
+  }
+}

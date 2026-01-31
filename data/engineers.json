@@ -1,0 +1,33 @@
+{
+  "engineers": [
+    {
+      "id": "janika",
+      "name": "Janika Neuberger",
+      "skills": ["JavaScript", "Rust"],
+      "availability": 1.0,
+      "unavailability": []
+    },
+    {
+      "id": "alissy",
+      "name": "Alexandre Lissy",
+      "skills": ["C++", "Rust", "JavaScript"],
+      "availability": 1.0,
+      "unavailability": []
+    },
+    {
+      "id": "gcp",
+      "name": "Gian-Carlo Pascutto",
+      "skills": ["C++", "Rust", "JavaScript"],
+      "availability": 1.0,
+      "unavailability": []
+    },
+    {
+      "id": "jonathan",
+      "name": "Jonathan Mendez",
+      "skills": ["C++", "JavaScript", "Rust"],
+      "availability": 1.0,
+      "unavailability": []
+    }
+  ],
+  "_comment": "unavailability is an array of {start: 'YYYY-MM-DD', end: 'YYYY-MM-DD', reason: 'string'} for holidays/PTO"
+}

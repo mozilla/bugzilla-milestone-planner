@@ -1,0 +1,31 @@
+{
+  "name": "entplanner",
+  "version": "1.0.0",
+  "description": "Enterprise Project Planner - Bugzilla dependency visualization and resource scheduling",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:all": "npm run test && npm run test:e2e",
+    "serve": "python3 -m http.server 8080",
+    "serve:bg": "python3 -m http.server 8080 &"
+  },
+  "keywords": [
+    "bugzilla",
+    "gantt",
+    "project-planning",
+    "dependency-graph",
+    "resource-scheduling"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@vitest/coverage-v8": "^1.1.0",
+    "vitest": "^1.1.0"
+  }
+}

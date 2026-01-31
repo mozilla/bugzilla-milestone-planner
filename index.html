@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Project Planner</title>
+
+  <!-- Frappe Gantt CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.css">
+
+  <!-- Application CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Enterprise Project Planner</h1>
+    <p>Mozilla Bugzilla dependency visualization and resource scheduling</p>
+  </header>
+
+  <main class="container">
+    <!-- Loading Phase -->
+    <div id="loading-phase">
+      <div class="loading-header">
+        <div class="spinner"></div>
+        <h2>Fetching Bugzilla Data...</h2>
+      </div>
+
+      <div class="milestones-section">
+        <h3>Milestones</h3>
+        <div id="milestones-list">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <div class="progress-container">
+        <div class="progress-bar-wrapper">
+          <div id="progress-bar"></div>
+        </div>
+        <div class="progress-info">
+          <span id="progress-text">0/0 bugs</span>
+          <span id="progress-status">Starting...</span>
+        </div>
+      </div>
+
+      <div class="recent-bugs-section">
+        <h3>Recently discovered:</h3>
+        <div id="recent-bugs">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Loaded Phase -->
+    <div id="loaded-phase">
+      <!-- Controls -->
+      <div class="controls">
+        <div class="control-group">
+          <label for="view-mode">View:</label>
+          <select id="view-mode">
+            <option value="Day">Day</option>
+            <option value="Week" selected>Week</option>
+            <option value="Month">Month</option>
+            <option value="Quarter">Quarter</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="milestone-filter">Milestone:</label>
+          <select id="milestone-filter">
+            <option value="">All Milestones</option>
+            <option value="1980342">Foxfooding (Feb 23)</option>
+            <option value="2012055">Customer Pilot (Mar 30)</option>
+            <option value="1980739">MVP (Sep 15)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="schedule-type">Schedule:</label>
+          <select id="schedule-type">
+            <option value="greedy">Greedy (fast)</option>
+            <option value="optimal" disabled>Optimal (computing...)</option>
+          </select>
+        </div>
+
+        <button id="refresh-btn" class="btn btn-primary">Refresh Data</button>
+
+        <div id="optimization-status" class="optimization-status">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Optimization Log -->
+      <div class="optimization-log-container" id="optimization-log-container">
+        <h3>Optimization Progress</h3>
+        <div id="optimization-log" class="optimization-log">
+          <!-- Log entries populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Milestone Cards -->
+      <div class="milestone-cards">
+        <div class="milestone-card">
+          <h4>Foxfooding</h4>
+          <div class="date">February 23, 2025</div>
+          <div class="freeze">Feature Freeze: Feb 16</div>
+        </div>
+        <div class="milestone-card">
+          <h4>Customer Pilot</h4>
+          <div class="date">March 30, 2025</div>
+          <div class="freeze">Feature Freeze: Mar 23</div>
+        </div>
+        <div class="milestone-card">
+          <h4>MVP</h4>
+          <div class="date">September 15, 2025</div>
+          <div class="freeze">Feature Freeze: Sep 8</div>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div id="stats-container">
+        <!-- Populated by JavaScript -->
+      </div>
+
+      <!-- Legend -->
+      <div class="legend" id="legend">
+        <div class="legend-item">
+          <div class="legend-color normal"></div>
+          <span>Normal Task</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color estimated"></div>
+          <span>Estimated Size (not from whiteboard)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color mismatch"></div>
+          <span>Skill Mismatch (+50% effort)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color completed"></div>
+          <span>Completed</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color at-risk"></div>
+          <span>At Risk (past deadline)</span>
+        </div>
+      </div>
+
+      <!-- Gantt Chart -->
+      <div id="gantt-container">
+        <svg id="gantt-chart"></svg>
+      </div>
+
+      <!-- Tables Section -->
+      <div class="tables-section">
+        <div class="table-card">
+          <h3>Estimated Sizes</h3>
+          <div id="estimated-table">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+
+        <div class="table-card">
+          <h3>Skill Mismatches</h3>
+          <div id="mismatch-table">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+
+        <div class="table-card">
+          <h3>Deadline Risks</h3>
+          <div id="risks-table">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Errors Section -->
+      <div class="errors-section">
+        <h3>Detected Inconsistencies (ERRORS.md)</h3>
+        <pre id="errors-markdown">
+          <!-- Populated by JavaScript -->
+        </pre>
+      </div>
+
+      <!-- Hidden errors container for runtime errors -->
+      <div id="errors-container" style="display: none;"></div>
+    </div>
+  </main>
+
+  <!-- Frappe Gantt JS -->
+  <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
+
+  <!-- Application JS (ES modules) -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -42,11 +42,15 @@ Jonathan Mendez, C++, JS, Rust
 
 For bugs with a missing assignee, you can esimate effort (task size) increases by 25% for their second language, and by 50% for their third language. Some coloring in programmer assignment to show those mismatches would be nice. You can map tasks to the likely required languages in a JSON that you add in the source.
 
+The JSON can provide for inputting (un)availability, for example during holidays.
+
 ## Required output
 
 # Calculated planning
 
 After reconstructing the bug dependency graph, and calculating the task to language and missing size/effort to bug mappings, you should write JS code that recalculates a planning on the fly, and show the solution as a Gantt style graph on a webpage.
+
+You can generate a greedy, fast schedule on the fly and try to calculcate the globally optimal schedule in the background.
 
 # Output
 

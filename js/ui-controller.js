@@ -1,0 +1,536 @@
+/**
+ * UI Controller module
+ * DOM manipulation, progress display, and user interactions
+ */
+
+import { MILESTONES } from './gantt-renderer.js';
+
+export class UIController {
+  constructor() {
+    this.elements = {};
+    this.milestoneStatus = new Map();
+  }
+
+  /**
+   * Initialize UI elements
+   */
+  init() {
+    this.elements = {
+      loadingPhase: document.getElementById('loading-phase'),
+      loadedPhase: document.getElementById('loaded-phase'),
+      progressBar: document.getElementById('progress-bar'),
+      progressText: document.getElementById('progress-text'),
+      progressStatus: document.getElementById('progress-status'),
+      milestonesList: document.getElementById('milestones-list'),
+      recentBugs: document.getElementById('recent-bugs'),
+      ganttContainer: document.getElementById('gantt-container'),
+      viewModeSelect: document.getElementById('view-mode'),
+      milestoneFilter: document.getElementById('milestone-filter'),
+      scheduleTypeSelect: document.getElementById('schedule-type'),
+      optimizationStatus: document.getElementById('optimization-status'),
+      optimizationLog: document.getElementById('optimization-log'),
+      refreshBtn: document.getElementById('refresh-btn'),
+      statsContainer: document.getElementById('stats-container'),
+      errorsContainer: document.getElementById('errors-container'),
+      estimatedTable: document.getElementById('estimated-table'),
+      mismatchTable: document.getElementById('mismatch-table'),
+      risksTable: document.getElementById('risks-table'),
+      errorsMarkdown: document.getElementById('errors-markdown'),
+      legend: document.getElementById('legend')
+    };
+
+    // Initialize milestone status
+    for (const milestone of MILESTONES) {
+      this.milestoneStatus.set(milestone.bugId, {
+        ...milestone,
+        status: 'pending',
+        depCount: 0
+      });
+    }
+
+    this.renderMilestonesList();
+  }
+
+  /**
+   * Show loading phase
+   */
+  showLoading() {
+    if (this.elements.loadingPhase) {
+      this.elements.loadingPhase.style.display = 'block';
+    }
+    if (this.elements.loadedPhase) {
+      this.elements.loadedPhase.style.display = 'none';
+    }
+  }
+
+  /**
+   * Show loaded phase (Gantt chart)
+   */
+  showLoaded() {
+    if (this.elements.loadingPhase) {
+      this.elements.loadingPhase.style.display = 'none';
+    }
+    if (this.elements.loadedPhase) {
+      this.elements.loadedPhase.style.display = 'block';
+    }
+  }
+
+  /**
+   * Update progress bar and text
+   * @param {Object} progress - {fetched, total, phase, message}
+   */
+  updateProgress(progress) {
+    const { fetched, total, phase, message } = progress;
+
+    if (this.elements.progressBar) {
+      const percent = total > 0 ? (fetched / total) * 100 : 0;
+      this.elements.progressBar.style.width = `${percent}%`;
+    }
+
+    if (this.elements.progressText) {
+      this.elements.progressText.textContent = `${fetched}/${total} bugs`;
+    }
+
+    if (this.elements.progressStatus) {
+      this.elements.progressStatus.textContent = message;
+    }
+  }
+
+  /**
+   * Render milestones list with status indicators
+   */
+  renderMilestonesList() {
+    if (!this.elements.milestonesList) return;
+
+    let html = '';
+    for (const [bugId, milestone] of this.milestoneStatus) {
+      const statusIcon = this.getStatusIcon(milestone.status);
+      const depText = milestone.depCount > 0 ? ` - ${milestone.depCount} dependencies` : '';
+
+      html += `
+        <div class="milestone-item milestone-${milestone.status}">
+          <span class="milestone-icon">${statusIcon}</span>
+          <span class="milestone-name">${milestone.name}</span>
+          <span class="milestone-bug">(${bugId})</span>
+          <span class="milestone-deps">${depText}</span>
+        </div>
+      `;
+    }
+
+    this.elements.milestonesList.innerHTML = html;
+  }
+
+  /**
+   * Get status icon for milestone
+   */
+  getStatusIcon(status) {
+    switch (status) {
+      case 'complete': return '\u2713'; // checkmark
+      case 'fetching': return '\u25D0'; // half circle
+      case 'pending': return '\u25CB'; // empty circle
+      default: return '\u25CB';
+    }
+  }
+
+  /**
+   * Update milestone status
+   * @param {number} bugId - Milestone bug ID
+   * @param {string} status - 'pending', 'fetching', 'complete'
+   * @param {number} depCount - Number of dependencies found
+   */
+  updateMilestoneStatus(bugId, status, depCount = 0) {
+    const milestone = this.milestoneStatus.get(bugId);
+    if (milestone) {
+      milestone.status = status;
+      milestone.depCount = depCount;
+      this.renderMilestonesList();
+    }
+  }
+
+  /**
+   * Add recently discovered bug to the list
+   * @param {Object} bug - Bug object
+   */
+  addRecentBug(bug) {
+    if (!this.elements.recentBugs) return;
+
+    const item = document.createElement('div');
+    item.className = 'recent-bug-item';
+    item.innerHTML = `
+      <span class="bug-tree">\u2514\u2500</span>
+      <span class="bug-id">${bug.id}:</span>
+      <span class="bug-summary">"${this.truncate(bug.summary, 50)}"</span>
+    `;
+
+    // Keep only last 5 items
+    while (this.elements.recentBugs.children.length >= 5) {
+      this.elements.recentBugs.removeChild(this.elements.recentBugs.firstChild);
+    }
+
+    this.elements.recentBugs.appendChild(item);
+  }
+
+  /**
+   * Render schedule statistics
+   * @param {Object} stats - Statistics from scheduler
+   */
+  renderStats(stats) {
+    if (!this.elements.statsContainer) return;
+
+    const html = `
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${stats.totalTasks}</div>
+          <div class="stat-label">Total Tasks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.completedTasks}</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.scheduledTasks}</div>
+          <div class="stat-label">Scheduled</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.estimatedCount}</div>
+          <div class="stat-label">Estimated Sizes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.warningCount}</div>
+          <div class="stat-label">Warnings</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.latestEnd ? this.formatDate(stats.latestEnd) : 'N/A'}</div>
+          <div class="stat-label">Project End</div>
+        </div>
+      </div>
+    `;
+
+    this.elements.statsContainer.innerHTML = html;
+  }
+
+  /**
+   * Render estimated sizes table
+   * @param {Array<Object>} bugs - Bugs with estimated sizes
+   */
+  renderEstimatedTable(bugs) {
+    if (!this.elements.estimatedTable) return;
+
+    if (bugs.length === 0) {
+      this.elements.estimatedTable.innerHTML = '<p>No estimated sizes</p>';
+      return;
+    }
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Bug ID</th>
+            <th>Summary</th>
+            <th>Est. Size</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    for (const bug of bugs.slice(0, 20)) {
+      html += `
+        <tr>
+          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${bug.id}" target="_blank">${bug.id}</a></td>
+          <td>${this.truncate(bug.summary, 60)}</td>
+          <td>${bug.size || 3} (default)</td>
+        </tr>
+      `;
+    }
+
+    html += '</tbody></table>';
+
+    if (bugs.length > 20) {
+      html += `<p class="table-note">...and ${bugs.length - 20} more</p>`;
+    }
+
+    this.elements.estimatedTable.innerHTML = html;
+  }
+
+  /**
+   * Render skill mismatch table
+   * @param {Array<Object>} warnings - Skill mismatch warnings
+   */
+  renderMismatchTable(warnings) {
+    if (!this.elements.mismatchTable) return;
+
+    const mismatches = warnings.filter(w => w.type === 'skill_mismatch');
+
+    if (mismatches.length === 0) {
+      this.elements.mismatchTable.innerHTML = '<p>No skill mismatches</p>';
+      return;
+    }
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Bug ID</th>
+            <th>Engineer</th>
+            <th>Language</th>
+            <th>Impact</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    for (const mismatch of mismatches.slice(0, 20)) {
+      html += `
+        <tr>
+          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${mismatch.bug.id}" target="_blank">${mismatch.bug.id}</a></td>
+          <td>${mismatch.engineer.name}</td>
+          <td>${mismatch.bug.language}</td>
+          <td>+50% effort</td>
+        </tr>
+      `;
+    }
+
+    html += '</tbody></table>';
+    this.elements.mismatchTable.innerHTML = html;
+  }
+
+  /**
+   * Render deadline risks table
+   * @param {Array<Object>} risks - Deadline risk items
+   */
+  renderRisksTable(risks) {
+    if (!this.elements.risksTable) return;
+
+    if (risks.length === 0) {
+      this.elements.risksTable.innerHTML = '<p>No deadline risks detected</p>';
+      return;
+    }
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Bug ID</th>
+            <th>End Date</th>
+            <th>Milestone</th>
+            <th>Risk Type</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    for (const risk of risks.slice(0, 20)) {
+      html += `
+        <tr class="risk-${risk.type}">
+          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${risk.task.bug.id}" target="_blank">${risk.task.bug.id}</a></td>
+          <td>${this.formatDate(risk.task.endDate)}</td>
+          <td>${risk.milestone.name}</td>
+          <td>${risk.type === 'freeze' ? 'After Freeze' : 'After Deadline'}</td>
+        </tr>
+      `;
+    }
+
+    html += '</tbody></table>';
+    this.elements.risksTable.innerHTML = html;
+  }
+
+  /**
+   * Render errors in markdown format
+   * @param {Object} errors - Error detection results
+   */
+  renderErrorsMarkdown(errors) {
+    if (!this.elements.errorsMarkdown) return;
+
+    let markdown = '# ERRORS.md\n\n';
+    markdown += `Generated: ${new Date().toISOString()}\n\n`;
+
+    if (errors.cycles && errors.cycles.length > 0) {
+      markdown += '## Dependency Cycles\n\n';
+      for (const cycle of errors.cycles) {
+        markdown += `- Cycle: ${cycle.join(' -> ')}\n`;
+      }
+      markdown += '\n';
+    }
+
+    if (errors.orphaned && errors.orphaned.length > 0) {
+      markdown += '## Orphaned Dependencies\n\n';
+      markdown += 'Dependencies pointing to non-existent bugs:\n\n';
+      for (const orphan of errors.orphaned) {
+        markdown += `- Bug ${orphan.from} depends on missing bug ${orphan.to}\n`;
+      }
+      markdown += '\n';
+    }
+
+    if (errors.duplicates && errors.duplicates.length > 0) {
+      markdown += '## Duplicate Summaries\n\n';
+      for (const dup of errors.duplicates) {
+        markdown += `### "${dup.summary}"\n\n`;
+        for (const bug of dup.bugs) {
+          markdown += `- Bug ${bug.id}\n`;
+        }
+        markdown += '\n';
+      }
+    }
+
+    if (errors.missingAssignees && errors.missingAssignees.length > 0) {
+      markdown += '## Missing Assignees\n\n';
+      for (const bug of errors.missingAssignees.slice(0, 50)) {
+        markdown += `- Bug ${bug.id}: ${bug.summary}\n`;
+      }
+      if (errors.missingAssignees.length > 50) {
+        markdown += `\n...and ${errors.missingAssignees.length - 50} more\n`;
+      }
+      markdown += '\n';
+    }
+
+    if (errors.missingSizes && errors.missingSizes.length > 0) {
+      markdown += '## Missing Sizes\n\n';
+      for (const bug of errors.missingSizes.slice(0, 50)) {
+        markdown += `- Bug ${bug.id}: ${bug.summary}\n`;
+      }
+      if (errors.missingSizes.length > 50) {
+        markdown += `\n...and ${errors.missingSizes.length - 50} more\n`;
+      }
+    }
+
+    this.elements.errorsMarkdown.textContent = markdown;
+  }
+
+  /**
+   * Set up event listeners
+   * @param {Object} callbacks - Event callbacks
+   */
+  setupEventListeners(callbacks) {
+    if (this.elements.viewModeSelect && callbacks.onViewModeChange) {
+      this.elements.viewModeSelect.addEventListener('change', (e) => {
+        callbacks.onViewModeChange(e.target.value);
+      });
+    }
+
+    if (this.elements.milestoneFilter && callbacks.onMilestoneFilter) {
+      this.elements.milestoneFilter.addEventListener('change', (e) => {
+        callbacks.onMilestoneFilter(e.target.value);
+      });
+    }
+
+    if (this.elements.scheduleTypeSelect && callbacks.onScheduleTypeChange) {
+      this.elements.scheduleTypeSelect.addEventListener('change', (e) => {
+        callbacks.onScheduleTypeChange(e.target.value);
+      });
+    }
+
+    if (this.elements.refreshBtn && callbacks.onRefresh) {
+      this.elements.refreshBtn.addEventListener('click', () => {
+        callbacks.onRefresh();
+      });
+    }
+  }
+
+  /**
+   * Update optimization status display
+   * @param {string} status - 'running', 'complete', 'error'
+   * @param {string} message - Status message
+   */
+  updateOptimizationStatus(status, message) {
+    if (!this.elements.optimizationStatus) return;
+
+    let icon = '';
+    let className = 'optimization-status';
+
+    switch (status) {
+      case 'running':
+        icon = '<span class="spinner-small"></span>';
+        className += ' status-running';
+        break;
+      case 'complete':
+        icon = '\u2713';
+        className += ' status-complete';
+        break;
+      case 'error':
+        icon = '\u2717';
+        className += ' status-error';
+        break;
+    }
+
+    this.elements.optimizationStatus.className = className;
+    this.elements.optimizationStatus.innerHTML = `${icon} ${message}`;
+  }
+
+  /**
+   * Enable/disable the schedule type toggle
+   * @param {boolean} enabled - Whether optimal schedule is available
+   */
+  enableScheduleToggle(enabled) {
+    if (!this.elements.scheduleTypeSelect) return;
+
+    const optimalOption = this.elements.scheduleTypeSelect.querySelector('option[value="optimal"]');
+    if (optimalOption) {
+      optimalOption.disabled = !enabled;
+      if (enabled) {
+        optimalOption.textContent = 'Optimal';
+      }
+    }
+  }
+
+  /**
+   * Add entry to optimization log
+   * @param {string} message - Log message
+   * @param {string} type - 'improvement', 'deadline', 'status'
+   */
+  addOptimizationLogEntry(message, type = 'status') {
+    if (!this.elements.optimizationLog) return;
+
+    const entry = document.createElement('div');
+    entry.className = `log-entry log-${type}`;
+
+    const time = new Date().toLocaleTimeString();
+    entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+
+    this.elements.optimizationLog.appendChild(entry);
+
+    // Auto-scroll to bottom
+    this.elements.optimizationLog.scrollTop = this.elements.optimizationLog.scrollHeight;
+  }
+
+  /**
+   * Clear optimization log
+   */
+  clearOptimizationLog() {
+    if (!this.elements.optimizationLog) return;
+    this.elements.optimizationLog.innerHTML = '';
+  }
+
+  /**
+   * Show error message
+   * @param {string} message - Error message
+   */
+  showError(message) {
+    if (this.elements.errorsContainer) {
+      this.elements.errorsContainer.innerHTML = `
+        <div class="error-message">
+          <strong>Error:</strong> ${message}
+        </div>
+      `;
+      this.elements.errorsContainer.style.display = 'block';
+    }
+  }
+
+  /**
+   * Format date as YYYY-MM-DD
+   */
+  formatDate(date) {
+    if (!date) return 'N/A';
+    return date.toISOString().split('T')[0];
+  }
+
+  /**
+   * Truncate string
+   */
+  truncate(str, maxLen) {
+    if (!str) return '';
+    if (str.length <= maxLen) return str;
+    return str.substring(0, maxLen - 3) + '...';
+  }
+}
+
+export default UIController;
