@@ -48,6 +48,18 @@ export class Scheduler {
    * @returns {{days: number, modifier: number, skillRank: number}}
    */
   calculateEffort(bug, engineer, sizeEstimates = {}) {
+    // Meta bugs take 0 time (they're tracking bugs)
+    if (bug.isMeta) {
+      return {
+        days: 0,
+        baseDays: 0,
+        modifier: 1,
+        skillRank: 1,
+        sizeEstimated: false,
+        isMeta: true
+      };
+    }
+
     // Get size from bug, manual estimate, or default
     let size = bug.size;
     let sizeEstimated = bug.sizeEstimated;
@@ -128,7 +140,10 @@ export class Scheduler {
   }
 
   /**
-   * Schedule all tasks in topological order
+   * Schedule all tasks with milestone-aware prioritization
+   * Processes milestones in deadline order (earliest first), so engineer
+   * availability from earlier milestones carries forward to later ones.
+   *
    * @param {Array<Object>} sortedBugs - Bugs in topological order
    * @param {DependencyGraph} graph - Dependency graph
    * @param {Object} sizeEstimates - Manual size estimates
@@ -151,81 +166,194 @@ export class Scheduler {
     // Map to track task end dates
     const taskEndDates = new Map();
 
-    for (const bug of sortedBugs) {
-      // Apply manual language override if available
-      if (taskLanguages[bug.id]) {
-        bug.language = taskLanguages[bug.id];
+    // Group bugs by milestone (which milestone they belong to)
+    const bugToMilestone = this.assignBugsToMilestones(sortedBugs, graph);
+
+    // Sort milestones by deadline (earliest first)
+    const sortedMilestones = [...this.milestones].sort((a, b) =>
+      a.deadline.getTime() - b.deadline.getTime()
+    );
+
+    console.log(`[Scheduler] Processing ${sortedMilestones.length} milestones in deadline order:`);
+    for (const m of sortedMilestones) {
+      console.log(`  - ${m.name}: deadline ${this.formatDate(m.deadline)}`);
+    }
+
+    // Process each milestone in sequence
+    for (const milestone of sortedMilestones) {
+      const milestoneBugIds = bugToMilestone.get(String(milestone.bugId)) || new Set();
+
+      // Get bugs for this milestone in topological order
+      const milestoneBugs = sortedBugs.filter(bug =>
+        milestoneBugIds.has(String(bug.id))
+      );
+
+      console.log(`[Scheduler] Milestone ${milestone.name}: ${milestoneBugs.length} bugs`);
+
+      // Schedule this milestone's bugs
+      for (const bug of milestoneBugs) {
+        this.scheduleBug(bug, graph, taskEndDates, sizeEstimates, taskLanguages, today);
       }
+    }
 
-      // Skip completed bugs
-      if (bug.status === 'RESOLVED' || bug.status === 'VERIFIED') {
-        taskEndDates.set(String(bug.id), today);
-        this.schedule.push({
-          bug,
-          startDate: null,
-          endDate: null,
-          engineer: null,
-          effort: null,
-          completed: true
-        });
-        continue;
+    // Schedule any remaining bugs not assigned to a milestone
+    const scheduledIds = new Set(this.schedule.map(t => String(t.bug.id)));
+    const remainingBugs = sortedBugs.filter(bug => !scheduledIds.has(String(bug.id)));
+
+    if (remainingBugs.length > 0) {
+      console.log(`[Scheduler] Scheduling ${remainingBugs.length} remaining bugs not in any milestone`);
+      for (const bug of remainingBugs) {
+        this.scheduleBug(bug, graph, taskEndDates, sizeEstimates, taskLanguages, today);
       }
-
-      // Calculate earliest start based on dependencies
-      let earliestStart = new Date(today);
-      const dependencies = graph.getDependencies(String(bug.id));
-
-      for (const depId of dependencies) {
-        const depEndDate = taskEndDates.get(depId);
-        if (depEndDate && depEndDate > earliestStart) {
-          earliestStart = new Date(depEndDate);
-        }
-      }
-
-      // Find best engineer
-      const assignment = this.findBestEngineer(bug, earliestStart, sizeEstimates);
-
-      if (!assignment) {
-        this.warnings.push({
-          type: 'no_engineer',
-          bug,
-          message: `No engineer available for bug ${bug.id}`
-        });
-        continue;
-      }
-
-      const { engineer, startDate, effort, endDate } = assignment;
-
-      // Check for skill mismatch warning
-      if (effort.skillRank === 3 && bug.language) {
-        this.warnings.push({
-          type: 'skill_mismatch',
-          bug,
-          engineer,
-          message: `${engineer.name} using tertiary skill for ${bug.language} (bug ${bug.id})`
-        });
-      }
-
-      // Update engineer schedule
-      const engineerSchedule = this.engineerSchedules.get(engineer.id);
-      engineerSchedule.nextAvailable = new Date(endDate);
-      engineerSchedule.tasks.push(bug.id);
-
-      // Record task end date
-      taskEndDates.set(String(bug.id), endDate);
-
-      // Add to schedule
-      this.schedule.push({
-        bug,
-        startDate,
-        endDate,
-        engineer,
-        effort,
-        completed: false
-      });
     }
 
     return this.schedule;
+  }
+
+  /**
+   * Assign bugs to milestones based on dependency relationships
+   * A bug belongs to the earliest milestone that depends on it (directly or transitively)
+   *
+   * @param {Array<Object>} bugs - All bugs
+   * @param {DependencyGraph} graph - Dependency graph
+   * @returns {Map<string, Set<string>>} Map of milestone bugId to set of bug IDs
+   */
+  assignBugsToMilestones(bugs, graph) {
+    const bugToMilestone = new Map();
+
+    // Initialize sets for each milestone
+    for (const milestone of this.milestones) {
+      bugToMilestone.set(String(milestone.bugId), new Set());
+    }
+
+    // Sort milestones by deadline (earliest first)
+    const sortedMilestones = [...this.milestones].sort((a, b) =>
+      a.deadline.getTime() - b.deadline.getTime()
+    );
+
+    // For each bug, find which milestone(s) depend on it
+    // Assign to the earliest such milestone
+    for (const bug of bugs) {
+      const bugId = String(bug.id);
+
+      for (const milestone of sortedMilestones) {
+        const milestoneId = String(milestone.bugId);
+
+        // Check if this bug is the milestone itself or a dependency of the milestone
+        if (bugId === milestoneId || this.isDependencyOf(bugId, milestoneId, graph)) {
+          bugToMilestone.get(milestoneId).add(bugId);
+          break; // Assign to earliest milestone only
+        }
+      }
+    }
+
+    return bugToMilestone;
+  }
+
+  /**
+   * Check if bugId is a (transitive) dependency of targetId
+   */
+  isDependencyOf(bugId, targetId, graph) {
+    const visited = new Set();
+    const queue = [targetId];
+
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+
+      const deps = graph.getDependencies(currentId);
+      for (const depId of deps) {
+        if (depId === bugId) return true;
+        if (!visited.has(depId)) {
+          queue.push(depId);
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Schedule a single bug
+   */
+  scheduleBug(bug, graph, taskEndDates, sizeEstimates, taskLanguages, today) {
+    // Skip if already scheduled
+    if (taskEndDates.has(String(bug.id))) {
+      return;
+    }
+
+    // Apply manual language override if available
+    if (taskLanguages[bug.id]) {
+      bug.language = taskLanguages[bug.id];
+    }
+
+    // Skip completed bugs
+    if (bug.status === 'RESOLVED' || bug.status === 'VERIFIED') {
+      taskEndDates.set(String(bug.id), today);
+      this.schedule.push({
+        bug,
+        startDate: null,
+        endDate: null,
+        engineer: null,
+        effort: null,
+        completed: true
+      });
+      return;
+    }
+
+    // Calculate earliest start based on dependencies
+    let earliestStart = new Date(today);
+    const dependencies = graph.getDependencies(String(bug.id));
+
+    for (const depId of dependencies) {
+      const depEndDate = taskEndDates.get(depId);
+      if (depEndDate && depEndDate > earliestStart) {
+        earliestStart = new Date(depEndDate);
+      }
+    }
+
+    // Find best engineer
+    const assignment = this.findBestEngineer(bug, earliestStart, sizeEstimates);
+
+    if (!assignment) {
+      this.warnings.push({
+        type: 'no_engineer',
+        bug,
+        message: `No engineer available for bug ${bug.id}`
+      });
+      return;
+    }
+
+    const { engineer, startDate, effort, endDate } = assignment;
+
+    // Check for skill mismatch warning
+    if (effort.skillRank === 3 && bug.language) {
+      this.warnings.push({
+        type: 'skill_mismatch',
+        bug,
+        engineer,
+        message: `${engineer.name} using tertiary skill for ${bug.language} (bug ${bug.id})`
+      });
+    }
+
+    // Update engineer schedule
+    const engineerSchedule = this.engineerSchedules.get(engineer.id);
+    engineerSchedule.nextAvailable = new Date(endDate);
+    engineerSchedule.tasks.push(bug.id);
+
+    // Record task end date
+    taskEndDates.set(String(bug.id), endDate);
+
+    // Add to schedule
+    this.schedule.push({
+      bug,
+      startDate,
+      endDate,
+      engineer,
+      effort,
+      completed: false
+    });
   }
 
   /**

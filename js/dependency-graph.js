@@ -222,11 +222,13 @@ export class DependencyGraph {
   }
 
   /**
-   * Find bugs with missing sizes
-   * @returns {Array<Object>} Array of bugs without sizes
+   * Find open bugs with missing sizes
+   * @returns {Array<Object>} Array of open bugs without sizes
    */
   findMissingSizes() {
     return Array.from(this.nodes.values()).filter(bug => {
+      // Skip resolved/verified bugs - they don't need size estimates
+      if (bug.status === 'RESOLVED' || bug.status === 'VERIFIED') return false;
       return bug.size === null;
     });
   }

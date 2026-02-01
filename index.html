@@ -75,6 +75,16 @@
         </div>
 
         <div class="control-group">
+          <label for="severity-filter">Severity:</label>
+          <select id="severity-filter">
+            <option value="S1">S1 only</option>
+            <option value="S2" selected>S1-S2 (default)</option>
+            <option value="S3">S1-S3</option>
+            <option value="">All severities</option>
+          </select>
+        </div>
+
+        <div class="control-group">
           <label for="schedule-type">Schedule:</label>
           <select id="schedule-type">
             <option value="greedy">Greedy (fast)</option>

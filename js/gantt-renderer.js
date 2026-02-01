@@ -8,20 +8,20 @@ const MILESTONES = [
   {
     name: 'Foxfooding',
     bugId: 1980342,
-    deadline: new Date('2025-02-23'),
-    freezeDate: new Date('2025-02-16')
+    deadline: new Date('2026-02-23'),
+    freezeDate: new Date('2026-02-16')
   },
   {
     name: 'Customer Pilot',
     bugId: 2012055,
-    deadline: new Date('2025-03-30'),
-    freezeDate: new Date('2025-03-23')
+    deadline: new Date('2026-03-30'),
+    freezeDate: new Date('2026-03-23')
   },
   {
     name: 'MVP',
     bugId: 1980739,
-    deadline: new Date('2025-09-15'),
-    freezeDate: new Date('2025-09-08')
+    deadline: new Date('2026-09-15'),
+    freezeDate: new Date('2026-09-08')
   }
 ];
 

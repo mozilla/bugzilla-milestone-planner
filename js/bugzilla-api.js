@@ -56,7 +56,7 @@ export class BugzillaAPI {
       return this.cache.get(id);
     }
 
-    const url = `${BUGZILLA_API_BASE}/bug/${id}?include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product`;
+    const url = `${BUGZILLA_API_BASE}/bug/${id}?include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords`;
 
     try {
       const response = await fetch(url);
@@ -91,7 +91,7 @@ export class BugzillaAPI {
       return bugIds.map(id => this.cache.get(String(id)));
     }
 
-    const url = `${BUGZILLA_API_BASE}/bug?id=${uncachedIds.join(',')}&include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product`;
+    const url = `${BUGZILLA_API_BASE}/bug?id=${uncachedIds.join(',')}&include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords`;
 
     console.log(`[BugzillaAPI] Fetching URL: ${url.substring(0, 100)}...`);
 
@@ -138,6 +138,8 @@ export class BugzillaAPI {
   processBug(rawBug) {
     const size = this.extractSize(rawBug.whiteboard);
     const language = this.extractLanguage(rawBug.whiteboard, rawBug.component);
+    const keywords = rawBug.keywords || [];
+    const isMeta = this.isMeta(rawBug.whiteboard, keywords, rawBug.summary);
 
     return {
       id: rawBug.id,
@@ -148,12 +150,35 @@ export class BugzillaAPI {
       dependsOn: rawBug.depends_on || [],
       blocks: rawBug.blocks || [],
       whiteboard: rawBug.whiteboard || '',
+      keywords: keywords,
       component: rawBug.component,
       product: rawBug.product,
+      severity: rawBug.severity || 'N/A',
       size: size,
       sizeEstimated: size === null,
-      language: language
+      language: language,
+      isMeta: isMeta
     };
+  }
+
+  /**
+   * Check if bug is a meta/tracking bug
+   * Looks for "meta" in whiteboard, keywords, or title
+   */
+  isMeta(whiteboard, keywords, summary) {
+    // Check whiteboard for [meta]
+    if (whiteboard && whiteboard.toLowerCase().includes('[meta]')) {
+      return true;
+    }
+    // Check keywords for "meta"
+    if (keywords && keywords.some(k => k.toLowerCase() === 'meta')) {
+      return true;
+    }
+    // Check title for [meta]
+    if (summary && summary.toLowerCase().includes('[meta]')) {
+      return true;
+    }
+    return false;
   }
 
   /**

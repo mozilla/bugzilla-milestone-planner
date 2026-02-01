@@ -26,6 +26,7 @@ export class UIController {
       ganttContainer: document.getElementById('gantt-container'),
       viewModeSelect: document.getElementById('view-mode'),
       milestoneFilter: document.getElementById('milestone-filter'),
+      severityFilter: document.getElementById('severity-filter'),
       scheduleTypeSelect: document.getElementById('schedule-type'),
       optimizationStatus: document.getElementById('optimization-status'),
       optimizationLog: document.getElementById('optimization-log'),
@@ -480,6 +481,12 @@ export class UIController {
     if (this.elements.milestoneFilter && callbacks.onMilestoneFilter) {
       this.elements.milestoneFilter.addEventListener('change', (e) => {
         callbacks.onMilestoneFilter(e.target.value);
+      });
+    }
+
+    if (this.elements.severityFilter && callbacks.onSeverityFilter) {
+      this.elements.severityFilter.addEventListener('change', (e) => {
+        callbacks.onSeverityFilter(e.target.value);
       });
     }
 

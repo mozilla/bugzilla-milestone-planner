@@ -9,8 +9,8 @@ const SIZE_TO_DAYS = { 1: 1, 2: 5, 3: 10, 4: 20, 5: 60 };
 const DEFAULT_SIZE = 3;
 const SKILL_MODIFIERS = { 1: 1.0, 2: 1.25, 3: 1.5 };
 
-// Milestones from SPEC.md (must match gantt-renderer.js)
-const MILESTONES = [
+// Default milestones (overridden by passed milestones)
+let activeMilestones = [
   { name: 'Foxfooding', bugId: 1980342, deadline: new Date('2025-02-23'), freezeDate: new Date('2025-02-16') },
   { name: 'Customer Pilot', bugId: 2012055, deadline: new Date('2025-03-30'), freezeDate: new Date('2025-03-23') },
   { name: 'MVP', bugId: 1980739, deadline: new Date('2025-09-15'), freezeDate: new Date('2025-09-08') }
@@ -33,7 +33,19 @@ self.onmessage = function(e) {
   const { type, data } = e.data;
 
   if (type === 'start') {
-    const { bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMakespan } = data;
+    const { bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMakespan, milestones } = data;
+
+    // Update active milestones if provided
+    if (milestones && milestones.length > 0) {
+      activeMilestones = milestones.map(m => ({
+        name: m.name,
+        bugId: m.bugId,
+        deadline: new Date(m.deadline),
+        freezeDate: new Date(m.freezeDate)
+      }));
+      console.log('[Worker] Using', activeMilestones.length, 'milestones:', activeMilestones.map(m => m.name).join(', '));
+    }
+
     optimize(bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMakespan);
   } else if (type === 'stop') {
     self.close();
@@ -103,7 +115,7 @@ function evaluateSchedule(taskEndTimes, tasks) {
   }
 
   // Check each milestone
-  for (const milestone of MILESTONES) {
+  for (const milestone of activeMilestones) {
     const milestoneBugId = String(milestone.bugId);
     const milestoneEndDays = taskEndTimes[milestoneBugId];
 
@@ -196,7 +208,7 @@ function branchAndBound(tasks, engineers, dependencyMap, sizeEstimates, taskLang
     for (const { e, startTime, endTime, effort } of candidates) {
       // Pruning: if this can't improve on best, skip
       // (Only prune on makespan if we already meet all deadlines)
-      if (bestScore.deadlinesMet === MILESTONES.length && endTime >= bestScore.makespan) {
+      if (bestScore.deadlinesMet === activeMilestones.length && endTime >= bestScore.makespan) {
         continue;
       }
 
@@ -236,7 +248,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, sizeEstimates, task
   self.postMessage({
     type: 'log',
     logType: 'status',
-    message: `Initial: ${currentScore.deadlinesMet}/${MILESTONES.length} deadlines, ${currentScore.makespan.toFixed(0)} days`
+    message: `Initial: ${currentScore.deadlinesMet}/${activeMilestones.length} deadlines, ${currentScore.makespan.toFixed(0)} days`
   });
 
   let temperature = SA_INITIAL_TEMP;
@@ -306,9 +318,9 @@ function reportImprovement(oldScore, newScore) {
       .filter(d => d.met)
       .map(d => d.name)
       .join(', ');
-    message = `NEW DEADLINE MET! Now meeting ${newScore.deadlinesMet}/${MILESTONES.length} deadlines (${deadlineNames}). Makespan: ${newScore.makespan.toFixed(0)} days`;
+    message = `NEW DEADLINE MET! Now meeting ${newScore.deadlinesMet}/${activeMilestones.length} deadlines (${deadlineNames}). Makespan: ${newScore.makespan.toFixed(0)} days`;
   } else {
-    message = `Improved makespan: ${newScore.makespan.toFixed(0)} days (was ${oldScore.makespan.toFixed(0)}). Deadlines: ${newScore.deadlinesMet}/${MILESTONES.length}`;
+    message = `Improved makespan: ${newScore.makespan.toFixed(0)} days (was ${oldScore.makespan.toFixed(0)}). Deadlines: ${newScore.deadlinesMet}/${activeMilestones.length}`;
   }
 
   self.postMessage({
@@ -335,7 +347,7 @@ function finishOptimization(tasks, engineers, dependencyMap, sizeEstimates, task
     self.postMessage({
       type: 'log',
       logType: 'status',
-      message: `Optimization complete after ${iterations.toLocaleString()} iterations. Final: ${bestScore.deadlinesMet}/${MILESTONES.length} deadlines, ${bestScore.makespan.toFixed(0)} days`
+      message: `Optimization complete after ${iterations.toLocaleString()} iterations. Final: ${bestScore.deadlinesMet}/${activeMilestones.length} deadlines, ${bestScore.makespan.toFixed(0)} days`
     });
 
     self.postMessage({
@@ -411,8 +423,13 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap, sizeEstima
 
       if (!canProcess) continue;
 
-      const engineerIdx = assignment[i];
+      // Assignment can be either a number (SA) or object with engineerIndex (B&B)
+      const assignmentEntry = assignment[i];
+      const engineerIdx = typeof assignmentEntry === 'object' ? assignmentEntry.engineerIndex : assignmentEntry;
       const engineer = engineers[engineerIdx];
+
+      if (!engineer) continue;
+
       const effort = calculateEffort(task, engineer, sizeEstimates, taskLanguages);
 
       const startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
@@ -469,8 +486,16 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
 
       if (!canProcess) continue;
 
-      const engineerIdx = assignment[i];
+      // Assignment can be either a number (SA) or object with engineerIndex (B&B)
+      const assignmentEntry = assignment[i];
+      const engineerIdx = typeof assignmentEntry === 'object' ? assignmentEntry.engineerIndex : assignmentEntry;
       const engineer = engineers[engineerIdx];
+
+      if (!engineer) {
+        console.error('[Worker] Engineer not found for index', engineerIdx, 'assignment:', assignmentEntry);
+        continue;
+      }
+
       const effort = calculateEffort(task, engineer, sizeEstimates, taskLanguages);
 
       const startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
@@ -500,6 +525,11 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
  * Calculate effort for a task/engineer combination
  */
 function calculateEffort(task, engineer, sizeEstimates, taskLanguages) {
+  // Meta bugs take 0 time
+  if (task.isMeta) {
+    return { days: 0, baseDays: 0, modifier: 1, skillRank: 1, sizeEstimated: false, isMeta: true };
+  }
+
   let size = task.size;
   let sizeEstimated = task.sizeEstimated;
 

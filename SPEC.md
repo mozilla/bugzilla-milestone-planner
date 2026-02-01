@@ -14,9 +14,9 @@ https://wiki.mozilla.org/Bugzilla:REST_API
 
 Name, timing and master bug
 
-Foxfooding, Februari 23rd, https://bugzilla.mozilla.org/show_bug.cgi?id=1980342
-Customer Pilot, March 30th, https://bugzilla.mozilla.org/show_bug.cgi?id=2012055
-MVP, September 15th, https://bugzilla.mozilla.org/show_bug.cgi?id=1980739
+Foxfooding, February 23rd 2026, https://bugzilla.mozilla.org/show_bug.cgi?id=1980342
+Customer Pilot, March 30th 2026, https://bugzilla.mozilla.org/show_bug.cgi?id=2012055
+MVP, September 15th 2026, https://bugzilla.mozilla.org/show_bug.cgi?id=1980739
 
 Feature freeze for QA 1 week before deadline, so development should finish before then.
 
