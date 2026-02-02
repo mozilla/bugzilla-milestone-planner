@@ -233,12 +233,12 @@ export class DependencyGraph {
   }
 
   /**
-   * Find bugs with no assignee (excludes meta bugs and non-Client bugs)
+   * Find open bugs with no assignee (excludes meta, non-Client, and resolved bugs)
    * @returns {Array<Object>} Array of bugs without assignees
    */
   findMissingAssignees() {
     return Array.from(this.nodes.values()).filter(bug => {
-      if (!this.isSchedulableBug(bug)) return false;
+      if (!this.isSchedulableBug(bug, { excludeResolved: true })) return false;
       return !bug.assignee || bug.assignee === 'nobody@mozilla.org';
     });
   }
