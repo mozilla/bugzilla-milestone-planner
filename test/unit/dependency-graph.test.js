@@ -221,6 +221,7 @@ describe('DependencyGraph', () => {
           id: bug.id,
           summary: bug.summary,
           assignee: bug.assigned_to,
+          component: 'Client',  // Required for filtering
           dependsOn: bug.depends_on
         });
       }
@@ -240,12 +241,27 @@ describe('DependencyGraph', () => {
         id: 1,
         summary: 'Bug with nobody',
         assignee: 'nobody@mozilla.org',
+        component: 'Client',
         dependsOn: []
       });
 
       const missing = graph.findMissingAssignees();
 
       expect(missing).toHaveLength(1);
+    });
+
+    it('should exclude non-Client bugs', () => {
+      graph.addNode({
+        id: 1,
+        summary: 'Non-client bug',
+        assignee: null,
+        component: 'Server',
+        dependsOn: []
+      });
+
+      const missing = graph.findMissingAssignees();
+
+      expect(missing).toHaveLength(0);
     });
   });
 
@@ -261,6 +277,7 @@ describe('DependencyGraph', () => {
           id: bug.id,
           summary: bug.summary,
           size: size,
+          component: 'Client',  // Required for filtering
           dependsOn: bug.depends_on
         });
       }
@@ -272,6 +289,20 @@ describe('DependencyGraph', () => {
       expect(missing.length).toBeGreaterThanOrEqual(1);
       const ids = missing.map(b => b.id);
       expect(ids).toContain(1000005);
+    });
+
+    it('should exclude non-Client bugs', () => {
+      graph.addNode({
+        id: 1,
+        summary: 'Non-client bug without size',
+        size: null,
+        component: 'Server',
+        dependsOn: []
+      });
+
+      const missing = graph.findMissingSizes();
+
+      expect(missing).toHaveLength(0);
     });
   });
 

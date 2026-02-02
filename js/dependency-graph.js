@@ -212,26 +212,44 @@ export class DependencyGraph {
   }
 
   /**
-   * Find bugs with no assignee (excludes meta bugs)
+   * Check if a bug is a schedulable work item (not meta, Client component, not resolved)
+   * @param {Object} bug - Bug object
+   * @param {Object} options - Filter options
+   * @param {boolean} options.excludeMeta - Skip meta bugs (default: true)
+   * @param {boolean} options.clientOnly - Only include Client component (default: true)
+   * @param {boolean} options.excludeResolved - Skip resolved/verified/closed (default: false)
+   * @returns {boolean}
+   */
+  isSchedulableBug(bug, options = {}) {
+    const { excludeMeta = true, clientOnly = true, excludeResolved = false } = options;
+
+    if (excludeMeta && bug.isMeta) return false;
+    if (clientOnly && bug.component !== 'Client') return false;
+    if (excludeResolved) {
+      const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
+      if (resolvedStatuses.includes(bug.status)) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Find bugs with no assignee (excludes meta bugs and non-Client bugs)
    * @returns {Array<Object>} Array of bugs without assignees
    */
   findMissingAssignees() {
     return Array.from(this.nodes.values()).filter(bug => {
-      if (bug.isMeta) return false;
+      if (!this.isSchedulableBug(bug)) return false;
       return !bug.assignee || bug.assignee === 'nobody@mozilla.org';
     });
   }
 
   /**
-   * Find open bugs with missing sizes (excludes meta bugs)
+   * Find open bugs with missing sizes (excludes meta bugs and non-Client bugs)
    * @returns {Array<Object>} Array of open bugs without sizes
    */
   findMissingSizes() {
     return Array.from(this.nodes.values()).filter(bug => {
-      // Skip meta bugs - they take 0 days
-      if (bug.isMeta) return false;
-      // Skip resolved/verified bugs - they don't need size estimates
-      if (bug.status === 'RESOLVED' || bug.status === 'VERIFIED') return false;
+      if (!this.isSchedulableBug(bug, { excludeResolved: true })) return false;
       return bug.size === null;
     });
   }
