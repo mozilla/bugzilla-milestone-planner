@@ -155,12 +155,14 @@ async function testDrag(page) {
   const initial = await page.$eval('.gantt-container', el => el.scrollLeft);
 
   // Drag on header area (top 30px where there are no bars)
-  const startX = bounds.x + 400;
+  // Use center of container width to work on both desktop and mobile viewports
+  const startX = bounds.x + Math.min(200, bounds.width * 0.5);
   const startY = bounds.y + 30;
+  const dragDistance = Math.min(150, bounds.width * 0.4);
 
   await page.mouse.move(startX, startY);
   await page.mouse.down();
-  await page.mouse.move(startX - 200, startY, { steps: 10 });
+  await page.mouse.move(startX - dragDistance, startY, { steps: 10 });
   await page.mouse.up();
 
   const final = await page.$eval('.gantt-container', el => el.scrollLeft);
