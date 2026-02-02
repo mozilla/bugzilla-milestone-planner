@@ -244,32 +244,46 @@ export class UIController {
 
   /**
    * Render schedule statistics
-   * @param {Object} stats - Statistics from scheduler
+   * @param {Object} stats - Statistics from main.computeStats()
    */
   renderStats(stats) {
     if (!this.elements.statsContainer) return;
 
+    // Build Bugzilla URLs for bug lists
+    const bugzillaListUrl = (bugs) => {
+      if (!bugs || bugs.length === 0) return null;
+      const ids = bugs.map(b => b.id).join(',');
+      return `https://bugzilla.mozilla.org/buglist.cgi?bug_id=${ids}`;
+    };
+
+    const totalUrl = bugzillaListUrl(stats.totalBugs);
+    const completedUrl = bugzillaListUrl(stats.completedBugs);
+    const openUrl = bugzillaListUrl(stats.openBugs);
+
+    const linkOrSpan = (url, value) => {
+      if (url) {
+        return `<a href="${url}" target="_blank" class="stat-link">${value}</a>`;
+      }
+      return `<span>${value}</span>`;
+    };
+
     const html = `
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-value">${stats.totalTasks}</div>
+          <div class="stat-value">${linkOrSpan(totalUrl, stats.totalBugs?.length || 0)}</div>
           <div class="stat-label">Total Tasks</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${stats.completedTasks}</div>
+          <div class="stat-value">${linkOrSpan(completedUrl, stats.completedBugs?.length || 0)}</div>
           <div class="stat-label">Completed</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${stats.scheduledTasks}</div>
-          <div class="stat-label">Scheduled</div>
+          <div class="stat-value">${linkOrSpan(openUrl, stats.openBugs?.length || 0)}</div>
+          <div class="stat-label">Open</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${stats.estimatedCount}</div>
-          <div class="stat-label">Estimated Sizes</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${stats.warningCount}</div>
-          <div class="stat-label">Warnings</div>
+          <div class="stat-value">${stats.totalDays || 0}</div>
+          <div class="stat-label">Total Days</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${stats.latestEnd ? this.formatDate(stats.latestEnd) : 'N/A'}</div>

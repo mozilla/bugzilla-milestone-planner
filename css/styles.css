@@ -300,6 +300,15 @@ header p {
   margin-top: 4px;
 }
 
+.stat-link {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.stat-link:hover {
+  text-decoration: underline;
+}
+
 /* Gantt Container */
 #gantt-container {
   background: var(--bg-primary);

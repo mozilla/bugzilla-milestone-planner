@@ -187,8 +187,8 @@ class EnterprisePlanner {
     const milestoneCompletions = this.calculateMilestoneCompletions(schedule);
     this.ui.renderMilestoneCards(activeMilestones, milestoneCompletions);
 
-    // Render statistics
-    const stats = this.scheduler.getStats();
+    // Render statistics - compute from all bugs, not just filtered
+    const stats = this.computeStats();
     this.ui.renderStats(stats);
 
     // Render tables
@@ -416,6 +416,37 @@ class EnterprisePlanner {
   getActiveMilestones() {
     if (!this.milestoneFilter) return MILESTONES;
     return MILESTONES.filter(m => String(m.bugId) === this.milestoneFilter);
+  }
+
+  /**
+   * Compute stats from all bugs (not just filtered/scheduled)
+   * Total and Completed include resolved bugs, Open is what's being scheduled
+   */
+  computeStats() {
+    const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
+
+    // Get all bugs with component and severity filters (but NOT resolved filter)
+    let allBugs = this.filterBugsByComponent(this.sortedBugs);
+    allBugs = this.filterBugsBySeverity(allBugs);
+
+    // Exclude milestone bugs from stats (they're tracking bugs, not work)
+    const milestoneBugIds = new Set(MILESTONES.map(m => String(m.bugId)));
+    allBugs = allBugs.filter(bug => !milestoneBugIds.has(String(bug.id)));
+
+    // Split into completed vs open
+    const completedBugs = allBugs.filter(bug => resolvedStatuses.includes(bug.status));
+    const openBugs = allBugs.filter(bug => !resolvedStatuses.includes(bug.status));
+
+    // Get project end date from scheduler
+    const schedulerStats = this.scheduler ? this.scheduler.getStats() : {};
+
+    return {
+      totalBugs: allBugs,
+      completedBugs,
+      openBugs,
+      totalDays: schedulerStats.totalDays || 0,
+      latestEnd: schedulerStats.latestEnd
+    };
   }
 
   /**
