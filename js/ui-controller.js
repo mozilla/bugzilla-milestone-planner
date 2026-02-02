@@ -297,7 +297,6 @@ export class UIController {
           <tr>
             <th>Bug ID</th>
             <th>Summary</th>
-            <th>Est. Size</th>
           </tr>
         </thead>
         <tbody>
@@ -308,7 +307,6 @@ export class UIController {
         <tr>
           <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${bug.id}" target="_blank">${bug.id}</a></td>
           <td>${this.truncate(bug.summary, 60)}</td>
-          <td>${bug.size || 3} (default)</td>
         </tr>
       `;
     }
