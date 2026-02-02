@@ -549,6 +549,19 @@ export class UIController {
       if (errors.untriaged.length > 50) {
         markdown += `\n...and ${errors.untriaged.length - 50} more\n`;
       }
+      markdown += '\n';
+    }
+
+    if (errors.milestoneMismatches && errors.milestoneMismatches.length > 0) {
+      markdown += '## Milestone Mismatches\n\n';
+      markdown += 'Bugs where Bugzilla milestone differs from dependency milestone:\n\n';
+      for (const m of errors.milestoneMismatches.slice(0, 50)) {
+        const depMs = m.dependencyMilestone || '(not connected)';
+        markdown += `- Bug ${m.bug.id}: Bugzilla says "${m.targetMilestone}", dependencies say "${depMs}"\n`;
+      }
+      if (errors.milestoneMismatches.length > 50) {
+        markdown += `\n...and ${errors.milestoneMismatches.length - 50} more\n`;
+      }
     }
 
     this.elements.errorsMarkdown.textContent = markdown;
