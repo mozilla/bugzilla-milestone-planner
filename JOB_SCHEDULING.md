@@ -182,9 +182,8 @@ Running multiple shorter SA instances in parallel and taking the best result:
 | 2×50k | 100% | 8.93s |
 | 5×20k | 100% | 3.60s |
 | 10×10k | 100% | 1.81s |
-| 20×5k | 100% | **0.91s** |
 
-**Key finding**: 20 parallel runs of 5k iterations each achieves **100% reliability in under 1 second**—a 20x speedup over a single 100k run with identical quality.
+**Key finding**: All parallel configurations achieve 100% reliability. With typical 4-8 CPU cores, **5×20k is the practical sweet spot**: 100% reliable in ~3.6s wall-clock (5x speedup).
 
 ### Early Termination (Mixed Results)
 
@@ -207,7 +206,7 @@ Early termination reduces runtime but hurts reliability. Not recommended when pa
 
 ### Recommendations
 
-- **Best approach**: Run 10-20 parallel SA instances with 5-10k iterations each, take best result (~1-2s wall-clock, 100% reliable)
+- **Best approach**: Run N parallel Web Workers (N = CPU cores, typically 4-8), each running 20k iterations with random init. Take best result. ~3-4s wall-clock, 100% reliable.
 - **Single-threaded fallback**: 100k iterations (18s, 100% reliable)
 - **Don't use greedy init**: Creates a local optimum trap
 - **Don't use early termination alone**: Hurts reliability without parallelism to compensate
@@ -215,7 +214,7 @@ Early termination reduces runtime but hurts reliability. Not recommended when pa
 ## Potential Improvements
 
 ### Near-term
-1. **Parallel SA**: Run multiple SA instances with different random seeds — *Tested: 20×5k parallel achieves 100% reliability in <1s (20x speedup). Recommended.*
+1. **Parallel SA**: Run multiple SA instances with different random seeds — *Tested: 5×20k parallel (limited by CPU cores) achieves 100% reliability in ~3.6s (5x speedup). Recommended.*
 2. ~~**Early termination**: Stop SA if no improvement for N iterations~~ — *Tested: Hurts reliability (80% at 10k threshold). Not recommended when parallelism available.*
 3. ~~**Better initial solution**: Use greedy result as SA starting point~~ — *Tested: Actually harmful—greedy is a local optimum trap*
 
