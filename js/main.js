@@ -25,6 +25,8 @@ class EnterprisePlanner {
     this.greedySchedule = null;
     this.optimalSchedule = null;
     this.currentScheduleType = 'greedy';
+    this.fullScheduleErrors = [];
+    this.fullScheduleRisks = [];
 
     // Filters
     this.severityFilter = 'S2';
@@ -114,32 +116,29 @@ class EnterprisePlanner {
       // Get sorted bugs and store for filtering later
       this.sortedBugs = sorted.map(id => this.bugs.get(id)).filter(Boolean);
 
-      // Apply filters
+      // Apply filters (severity affects scheduling, milestone is view-only)
       let filteredBugs = this.filterResolvedBugs(this.sortedBugs);
       filteredBugs = this.filterBugsByComponent(filteredBugs);
       filteredBugs = this.filterBugsBySeverity(filteredBugs);
-      filteredBugs = this.filterBugsByMilestone(filteredBugs);
-      const activeMilestones = this.getActiveMilestones();
       console.log(`Sorted ${this.sortedBugs.length} bugs, ${filteredBugs.length} after filters (excluding resolved, Client only)`);
 
-      // Schedule tasks
+      // Schedule tasks for all milestones
       console.log('Scheduling tasks...');
-      this.scheduler = new Scheduler(this.engineers, activeMilestones);
+      this.scheduler = new Scheduler(this.engineers, MILESTONES);
       const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
       console.log(`Scheduled ${schedule.length} tasks`);
 
-      // Check deadline risks
-      const risks = this.scheduler.checkDeadlineRisks(activeMilestones);
-
-      // Store greedy schedule
+      // Store full schedule and risks
       this.greedySchedule = schedule;
+      this.fullScheduleErrors = errors;
+      this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(MILESTONES);
 
-      // Render UI
+      // Render UI with milestone filter applied to view
       this.ui.showLoaded();
-      this.renderResults(schedule, errors, risks, activeMilestones);
+      this.rerenderWithMilestoneFilter();
 
-      // Start optimal scheduler in background
-      this.startOptimalScheduler(filteredBugs, activeMilestones);
+      // Start optimal scheduler in background (for all milestones)
+      this.startOptimalScheduler(filteredBugs, MILESTONES);
 
     } catch (error) {
       console.error('Error during fetch and process:', error);
@@ -318,13 +317,13 @@ class EnterprisePlanner {
   }
 
   /**
-   * Milestone filter handler
+   * Milestone filter handler - only changes the view, doesn't recompute schedule
    */
   onMilestoneFilter(bugId) {
     console.log('Milestone filter changed to:', bugId || 'all');
     this.milestoneFilter = bugId;
-    if (this.sortedBugs.length > 0) {
-      this.rescheduleWithFilter();
+    if (this.greedySchedule && this.greedySchedule.length > 0) {
+      this.rerenderWithMilestoneFilter();
     }
   }
 
@@ -408,26 +407,59 @@ class EnterprisePlanner {
   }
 
   /**
-   * Re-schedule with current filters
+   * Re-schedule with current severity filter (recomputes schedule)
    */
   rescheduleWithFilter() {
     this.stopOptimalScheduler();
     let filteredBugs = this.filterResolvedBugs(this.sortedBugs);
     filteredBugs = this.filterBugsByComponent(filteredBugs);
     filteredBugs = this.filterBugsBySeverity(filteredBugs);
-    filteredBugs = this.filterBugsByMilestone(filteredBugs);
-    const activeMilestones = this.getActiveMilestones();
-    console.log(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved, Client only), ${activeMilestones.length} milestones`);
+    // Note: milestone filter is view-only, doesn't affect scheduling
+    console.log(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved, Client only)`);
 
-    this.scheduler = new Scheduler(this.engineers, activeMilestones);
+    this.scheduler = new Scheduler(this.engineers, MILESTONES);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
     this.greedySchedule = schedule;
-    const errors = this.detectErrors();
-    const risks = this.scheduler.checkDeadlineRisks(activeMilestones);
-    this.renderResults(schedule, errors, risks, activeMilestones);
+    this.fullScheduleErrors = this.detectErrors();
+    this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(MILESTONES);
+
+    // Render with current milestone filter
+    this.rerenderWithMilestoneFilter();
+
     if (filteredBugs.length > 0) {
-      this.startOptimalScheduler(filteredBugs, activeMilestones);
+      this.startOptimalScheduler(filteredBugs, MILESTONES);
     }
+  }
+
+  /**
+   * Re-render with milestone filter (view-only, no recomputation)
+   */
+  rerenderWithMilestoneFilter() {
+    const activeMilestones = this.getActiveMilestones();
+    const filteredSchedule = this.filterScheduleByMilestone(this.greedySchedule);
+    const filteredRisks = this.filterRisksByMilestone(this.fullScheduleRisks);
+
+    this.renderResults(filteredSchedule, this.fullScheduleErrors, filteredRisks, activeMilestones);
+  }
+
+  /**
+   * Filter schedule to show only tasks for selected milestone
+   */
+  filterScheduleByMilestone(schedule) {
+    if (!this.milestoneFilter || !schedule) return schedule;
+    const deps = this.getAllDependencies(this.milestoneFilter);
+    deps.add(this.milestoneFilter);
+    return schedule.filter(task => deps.has(String(task.bug.id)));
+  }
+
+  /**
+   * Filter risks to show only those for selected milestone
+   */
+  filterRisksByMilestone(risks) {
+    if (!this.milestoneFilter || !risks) return risks;
+    return risks.filter(risk =>
+      String(risk.milestone.bugId) === this.milestoneFilter
+    );
   }
 
   /**
@@ -578,15 +610,17 @@ class EnterprisePlanner {
   onScheduleTypeChange(type) {
     this.currentScheduleType = type;
 
-    const schedule = type === 'optimal' && this.optimalSchedule
+    const fullSchedule = type === 'optimal' && this.optimalSchedule
       ? this.optimalSchedule
       : this.greedySchedule;
 
-    if (schedule) {
+    if (fullSchedule) {
+      // Apply milestone filter to view
+      const schedule = this.filterScheduleByMilestone(fullSchedule);
       this.gantt.render(schedule, this.graph);
 
       // Update milestone cards with new completion dates (respecting filter)
-      const milestoneCompletions = this.calculateMilestoneCompletions(schedule);
+      const milestoneCompletions = this.calculateMilestoneCompletions(fullSchedule);
       this.ui.renderMilestoneCards(this.getActiveMilestones(), milestoneCompletions);
 
       console.log(`Switched to ${type} schedule`);
