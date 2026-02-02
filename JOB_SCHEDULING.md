@@ -156,12 +156,54 @@ For an engineer with 20% availability:
 - This represents actual calendar time until completion
 - Part-time engineers effectively have lower throughput
 
+## Experimental Results (Feb 2026)
+
+Tested on real Bugzilla snapshot: 30 tasks, 5 engineers, 3 milestones.
+
+### Greedy vs SA Comparison
+
+| Metric | Greedy | SA (100k iter) |
+|--------|--------|----------------|
+| Runtime | 2ms | 18s |
+| Deadlines met | 2/3 | 3/3 |
+| Makespan | 40 days | 38 days |
+
+Greedy misses the Foxfooding deadline by 3 days. SA consistently finds a schedule meeting all deadlines.
+
+### SA Optimization Experiments
+
+Tested potential improvements with 10 runs each:
+
+| Configuration | 3/3 Rate | Avg Runtime | Avg Iterations |
+|---------------|----------|-------------|----------------|
+| Random init, no early term | **100%** | 17.9s | 100k |
+| Random init, 10k early term | 80% | 3.8s | 21k |
+| Random init, 5k early term | 40% | 1.7s | 9k |
+| Greedy init, no early term | **100%** | 17.9s | 100k |
+| Greedy init, 10k early term | 60% | 2.6s | 14k |
+
+### Key Findings
+
+1. **Greedy initialization is counterproductive with early termination**: The greedy solution is a local optimum. SA starting from greedy has trouble escaping it, achieving only 60% reliability with 10k early termination vs 80% for random init.
+
+2. **Early termination at 10k iterations**: Good tradeoff—5x speedup (18s → 4s) with 80% reliability. For 100% reliability, full 100k iterations are needed.
+
+3. **Parallel runs don't help**: 5 runs of 20k iterations (100k total) performed the same as 1 run of 100k. The problem size is small enough that a single long run explores adequately.
+
+4. **Random initialization preferred**: Despite intuition, random starts outperform greedy initialization when combined with early termination.
+
+### Recommendations
+
+- **For production (UI worker)**: Keep 100k iterations with random init for 100% reliability
+- **For testing**: Use 10k early termination threshold for faster feedback
+- **Don't use greedy init**: It creates a local optimum trap
+
 ## Potential Improvements
 
 ### Near-term
-1. **Parallel SA**: Run multiple SA instances with different random seeds
-2. **Early termination**: Stop SA if no improvement for N iterations
-3. **Better initial solution**: Use greedy result as SA starting point
+1. ~~**Parallel SA**: Run multiple SA instances with different random seeds~~ *Tested: No benefit for this problem size*
+2. **Early termination**: Stop SA if no improvement for N iterations — *Tested: 10k threshold gives 80% reliability with 5x speedup*
+3. ~~**Better initial solution**: Use greedy result as SA starting point~~ *Tested: Actually harmful—greedy is a local optimum trap*
 
 ### Medium-term
 1. **Implement Tabu Search**: Often better than SA for scheduling
