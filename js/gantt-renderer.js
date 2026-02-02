@@ -297,8 +297,10 @@ export class GanttRenderer {
    * Set up hover popups and drag-to-scroll after Gantt renders
    */
   setupInteractions() {
-    const container = document.getElementById(this.containerId);
-    if (!container) return;
+    // Frappe Gantt creates .gantt-container and puts the SVG inside it
+    // The .gantt-container is the scrollable element
+    const scrollContainer = document.querySelector('.gantt-container');
+    if (!scrollContainer) return;
 
     // Clean up previous listeners
     if (this._interactionCleanup) {
@@ -306,7 +308,8 @@ export class GanttRenderer {
     }
 
     // --- Hover popup support ---
-    const bars = container.querySelectorAll('.bar-wrapper');
+    // Bars are inside .gantt-container, not outerContainer
+    const bars = scrollContainer.querySelectorAll('.bar-wrapper');
     const hoverHandlers = [];
 
     bars.forEach(bar => {
@@ -337,6 +340,7 @@ export class GanttRenderer {
     });
 
     // --- Drag-to-scroll support ---
+    // Target the .gantt-container which is the actual scrollable element
     let isDragging = false;
     let startX = 0;
     let scrollLeft = 0;
@@ -346,15 +350,15 @@ export class GanttRenderer {
       if (e.target.closest('.bar-wrapper')) return;
 
       isDragging = true;
-      container.style.cursor = 'grabbing';
+      scrollContainer.style.cursor = 'grabbing';
       startX = e.clientX;
-      scrollLeft = container.scrollLeft;
+      scrollLeft = scrollContainer.scrollLeft;
     };
 
     const onMouseUp = () => {
       if (isDragging) {
         isDragging = false;
-        container.style.cursor = 'grab';
+        scrollContainer.style.cursor = 'grab';
       }
     };
 
@@ -362,11 +366,11 @@ export class GanttRenderer {
       if (!isDragging) return;
       e.preventDefault();
       const walk = startX - e.clientX;
-      container.scrollLeft = scrollLeft + walk;
+      scrollContainer.scrollLeft = scrollLeft + walk;
     };
 
-    container.style.cursor = 'grab';
-    container.addEventListener('mousedown', onMouseDown);
+    scrollContainer.style.cursor = 'grab';
+    scrollContainer.addEventListener('mousedown', onMouseDown);
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('mousemove', onMouseMove);
 
@@ -376,10 +380,10 @@ export class GanttRenderer {
         bar.removeEventListener('mouseenter', onEnter);
         bar.removeEventListener('mouseleave', onLeave);
       });
-      container.removeEventListener('mousedown', onMouseDown);
+      scrollContainer.removeEventListener('mousedown', onMouseDown);
       document.removeEventListener('mouseup', onMouseUp);
       document.removeEventListener('mousemove', onMouseMove);
-      container.style.cursor = '';
+      scrollContainer.style.cursor = '';
     };
   }
 
