@@ -74,6 +74,8 @@ This is a key insight: by processing earlier milestones first, we ensure their t
 
 **Used when:** ≤ 10 unassigned tasks
 
+**Why threshold 10?** With 5 engineers, B&B explores up to 5^n assignments. At n=10, this is ~10 million nodes, taking ~100ms with pruning. At n=15, it's ~30 billion nodes—impractical. The threshold of 10 balances optimality with speed.
+
 **Pros:**
 - Guaranteed optimal solution
 - Pruning makes it practical for small instances
@@ -81,6 +83,8 @@ This is a key insight: by processing earlier milestones first, we ensure their t
 **Cons:**
 - Exponential worst case
 - Not suitable for large task sets
+
+**Note:** With typical workloads of 25-40 tasks after filtering, B&B is rarely used. SA handles essentially all real-world cases.
 
 ### 3. Simulated Annealing (Approximate, Probabilistic)
 
