@@ -24,7 +24,7 @@ const SA_INITIAL_TEMP = 1000;
 const SA_COOLING_RATE = 0.99987; // Adjusted for 8k iterations (ends at ~350°)
 
 // Best solution tracking
-let bestScore = { deadlinesMet: -1, makespan: Infinity };
+let bestScore = { deadlinesMet: -1, totalLateness: Infinity, makespan: Infinity };
 let bestAssignment = null;
 
 /**
@@ -186,13 +186,14 @@ function getMilestoneCompletionDays(milestoneBugId, taskEndTimes, dependencyMap)
 
 /**
  * Evaluate a schedule and return score
- * Score prioritizes: 1) deadlines met, 2) lower makespan
+ * Score prioritizes: 1) deadlines met, 2) minimize lateness, 3) lower makespan
  */
 function evaluateSchedule(taskEndTimes, tasks, dependencyMap) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   let deadlinesMet = 0;
+  let totalLateness = 0; // Sum of days late for each milestone
   let makespan = 0;
   const deadlineDetails = [];
 
@@ -213,12 +214,15 @@ function evaluateSchedule(taskEndTimes, tasks, dependencyMap) {
         deadlinesMet++;
         deadlineDetails.push({ name: milestone.name, met: true, endDate, freezeDate: milestone.freezeDate });
       } else {
-        deadlineDetails.push({ name: milestone.name, met: false, endDate, freezeDate: milestone.freezeDate });
+        // Calculate days late (penalize being late proportionally)
+        const daysLate = Math.ceil((endDate - milestone.freezeDate) / (1000 * 60 * 60 * 24));
+        totalLateness += daysLate;
+        deadlineDetails.push({ name: milestone.name, met: false, endDate, freezeDate: milestone.freezeDate, daysLate });
       }
     }
   }
 
-  return { deadlinesMet, makespan, deadlineDetails };
+  return { deadlinesMet, totalLateness, makespan, deadlineDetails };
 }
 
 /**
@@ -229,7 +233,11 @@ function isBetter(newScore, oldScore) {
   if (newScore.deadlinesMet > oldScore.deadlinesMet) return true;
   if (newScore.deadlinesMet < oldScore.deadlinesMet) return false;
 
-  // Second priority: lower makespan
+  // Second priority: less total lateness (being 1 day late is better than 30 days late)
+  if (newScore.totalLateness < oldScore.totalLateness) return true;
+  if (newScore.totalLateness > oldScore.totalLateness) return false;
+
+  // Third priority: lower makespan
   return newScore.makespan < oldScore.makespan;
 }
 
@@ -352,9 +360,10 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
 
     const neighborScore = evaluateSchedule(neighborEndTimes, tasks, dependencyMap);
 
-    // Calculate acceptance
-    const currentValue = currentScore.deadlinesMet * 10000 - currentScore.makespan;
-    const neighborValue = neighborScore.deadlinesMet * 10000 - neighborScore.makespan;
+    // Calculate acceptance (higher is better)
+    // Priorities: deadlines met >> minimize lateness >> minimize makespan
+    const currentValue = currentScore.deadlinesMet * 100000 - currentScore.totalLateness * 100 - currentScore.makespan;
+    const neighborValue = neighborScore.deadlinesMet * 100000 - neighborScore.totalLateness * 100 - neighborScore.makespan;
     const delta = neighborValue - currentValue;
 
     if (delta > 0 || Math.random() < Math.exp(delta / temperature)) {
