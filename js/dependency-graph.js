@@ -255,6 +255,18 @@ export class DependencyGraph {
   }
 
   /**
+   * Find open bugs without severity (untriaged)
+   * @returns {Array<Object>} Array of untriaged bugs
+   */
+  findUntriagedBugs() {
+    return Array.from(this.nodes.values()).filter(bug => {
+      if (!this.isSchedulableBug(bug, { excludeResolved: true })) return false;
+      const sev = bug.severity;
+      return !sev || sev === '--' || sev === 'N/A';
+    });
+  }
+
+  /**
    * Find duplicate summaries
    * @returns {Array<{summary: string, bugs: Array<Object>}>} Duplicate groups
    */

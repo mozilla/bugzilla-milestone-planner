@@ -156,12 +156,18 @@ class EnterprisePlanner {
     const missingAssignees = this.graph.findMissingAssignees();
     const missingSizes = this.graph.findMissingSizes();
 
+    // Only include untriaged bugs if that filter is enabled
+    const untriaged = this.severityFilter === 'S2+untriaged'
+      ? this.graph.findUntriagedBugs()
+      : [];
+
     return {
       cycles,
       orphaned,
       duplicates,
       missingAssignees,
-      missingSizes
+      missingSizes,
+      untriaged
     };
   }
 

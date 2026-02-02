@@ -420,6 +420,17 @@ export class UIController {
       if (errors.missingSizes.length > 50) {
         markdown += `\n...and ${errors.missingSizes.length - 50} more\n`;
       }
+      markdown += '\n';
+    }
+
+    if (errors.untriaged && errors.untriaged.length > 0) {
+      markdown += '## Untriaged Bugs (no severity)\n\n';
+      for (const bug of errors.untriaged.slice(0, 50)) {
+        markdown += `- Bug ${bug.id}: ${bug.summary}\n`;
+      }
+      if (errors.untriaged.length > 50) {
+        markdown += `\n...and ${errors.untriaged.length - 50} more\n`;
+      }
     }
 
     this.elements.errorsMarkdown.textContent = markdown;

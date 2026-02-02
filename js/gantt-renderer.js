@@ -3,6 +3,18 @@
  * Color coding, milestone markers, and dependency visualization
  */
 
+// Distinct colors for engineers (colorblind-friendly palette)
+const ENGINEER_COLORS = [
+  '#2563eb', // blue
+  '#16a34a', // green
+  '#9333ea', // purple
+  '#ea580c', // orange
+  '#0891b2', // cyan
+  '#be185d', // pink
+  '#4f46e5', // indigo
+  '#ca8a04', // yellow
+];
+
 // Milestones from SPEC.md
 const MILESTONES = [
   {
@@ -35,6 +47,7 @@ export class GanttRenderer {
     this.viewModes = ['Day', 'Week', 'Month', 'Year'];
     this.zoomTimeout = null;
     this.earliestTaskDate = null;
+    this.engineerColorMap = new Map(); // Maps engineer name to color
     this.setupZoomHandler();
   }
 
@@ -175,9 +188,13 @@ export class GanttRenderer {
         return scheduledTasks.some(t => String(t.bug.id) === depId && !t.completed);
       });
 
-      // Format engineer display - show initials for compact display
-      const engineerInitials = scheduledEngineer ? this.getInitials(scheduledEngineer) : '?';
-      const engineerSuffix = isSchedulerAssigned ? ` [${engineerInitials}]` : ` (${engineerInitials})`;
+      // Format engineer display - show initials for compact display (skip for meta bugs)
+      const isMeta = task.bug.isMeta || (task.effort && task.effort.isMeta);
+      let engineerSuffix = '';
+      if (!isMeta) {
+        const engineerInitials = scheduledEngineer ? this.getInitials(scheduledEngineer) : '?';
+        engineerSuffix = isSchedulerAssigned ? ` [${engineerInitials}]` : ` (${engineerInitials})`;
+      }
 
       this.tasks.push({
         id: String(task.bug.id),
@@ -194,8 +211,9 @@ export class GanttRenderer {
         _effort: task.effort ? task.effort.days : 0,
         _size: task.bug.size,
         _sizeEstimated: task.effort ? task.effort.sizeEstimated : false,
-        _isMeta: task.bug.isMeta || (task.effort && task.effort.isMeta),
-        _milestone: task.milestone ? task.milestone.name : null
+        _isMeta: isMeta,
+        _milestone: task.milestone ? task.milestone.name : null,
+        _engineerColor: this.getEngineerColor(scheduledEngineer)
       });
     }
 
@@ -252,18 +270,166 @@ export class GanttRenderer {
     this.gantt = new Gantt(`#${this.containerId}`, ganttTasks, {
       view_mode: this.viewMode,
       date_format: 'YYYY-MM-DD',
-      popup_trigger: 'click',
+      popup_trigger: 'hover',
       custom_popup_html: (task) => this.createPopup(task),
       on_click: (task) => this.onTaskClick(task),
       on_date_change: (task, start, end) => this.onDateChange(task, start, end),
       on_view_change: (mode) => this.onViewChange(mode)
     });
 
+    // Set up drag-to-scroll
+    this.setupDragScroll();
+
     // Add milestone markers
     this.addMilestoneMarkers();
 
+    // Apply engineer colors to task bars
+    this.applyEngineerColors();
+
+    // Update the legend with engineer colors
+    this.updateEngineerLegend();
+
     // Scroll to show the earliest task start date
     this.scrollToDate(this.earliestTaskDate);
+  }
+
+  /**
+   * Update the legend to show engineer color assignments
+   */
+  updateEngineerLegend() {
+    const legend = document.getElementById('legend');
+    if (!legend) return;
+
+    // Remove any existing engineer legend items
+    const existingEngineerItems = legend.querySelectorAll('.legend-item-engineer');
+    existingEngineerItems.forEach(item => item.remove());
+
+    // Add a separator if there are engineers
+    if (this.engineerColorMap.size === 0) return;
+
+    // Add engineer color items
+    for (const [engineer, color] of this.engineerColorMap) {
+      const item = document.createElement('div');
+      item.className = 'legend-item legend-item-engineer';
+      item.innerHTML = `
+        <div class="legend-color" style="background: ${color};"></div>
+        <span>${engineer}</span>
+      `;
+      legend.appendChild(item);
+    }
+  }
+
+  /**
+   * Apply engineer-specific colors to the initials indicator in task labels
+   */
+  applyEngineerColors() {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+
+    // Wait for SVG to be fully rendered
+    setTimeout(() => {
+      for (const task of this.tasks) {
+        if (!task._engineerColor) continue;
+
+        // Skip meta bugs - they don't need engineer assignments
+        if (task._isMeta) continue;
+
+        // Find the bar wrapper for this task
+        const barWrapper = container.querySelector(`.bar-wrapper[data-id="${task.id}"]`);
+        if (!barWrapper) continue;
+
+        // Find the label text element
+        const label = barWrapper.querySelector('.bar-label');
+        if (!label) continue;
+
+        const text = label.textContent;
+        // Match the engineer suffix: (XX) or [XX] at the end
+        const match = text.match(/^(.*)(\s*[\[(][A-Z?]+[\])])$/);
+        if (!match) continue;
+
+        const mainText = match[1];
+        const initialsText = match[2];
+        const isSchedulerAssigned = task._isSchedulerAssigned;
+
+        // Clear the label and add tspans
+        label.textContent = '';
+
+        const mainSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        mainSpan.textContent = mainText;
+
+        const initialsSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        initialsSpan.setAttribute('fill', task._engineerColor);
+
+        if (isSchedulerAssigned) {
+          // Scheduler-assigned: italic, with arrow indicator
+          initialsSpan.textContent = ' →' + initialsText.trim();
+          initialsSpan.setAttribute('font-style', 'italic');
+        } else {
+          // Bugzilla-assigned: bold
+          initialsSpan.textContent = initialsText;
+          initialsSpan.setAttribute('font-weight', 'bold');
+        }
+
+        label.appendChild(mainSpan);
+        label.appendChild(initialsSpan);
+      }
+    }, 100);
+  }
+
+  /**
+   * Set up drag-to-scroll functionality
+   */
+  setupDragScroll() {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+
+    // Remove any existing drag scroll handlers
+    if (this._dragScrollCleanup) {
+      this._dragScrollCleanup();
+    }
+
+    let isDragging = false;
+    let startX = 0;
+    let scrollLeft = 0;
+
+    container.style.cursor = 'grab';
+    container.style.userSelect = 'none';
+
+    const onMouseDown = (e) => {
+      // Don't interfere with clicking on task bars or labels
+      if (e.target.closest('.bar-wrapper') || e.target.closest('.bar-label')) return;
+
+      isDragging = true;
+      container.style.cursor = 'grabbing';
+      startX = e.clientX;
+      scrollLeft = container.scrollLeft;
+    };
+
+    const onMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+        container.style.cursor = 'grab';
+      }
+    };
+
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const x = e.clientX;
+      const walk = (startX - x) * 1.5; // Scroll speed multiplier
+      container.scrollLeft = scrollLeft + walk;
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('mousemove', onMouseMove);
+
+    // Store cleanup function
+    this._dragScrollCleanup = () => {
+      container.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('mousemove', onMouseMove);
+    };
   }
 
   /**
@@ -435,6 +601,19 @@ export class GanttRenderer {
   }
 
   /**
+   * Get consistent color for an engineer
+   */
+  getEngineerColor(engineerName) {
+    if (!engineerName) return '#999';
+
+    if (!this.engineerColorMap.has(engineerName)) {
+      const colorIndex = this.engineerColorMap.size % ENGINEER_COLORS.length;
+      this.engineerColorMap.set(engineerName, ENGINEER_COLORS[colorIndex]);
+    }
+    return this.engineerColorMap.get(engineerName);
+  }
+
+  /**
    * Truncate string with ellipsis
    */
   truncate(str, maxLength) {
@@ -454,6 +633,12 @@ export class GanttRenderer {
    * Destroy the Gantt chart
    */
   destroy() {
+    // Clean up drag scroll handlers
+    if (this._dragScrollCleanup) {
+      this._dragScrollCleanup();
+      this._dragScrollCleanup = null;
+    }
+
     if (this.gantt) {
       // Frappe Gantt doesn't have a destroy method, clear container
       document.getElementById(this.containerId).innerHTML = '';
