@@ -497,7 +497,7 @@ class EnterprisePlanner {
     this.ui.clearOptimizationLog();
 
     try {
-      this.optimalWorker = new Worker('./js/optimal-scheduler-worker.js');
+      this.optimalWorker = new Worker('./js/optimal-scheduler-worker.js', { type: 'module' });
 
       this.optimalWorker.onmessage = (e) => {
         const { type, ...data } = e.data;

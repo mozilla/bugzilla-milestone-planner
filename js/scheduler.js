@@ -3,18 +3,11 @@
  * Greedy scheduling algorithm for task assignment
  */
 
-// Size to days mapping (fractional sizes interpolate)
-const SIZE_TO_DAYS = {
-  1: 1,
-  2: 5,
-  3: 10,
-  4: 20,
-  5: 60
-};
-
-// Default size when not specified (2 weeks = 10 working days)
-const DEFAULT_SIZE = 3;
-const DEFAULT_DAYS = 10;
+import {
+  calculateEffort as coreCalculateEffort,
+  addWorkingDays as coreAddWorkingDays,
+  isResolved
+} from './scheduler-core.js';
 
 export class Scheduler {
   constructor(engineers, milestones) {
@@ -35,70 +28,10 @@ export class Scheduler {
   }
 
   /**
-   * Calculate effort in days for a task
-   * @param {Object} bug - Bug object
-   * @param {Object} engineer - Engineer object
-   * @returns {{days: number, baseDays: number, sizeEstimated: boolean}}
+   * Calculate effort in days for a task (delegates to shared core function)
    */
   calculateEffort(bug, engineer) {
-    // Meta bugs take 0 time (they're tracking bugs)
-    if (bug.isMeta) {
-      return {
-        days: 0,
-        baseDays: 0,
-        sizeEstimated: false,
-        isMeta: true
-      };
-    }
-
-    // Get size from bug or use default (2 weeks)
-    let size = bug.size;
-    let sizeEstimated = bug.sizeEstimated || false;
-
-    if (size === null || size === undefined) {
-      size = DEFAULT_SIZE;
-      sizeEstimated = true;
-    }
-
-    // Calculate base days, supporting fractional sizes via interpolation
-    const baseDays = this.calculateDaysFromSize(size);
-
-    // Apply availability factor (e.g., 0.2 = 20% time means 5x longer)
-    const availabilityFactor = engineer.availability || 1.0;
-    const adjustedDays = Math.ceil(baseDays / availabilityFactor);
-
-    return {
-      days: adjustedDays,
-      baseDays,
-      sizeEstimated
-    };
-  }
-
-  /**
-   * Calculate days from size, supporting fractional sizes
-   * @param {number} size - Size value (can be fractional like 3.5)
-   * @returns {number} Days of effort
-   */
-  calculateDaysFromSize(size) {
-    // Integer sizes use the lookup table
-    if (Number.isInteger(size) && SIZE_TO_DAYS[size]) {
-      return SIZE_TO_DAYS[size];
-    }
-
-    // Fractional sizes: interpolate between adjacent values
-    const lowerSize = Math.floor(size);
-    const upperSize = Math.ceil(size);
-
-    // Handle edge cases
-    if (lowerSize < 1) return SIZE_TO_DAYS[1];
-    if (upperSize > 5) return SIZE_TO_DAYS[5];
-    if (lowerSize === upperSize) return SIZE_TO_DAYS[lowerSize] || DEFAULT_DAYS;
-
-    const lowerDays = SIZE_TO_DAYS[lowerSize] || DEFAULT_DAYS;
-    const upperDays = SIZE_TO_DAYS[upperSize] || DEFAULT_DAYS;
-    const fraction = size - lowerSize;
-
-    return Math.ceil(lowerDays + fraction * (upperDays - lowerDays));
+    return coreCalculateEffort(bug, engineer);
   }
 
   /**
@@ -288,7 +221,7 @@ export class Scheduler {
     }
 
     // Skip completed bugs
-    if (bug.status === 'RESOLVED' || bug.status === 'VERIFIED' || bug.status === 'CLOSED') {
+    if (isResolved(bug)) {
       taskEndDates.set(String(bug.id), today);
       this.schedule.push({
         bug,
@@ -327,11 +260,11 @@ export class Scheduler {
 
     let { engineer, startDate, effort, endDate } = assignment;
 
-    // Meta bugs (0 days) complete when dependencies complete, not affected by engineer availability
-    if (effort.days === 0) {
+    // Meta bugs (0 days) complete when dependencies complete, don't need an engineer
+    if (effort.isMeta) {
       startDate = earliestStart;
       endDate = earliestStart;
-      // Don't update engineer schedule - meta bugs don't consume engineer time
+      engineer = null; // Meta bugs don't need an assigned engineer
     } else {
       // Update engineer schedule
       const engineerSchedule = this.engineerSchedules.get(engineer.id);
@@ -355,56 +288,10 @@ export class Scheduler {
   }
 
   /**
-   * Add working days to a date (skip weekends and unavailability periods)
-   * @param {Date} startDate
-   * @param {number} days
-   * @param {Object} engineer - Engineer object with unavailability array
-   * @returns {Date}
+   * Add working days to a date (delegates to shared core function)
    */
   addWorkingDays(startDate, days, engineer = null) {
-    const result = new Date(startDate);
-    let remaining = days;
-
-    while (remaining > 0) {
-      result.setDate(result.getDate() + 1);
-      const dayOfWeek = result.getDay();
-
-      // Skip weekends
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        continue;
-      }
-
-      // Skip unavailability periods for this engineer
-      if (engineer && this.isUnavailable(result, engineer)) {
-        continue;
-      }
-
-      remaining--;
-    }
-
-    return result;
-  }
-
-  /**
-   * Check if a date falls within an engineer's unavailability period
-   * @param {Date} date - Date to check
-   * @param {Object} engineer - Engineer object with unavailability array
-   * @returns {boolean}
-   */
-  isUnavailable(date, engineer) {
-    if (!engineer.unavailability || !Array.isArray(engineer.unavailability)) {
-      return false;
-    }
-
-    const dateStr = this.formatDate(date);
-
-    for (const period of engineer.unavailability) {
-      if (dateStr >= period.start && dateStr <= period.end) {
-        return true;
-      }
-    }
-
-    return false;
+    return coreAddWorkingDays(startDate, days, engineer);
   }
 
   /**

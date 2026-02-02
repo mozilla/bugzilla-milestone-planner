@@ -4,10 +4,11 @@
  * Prioritizes meeting deadlines over minimizing total time.
  */
 
-// Size to days mapping (must match scheduler.js)
-const SIZE_TO_DAYS = { 1: 1, 2: 5, 3: 10, 4: 20, 5: 60 };
-const DEFAULT_SIZE = 3;
-const DEFAULT_DAYS = 10;
+import {
+  calculateEffort,
+  addWorkingDays,
+  isResolved
+} from './scheduler-core.js';
 
 // Default milestones (overridden by passed milestones)
 let activeMilestones = [
@@ -56,7 +57,7 @@ self.onmessage = function(e) {
  * Main optimization entry point
  */
 function optimize(bugs, engineers, graph) {
-  const tasks = bugs.filter(b => b.status !== 'RESOLVED' && b.status !== 'VERIFIED' && b.status !== 'CLOSED');
+  const tasks = bugs.filter(b => !isResolved(b));
 
   self.postMessage({
     type: 'log',
@@ -554,9 +555,9 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
 
       const effort = calculateEffort(task, engineer);
 
-      // Meta bugs (0 days) complete when dependencies complete
+      // Meta bugs complete when dependencies complete, don't consume engineer time
       let startTime, endTime;
-      if (effort.days === 0) {
+      if (effort.isMeta) {
         startTime = earliestStart;
         endTime = earliestStart;
       } else {
@@ -653,12 +654,13 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
 
       const effort = calculateEffort(task, engineer);
 
-      // Meta bugs (0 days) complete when dependencies complete, not affected by engineer availability
+      // Meta bugs don't need an engineer and complete when dependencies complete
       let startTime, endTime;
-      if (effort.days === 0) {
+      let assignedEngineer = engineer;
+      if (effort.isMeta) {
         startTime = earliestStart;
         endTime = earliestStart;
-        // Don't update engineerAvailable - meta bugs don't consume engineer time
+        assignedEngineer = null; // Meta bugs don't need an assigned engineer
       } else {
         startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
         endTime = startTime + effort.days;
@@ -670,7 +672,7 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
         bug: task,
         startDate: addWorkingDays(today, startTime),
         endDate: addWorkingDays(today, endTime),
-        engineer,
+        engineer: assignedEngineer,
         effort,
         completed: false
       });
@@ -683,71 +685,3 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
   return schedule;
 }
 
-/**
- * Calculate effort for a task/engineer combination
- */
-function calculateEffort(task, engineer) {
-  // Meta bugs take 0 time
-  if (task.isMeta) {
-    return { days: 0, baseDays: 0, sizeEstimated: false, isMeta: true };
-  }
-
-  let size = task.size;
-  let sizeEstimated = task.sizeEstimated || false;
-
-  if (size === null || size === undefined) {
-    size = DEFAULT_SIZE;
-    sizeEstimated = true;
-  }
-
-  const baseDays = calculateDaysFromSize(size);
-
-  // Apply availability factor (e.g., 0.2 = 20% time means 5x longer)
-  const availabilityFactor = engineer.availability || 1.0;
-  const days = Math.ceil(baseDays / availabilityFactor);
-
-  return { days, baseDays, sizeEstimated };
-}
-
-/**
- * Calculate days from size, supporting fractional sizes
- */
-function calculateDaysFromSize(size) {
-  // Integer sizes use the lookup table
-  if (Number.isInteger(size) && SIZE_TO_DAYS[size]) {
-    return SIZE_TO_DAYS[size];
-  }
-
-  // Fractional sizes: interpolate between adjacent values
-  const lowerSize = Math.floor(size);
-  const upperSize = Math.ceil(size);
-
-  // Handle edge cases
-  if (lowerSize < 1) return SIZE_TO_DAYS[1];
-  if (upperSize > 5) return SIZE_TO_DAYS[5];
-  if (lowerSize === upperSize) return SIZE_TO_DAYS[lowerSize] || DEFAULT_DAYS;
-
-  const lowerDays = SIZE_TO_DAYS[lowerSize] || DEFAULT_DAYS;
-  const upperDays = SIZE_TO_DAYS[upperSize] || DEFAULT_DAYS;
-  const fraction = size - lowerSize;
-
-  return Math.ceil(lowerDays + fraction * (upperDays - lowerDays));
-}
-
-/**
- * Add working days to a date
- */
-function addWorkingDays(startDate, days) {
-  const result = new Date(startDate);
-  let remaining = Math.floor(days);
-
-  while (remaining > 0) {
-    result.setDate(result.getDate() + 1);
-    const dow = result.getDay();
-    if (dow !== 0 && dow !== 6) {
-      remaining--;
-    }
-  }
-
-  return result;
-}
