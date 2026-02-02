@@ -244,6 +244,25 @@ export class GanttRenderer {
   render(scheduledTasks, graph) {
     const ganttTasks = this.convertToGanttTasks(scheduledTasks, graph);
 
+    // Clean up previous render to avoid nested containers
+    if (this._interactionCleanup) {
+      this._interactionCleanup();
+      this._interactionCleanup = null;
+    }
+
+    // Frappe Gantt wraps #gantt-chart in .gantt-container on first render.
+    // On re-render, it nests another .gantt-container inside, breaking scrolling.
+    // Fix: remove .gantt-container and recreate #gantt-chart in the parent.
+    const existingContainer = document.querySelector('.gantt-container');
+    if (existingContainer) {
+      const parent = existingContainer.parentElement;
+      existingContainer.remove();
+      // Recreate the target SVG element that Frappe Gantt expects
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.id = this.containerId;
+      parent.appendChild(svg);
+    }
+
     if (ganttTasks.length === 0) {
       document.getElementById(this.containerId).innerHTML =
         '<p class="no-tasks">No tasks to display</p>';
