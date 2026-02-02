@@ -19,9 +19,9 @@ let activeMilestones = [
 
 // Thresholds
 const BRANCH_BOUND_THRESHOLD = 10;
-const SA_ITERATIONS = 100000;
+const SA_ITERATIONS_DEFAULT = 20000; // Default for parallel workers
 const SA_INITIAL_TEMP = 1000;
-const SA_COOLING_RATE = 0.99995;
+const SA_COOLING_RATE = 0.9999; // Faster cooling for shorter runs
 
 // Best solution tracking
 let bestScore = { deadlinesMet: -1, makespan: Infinity };
@@ -30,11 +30,16 @@ let bestAssignment = null;
 /**
  * Main message handler
  */
+// Worker ID for logging
+let workerId = 0;
+
 self.onmessage = function(e) {
   const { type, data } = e.data;
 
   if (type === 'start') {
-    const { bugs, engineers, graph, milestones } = data;
+    const { bugs, engineers, graph, milestones, iterations, id } = data;
+
+    workerId = id || 0;
 
     // Update active milestones if provided
     if (milestones && milestones.length > 0) {
@@ -44,10 +49,9 @@ self.onmessage = function(e) {
         deadline: new Date(m.deadline),
         freezeDate: new Date(m.freezeDate)
       }));
-      console.log('[Worker] Using', activeMilestones.length, 'milestones:', activeMilestones.map(m => m.name).join(', '));
     }
 
-    optimize(bugs, engineers, graph);
+    optimize(bugs, engineers, graph, iterations || SA_ITERATIONS_DEFAULT);
   } else if (type === 'stop') {
     self.close();
   }
@@ -56,17 +60,17 @@ self.onmessage = function(e) {
 /**
  * Main optimization entry point
  */
-function optimize(bugs, engineers, graph) {
+function optimize(bugs, engineers, graph, iterations) {
   const tasks = bugs.filter(b => !isResolved(b));
 
   self.postMessage({
     type: 'log',
     logType: 'status',
-    message: `Starting optimization for ${tasks.length} tasks with ${engineers.length} engineers`
+    message: `Worker ${workerId}: Starting optimization for ${tasks.length} tasks (${iterations.toLocaleString()} iterations)`
   });
 
   if (tasks.length === 0) {
-    self.postMessage({ type: 'complete', schedule: null, improved: false });
+    self.postMessage({ type: 'complete', schedule: null, improved: false, workerId });
     return;
   }
 
@@ -82,7 +86,7 @@ function optimize(bugs, engineers, graph) {
   const sortedMilestones = [...activeMilestones].sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
   for (const milestone of sortedMilestones) {
     const count = [...bugToMilestone.values()].filter(m => String(m.bugId) === String(milestone.bugId)).length;
-    console.log(`[Worker] Milestone ${milestone.name}: ${count} tasks`);
+    console.log(`[Worker ${workerId}] Milestone ${milestone.name}: ${count} tasks`);
   }
 
   // Reset best tracking
@@ -94,16 +98,16 @@ function optimize(bugs, engineers, graph) {
     self.postMessage({
       type: 'log',
       logType: 'status',
-      message: `Using branch-and-bound (${tasks.length} tasks)`
+      message: `Worker ${workerId}: Using branch-and-bound (${tasks.length} tasks)`
     });
     branchAndBound(tasks, engineers, dependencyMap);
   } else {
     self.postMessage({
       type: 'log',
       logType: 'status',
-      message: `Using simulated annealing (${tasks.length} tasks, ${SA_ITERATIONS.toLocaleString()} iterations)`
+      message: `Worker ${workerId}: Using simulated annealing (${tasks.length} tasks, ${iterations.toLocaleString()} iterations)`
     });
-    simulatedAnnealing(tasks, engineers, dependencyMap);
+    simulatedAnnealing(tasks, engineers, dependencyMap, iterations);
   }
 }
 
@@ -340,7 +344,7 @@ function branchAndBound(tasks, engineers, dependencyMap) {
 /**
  * Simulated Annealing for larger problems
  */
-function simulatedAnnealing(tasks, engineers, dependencyMap) {
+function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
   const n = tasks.length;
   const numEngineers = engineers.length;
 
@@ -355,13 +359,13 @@ function simulatedAnnealing(tasks, engineers, dependencyMap) {
   self.postMessage({
     type: 'log',
     logType: 'status',
-    message: `Initial: ${currentScore.deadlinesMet}/${activeMilestones.length} deadlines, ${currentScore.makespan.toFixed(0)} days`
+    message: `Worker ${workerId}: Initial ${currentScore.deadlinesMet}/${activeMilestones.length} deadlines, ${currentScore.makespan.toFixed(0)} days`
   });
 
   let temperature = SA_INITIAL_TEMP;
-  let lastReportIteration = 0;
+  const progressInterval = Math.max(1000, Math.floor(iterations / 10));
 
-  for (let i = 0; i < SA_ITERATIONS; i++) {
+  for (let i = 0; i < iterations; i++) {
     // Generate neighbor
     const neighbor = [...currentAssignment];
     const taskIdx = Math.floor(Math.random() * n);
@@ -394,10 +398,11 @@ function simulatedAnnealing(tasks, engineers, dependencyMap) {
 
     temperature *= SA_COOLING_RATE;
 
-    // Progress report every 10000 iterations
-    if (i - lastReportIteration >= 10000) {
+    // Progress report at intervals
+    if (i > 0 && i % progressInterval === 0) {
       self.postMessage({
         type: 'progress',
+        workerId,
         iteration: i,
         temperature: temperature.toFixed(2),
         currentDeadlines: currentScore.deadlinesMet,
@@ -405,11 +410,10 @@ function simulatedAnnealing(tasks, engineers, dependencyMap) {
         bestDeadlines: bestScore.deadlinesMet,
         bestMakespan: bestScore.makespan
       });
-      lastReportIteration = i;
     }
   }
 
-  finishOptimization(tasks, engineers, dependencyMap, SA_ITERATIONS);
+  finishOptimization(tasks, engineers, dependencyMap, iterations);
 }
 
 /**
@@ -454,11 +458,12 @@ function finishOptimization(tasks, engineers, dependencyMap, iterations) {
     self.postMessage({
       type: 'log',
       logType: 'status',
-      message: `Optimization complete after ${iterations.toLocaleString()} iterations. Final: ${bestScore.deadlinesMet}/${activeMilestones.length} deadlines, ${bestScore.makespan.toFixed(0)} days`
+      message: `Worker ${workerId}: Complete after ${iterations.toLocaleString()} iterations. ${bestScore.deadlinesMet}/${activeMilestones.length} deadlines, ${bestScore.makespan.toFixed(0)} days`
     });
 
     self.postMessage({
       type: 'complete',
+      workerId,
       schedule,
       deadlinesMet: bestScore.deadlinesMet,
       makespan: bestScore.makespan,
@@ -466,7 +471,7 @@ function finishOptimization(tasks, engineers, dependencyMap, iterations) {
       iterations
     });
   } else {
-    self.postMessage({ type: 'complete', schedule: null, improved: false });
+    self.postMessage({ type: 'complete', workerId, schedule: null, improved: false });
   }
 }
 

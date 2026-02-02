@@ -20,13 +20,18 @@ class EnterprisePlanner {
     this.engineers = [];
     this.bugs = new Map();
 
-    // Optimal scheduler
-    this.optimalWorker = null;
+    // Optimal scheduler (parallel workers)
+    this.optimalWorkers = [];
+    this.workerResults = [];
     this.greedySchedule = null;
     this.optimalSchedule = null;
     this.currentScheduleType = 'greedy';
     this.fullScheduleErrors = [];
     this.fullScheduleRisks = [];
+
+    // Parallel SA configuration
+    this.numWorkers = Math.min(navigator.hardwareConcurrency || 4, 8);
+    this.iterationsPerWorker = 20000;
 
     // Filters
     this.severityFilter = 'S2';
@@ -490,104 +495,145 @@ class EnterprisePlanner {
   }
 
   /**
-   * Start the optimal scheduler web worker
+   * Start the optimal scheduler with parallel workers
    */
   startOptimalScheduler(sortedBugs, milestones = MILESTONES) {
-    // Stop any existing worker
+    // Stop any existing workers
     this.stopOptimalScheduler();
 
-    // Calculate greedy makespan for comparison
-    const greedyMakespan = this.calculateMakespan(this.greedySchedule);
     const numMilestones = milestones.length;
 
-    this.ui.updateOptimizationStatus('running', 'Starting optimization...');
+    this.ui.updateOptimizationStatus('running', `Starting ${this.numWorkers} parallel workers...`);
     this.ui.clearOptimizationLog();
 
+    // Build graph edges for workers
+    const graphEdges = {};
+    for (const [bugId, bug] of this.bugs) {
+      graphEdges[bugId] = bug.dependsOn || [];
+    }
+
+    const workerData = {
+      bugs: sortedBugs,
+      engineers: this.engineers,
+      graph: graphEdges,
+      iterations: this.iterationsPerWorker,
+      milestones: milestones.map(m => ({
+        name: m.name,
+        bugId: m.bugId,
+        deadline: m.deadline.toISOString(),
+        freezeDate: m.freezeDate.toISOString()
+      }))
+    };
+
+    this.workerResults = [];
+    let completedWorkers = 0;
+
     try {
-      this.optimalWorker = new Worker('./js/optimal-scheduler-worker.js', { type: 'module' });
+      for (let i = 0; i < this.numWorkers; i++) {
+        const worker = new Worker('./js/optimal-scheduler-worker.js', { type: 'module' });
 
-      this.optimalWorker.onmessage = (e) => {
-        const { type, ...data } = e.data;
+        worker.onmessage = (e) => {
+          const { type, workerId, ...data } = e.data;
 
-        switch (type) {
-          case 'log':
-            // Add entry to optimization log
-            this.ui.addOptimizationLogEntry(data.message, data.logType);
-            break;
+          switch (type) {
+            case 'log':
+              this.ui.addOptimizationLogEntry(data.message, data.logType);
+              break;
 
-          case 'progress':
-            const progressMsg = data.iteration !== undefined
-              ? `Iter ${data.iteration.toLocaleString()}: ${data.bestDeadlines}/${numMilestones} deadlines, ${data.bestMakespan?.toFixed(0)} days`
-              : `Explored ${data.explored.toLocaleString()} nodes: ${data.bestDeadlines}/${numMilestones} deadlines, ${data.bestMakespan?.toFixed(0)} days`;
-            this.ui.updateOptimizationStatus('running', progressMsg);
-            break;
+            case 'progress':
+              // Show progress from any worker
+              this.ui.updateOptimizationStatus('running',
+                `${completedWorkers}/${this.numWorkers} done | Worker ${workerId}: ${data.bestDeadlines}/${numMilestones} deadlines`);
+              break;
 
-          case 'improved':
-            console.log('Optimal scheduler found improvement:', data);
-            this.ui.updateOptimizationStatus('running',
-              `${data.deadlinesMet}/${numMilestones} deadlines, ${data.makespan.toFixed(0)} days`);
-            break;
+            case 'improved':
+              console.log(`Worker ${workerId} found improvement:`, data);
+              break;
 
-          case 'complete':
-            if (data.improved && data.schedule) {
-              // Convert serialized dates back to Date objects
-              this.optimalSchedule = data.schedule.map(task => ({
-                ...task,
-                startDate: task.startDate ? new Date(task.startDate) : null,
-                endDate: task.endDate ? new Date(task.endDate) : null
-              }));
-              this.ui.updateOptimizationStatus('complete',
-                `Final: ${data.deadlinesMet}/${numMilestones} deadlines, ${data.makespan.toFixed(0)} days`);
-              this.ui.enableScheduleToggle(true);
-            } else {
-              this.ui.updateOptimizationStatus('complete', 'Greedy schedule is optimal');
-            }
-            break;
-        }
-      };
+            case 'complete':
+              completedWorkers++;
+              if (data.improved && data.schedule) {
+                this.workerResults.push({
+                  workerId,
+                  schedule: data.schedule,
+                  deadlinesMet: data.deadlinesMet,
+                  makespan: data.makespan
+                });
+              }
 
-      this.optimalWorker.onerror = (error) => {
-        console.error('Optimal scheduler error:', error);
-        this.ui.updateOptimizationStatus('error', 'Optimization failed');
-      };
+              this.ui.updateOptimizationStatus('running',
+                `${completedWorkers}/${this.numWorkers} workers complete...`);
 
-      // Build graph edges for worker - use ALL bugs to capture full dependency chains
-      // (not just filtered bugs, as dependencies may chain through non-Client bugs)
-      const graphEdges = {};
-      for (const [bugId, bug] of this.bugs) {
-        graphEdges[bugId] = bug.dependsOn || [];
+              // All workers done - pick best result
+              if (completedWorkers === this.numWorkers) {
+                this.finalizeOptimalSchedule(numMilestones);
+              }
+              break;
+          }
+        };
+
+        worker.onerror = (error) => {
+          console.error(`Worker ${i} error:`, error);
+          completedWorkers++;
+          if (completedWorkers === this.numWorkers) {
+            this.finalizeOptimalSchedule(numMilestones);
+          }
+        };
+
+        this.optimalWorkers.push(worker);
+
+        // Start worker with its ID
+        worker.postMessage({
+          type: 'start',
+          data: { ...workerData, id: i }
+        });
       }
-
-      // Start optimization with milestones
-      this.optimalWorker.postMessage({
-        type: 'start',
-        data: {
-          bugs: sortedBugs,
-          engineers: this.engineers,
-          graph: graphEdges,
-          milestones: milestones.map(m => ({
-            name: m.name,
-            bugId: m.bugId,
-            deadline: m.deadline.toISOString(),
-            freezeDate: m.freezeDate.toISOString()
-          }))
-        }
-      });
 
     } catch (error) {
       console.error('Failed to start optimal scheduler:', error);
-      this.ui.updateOptimizationStatus('error', 'Worker not supported');
+      this.ui.updateOptimizationStatus('error', 'Workers not supported');
     }
   }
 
   /**
-   * Stop the optimal scheduler worker
+   * Pick the best result from all workers
+   */
+  finalizeOptimalSchedule(numMilestones) {
+    if (this.workerResults.length === 0) {
+      this.ui.updateOptimizationStatus('complete', 'Greedy schedule is optimal');
+      return;
+    }
+
+    // Sort by deadlines met (desc), then makespan (asc)
+    this.workerResults.sort((a, b) => {
+      if (b.deadlinesMet !== a.deadlinesMet) return b.deadlinesMet - a.deadlinesMet;
+      return a.makespan - b.makespan;
+    });
+
+    const best = this.workerResults[0];
+    console.log(`Best result from worker ${best.workerId}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan} days`);
+
+    // Convert serialized dates back to Date objects
+    this.optimalSchedule = best.schedule.map(task => ({
+      ...task,
+      startDate: task.startDate ? new Date(task.startDate) : null,
+      endDate: task.endDate ? new Date(task.endDate) : null
+    }));
+
+    this.ui.updateOptimizationStatus('complete',
+      `Best of ${this.numWorkers}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan.toFixed(0)} days`);
+    this.ui.enableScheduleToggle(true);
+  }
+
+  /**
+   * Stop all optimal scheduler workers
    */
   stopOptimalScheduler() {
-    if (this.optimalWorker) {
-      this.optimalWorker.terminate();
-      this.optimalWorker = null;
+    for (const worker of this.optimalWorkers) {
+      worker.terminate();
     }
+    this.optimalWorkers = [];
+    this.workerResults = [];
     this.optimalSchedule = null;
   }
 
