@@ -160,6 +160,8 @@ For an engineer with 20% availability:
 
 Tested on real Bugzilla snapshot: 30 tasks, 5 engineers, 3 milestones.
 
+**Reliability** = percentage of runs that achieve 3/3 deadlines met.
+
 ### Greedy vs SA Comparison
 
 | Metric | Greedy | SA (100k iter) |
@@ -170,40 +172,52 @@ Tested on real Bugzilla snapshot: 30 tasks, 5 engineers, 3 milestones.
 
 Greedy misses the Foxfooding deadline by 3 days. SA consistently finds a schedule meeting all deadlines.
 
-### SA Optimization Experiments
+### Parallel SA (Best Improvement)
 
-Tested potential improvements with 10 runs each:
+Running multiple shorter SA instances in parallel and taking the best result:
 
-| Configuration | 3/3 Rate | Avg Runtime | Avg Iterations |
-|---------------|----------|-------------|----------------|
-| Random init, no early term | **100%** | 17.9s | 100k |
-| Random init, 10k early term | 80% | 3.8s | 21k |
-| Random init, 5k early term | 40% | 1.7s | 9k |
-| Greedy init, no early term | **100%** | 17.9s | 100k |
-| Greedy init, 10k early term | 60% | 2.6s | 14k |
+| Config | Reliability | Wall-clock (parallel) |
+|--------|-------------|-----------------------|
+| 1×100k | 100% | 17.75s |
+| 2×50k | 100% | 8.93s |
+| 5×20k | 100% | 3.60s |
+| 10×10k | 100% | 1.81s |
+| 20×5k | 100% | **0.91s** |
 
-### Key Findings
+**Key finding**: 20 parallel runs of 5k iterations each achieves **100% reliability in under 1 second**—a 20x speedup over a single 100k run with identical quality.
 
-1. **Greedy initialization is counterproductive with early termination**: The greedy solution is a local optimum. SA starting from greedy has trouble escaping it, achieving only 60% reliability with 10k early termination vs 80% for random init.
+### Early Termination (Mixed Results)
 
-2. **Early termination at 10k iterations**: Good tradeoff—5x speedup (18s → 4s) with 80% reliability. For 100% reliability, full 100k iterations are needed.
+| Configuration | Reliability | Avg Runtime |
+|---------------|-------------|-------------|
+| Random init, no early term | **100%** | 17.9s |
+| Random init, 10k early term | 80% | 3.8s |
+| Random init, 5k early term | 40% | 1.7s |
 
-3. **Parallel runs don't help**: 5 runs of 20k iterations (100k total) performed the same as 1 run of 100k. The problem size is small enough that a single long run explores adequately.
+Early termination reduces runtime but hurts reliability. Not recommended when parallel execution is available.
 
-4. **Random initialization preferred**: Despite intuition, random starts outperform greedy initialization when combined with early termination.
+### Greedy Initialization (Harmful)
+
+| Configuration | Reliability |
+|---------------|-------------|
+| Random init, 10k early term | 80% |
+| Greedy init, 10k early term | 60% |
+
+**Greedy initialization is counterproductive**: The greedy solution is a local optimum that SA struggles to escape. Random initialization consistently outperforms it.
 
 ### Recommendations
 
-- **For production (UI worker)**: Keep 100k iterations with random init for 100% reliability
-- **For testing**: Use 10k early termination threshold for faster feedback
-- **Don't use greedy init**: It creates a local optimum trap
+- **Best approach**: Run 10-20 parallel SA instances with 5-10k iterations each, take best result (~1-2s wall-clock, 100% reliable)
+- **Single-threaded fallback**: 100k iterations (18s, 100% reliable)
+- **Don't use greedy init**: Creates a local optimum trap
+- **Don't use early termination alone**: Hurts reliability without parallelism to compensate
 
 ## Potential Improvements
 
 ### Near-term
-1. ~~**Parallel SA**: Run multiple SA instances with different random seeds~~ *Tested: No benefit for this problem size*
-2. **Early termination**: Stop SA if no improvement for N iterations — *Tested: 10k threshold gives 80% reliability with 5x speedup*
-3. ~~**Better initial solution**: Use greedy result as SA starting point~~ *Tested: Actually harmful—greedy is a local optimum trap*
+1. **Parallel SA**: Run multiple SA instances with different random seeds — *Tested: 20×5k parallel achieves 100% reliability in <1s (20x speedup). Recommended.*
+2. ~~**Early termination**: Stop SA if no improvement for N iterations~~ — *Tested: Hurts reliability (80% at 10k threshold). Not recommended when parallelism available.*
+3. ~~**Better initial solution**: Use greedy result as SA starting point~~ — *Tested: Actually harmful—greedy is a local optimum trap*
 
 ### Medium-term
 1. **Implement Tabu Search**: Often better than SA for scheduling
