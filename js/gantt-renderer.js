@@ -311,7 +311,7 @@ export class GanttRenderer {
     // For meta bugs, don't show size/effort
     const sizeEffortLine = isMeta
       ? '<p><em>Meta/tracking bug</em></p>'
-      : `<p><strong>Size/Effort:</strong> ${size}${sizeNote} / ${effort} days</p>`;
+      : `<p><strong>Size/Effort:</strong> ${size}${sizeNote} (${effort} days)</p>`;
 
     return `
       <div class="gantt-popup">
