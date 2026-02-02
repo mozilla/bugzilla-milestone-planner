@@ -63,30 +63,15 @@ self.onmessage = function(e) {
 function optimize(bugs, engineers, graph, iterations) {
   const tasks = bugs.filter(b => !isResolved(b));
 
-  self.postMessage({
-    type: 'log',
-    logType: 'status',
-    message: `Worker ${workerId}: Starting optimization for ${tasks.length} tasks (${iterations.toLocaleString()} iterations)`
-  });
-
   if (tasks.length === 0) {
     self.postMessage({ type: 'complete', schedule: null, improved: false, workerId });
     return;
   }
 
   // Build dependency map from the FULL graph (not just filtered bugs)
-  // This ensures we can traverse dependency chains through non-scheduled bugs
   const dependencyMap = new Map();
   for (const [bugId, deps] of Object.entries(graph)) {
     dependencyMap.set(String(bugId), deps.map(d => String(d)));
-  }
-
-  // Log milestone-aware scheduling info
-  const bugToMilestone = assignBugsToMilestones(tasks, dependencyMap);
-  const sortedMilestones = [...activeMilestones].sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
-  for (const milestone of sortedMilestones) {
-    const count = [...bugToMilestone.values()].filter(m => String(m.bugId) === String(milestone.bugId)).length;
-    console.log(`[Worker ${workerId}] Milestone ${milestone.name}: ${count} tasks`);
   }
 
   // Reset best tracking
@@ -95,18 +80,8 @@ function optimize(bugs, engineers, graph, iterations) {
 
   // Choose algorithm based on problem size
   if (tasks.length <= BRANCH_BOUND_THRESHOLD) {
-    self.postMessage({
-      type: 'log',
-      logType: 'status',
-      message: `Worker ${workerId}: Using branch-and-bound (${tasks.length} tasks)`
-    });
     branchAndBound(tasks, engineers, dependencyMap);
   } else {
-    self.postMessage({
-      type: 'log',
-      logType: 'status',
-      message: `Worker ${workerId}: Using simulated annealing (${tasks.length} tasks, ${iterations.toLocaleString()} iterations)`
-    });
     simulatedAnnealing(tasks, engineers, dependencyMap, iterations);
   }
 }
@@ -356,11 +331,8 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
   bestScore = { ...currentScore };
   bestAssignment = [...currentAssignment];
 
-  self.postMessage({
-    type: 'log',
-    logType: 'status',
-    message: `Worker ${workerId}: Initial ${currentScore.deadlinesMet}/${activeMilestones.length} deadlines, ${currentScore.makespan.toFixed(0)} days`
-  });
+  // Report initial state as an improvement so main thread can track global best
+  reportImprovement({ deadlinesMet: -1, makespan: Infinity }, currentScore);
 
   let temperature = SA_INITIAL_TEMP;
   const progressInterval = Math.max(1000, Math.floor(iterations / 10));
@@ -418,30 +390,12 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
 
 /**
  * Report improvement to main thread
+ * Main thread decides whether to log based on global best across all workers
  */
 function reportImprovement(oldScore, newScore) {
-  let message = '';
-  let logType = 'improvement';
-
-  if (newScore.deadlinesMet > oldScore.deadlinesMet) {
-    logType = 'deadline';
-    const deadlineNames = newScore.deadlineDetails
-      .filter(d => d.met)
-      .map(d => d.name)
-      .join(', ');
-    message = `NEW DEADLINE MET! Now meeting ${newScore.deadlinesMet}/${activeMilestones.length} deadlines (${deadlineNames}). Makespan: ${newScore.makespan.toFixed(0)} days`;
-  } else {
-    message = `Improved makespan: ${newScore.makespan.toFixed(0)} days (was ${oldScore.makespan.toFixed(0)}). Deadlines: ${newScore.deadlinesMet}/${activeMilestones.length}`;
-  }
-
-  self.postMessage({
-    type: 'log',
-    logType,
-    message
-  });
-
   self.postMessage({
     type: 'improved',
+    workerId,
     deadlinesMet: newScore.deadlinesMet,
     makespan: newScore.makespan,
     deadlineDetails: newScore.deadlineDetails
@@ -454,12 +408,6 @@ function reportImprovement(oldScore, newScore) {
 function finishOptimization(tasks, engineers, dependencyMap, iterations) {
   if (bestAssignment) {
     const schedule = buildScheduleFromAssignment(bestAssignment, tasks, engineers, dependencyMap);
-
-    self.postMessage({
-      type: 'log',
-      logType: 'status',
-      message: `Worker ${workerId}: Complete after ${iterations.toLocaleString()} iterations. ${bestScore.deadlinesMet}/${activeMilestones.length} deadlines, ${bestScore.makespan.toFixed(0)} days`
-    });
 
     self.postMessage({
       type: 'complete',

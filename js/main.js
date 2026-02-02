@@ -31,7 +31,7 @@ class EnterprisePlanner {
 
     // Parallel SA configuration
     this.numWorkers = Math.min(navigator.hardwareConcurrency || 4, 8);
-    this.iterationsPerWorker = 20000;
+    this.iterationsPerWorker = 10000;
 
     // Filters
     this.severityFilter = 'S2';
