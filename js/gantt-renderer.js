@@ -331,8 +331,48 @@ export class GanttRenderer {
     const bars = scrollContainer.querySelectorAll('.bar-wrapper');
     const hoverHandlers = [];
 
+    // Track if mouse is over bar or popup to prevent premature hiding
+    let isOverBar = false;
+    let isOverPopup = false;
+    let hideTimeout = null;
+
+    const maybeHidePopup = () => {
+      // Small delay to allow mouse to move from bar to popup
+      hideTimeout = setTimeout(() => {
+        if (!isOverBar && !isOverPopup && this.gantt) {
+          this.gantt.hide_popup();
+        }
+      }, 100);
+    };
+
+    const cancelHide = () => {
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+        hideTimeout = null;
+      }
+    };
+
+    // Add handlers to the popup to keep it visible when hovered
+    const setupPopupHandlers = () => {
+      const popup = document.querySelector('.popup-wrapper');
+      if (popup && !popup._hoverHandlersAttached) {
+        popup._hoverHandlersAttached = true;
+        popup.addEventListener('mouseenter', () => {
+          isOverPopup = true;
+          cancelHide();
+        });
+        popup.addEventListener('mouseleave', () => {
+          isOverPopup = false;
+          maybeHidePopup();
+        });
+      }
+    };
+
     bars.forEach(bar => {
       const onEnter = (e) => {
+        isOverBar = true;
+        cancelHide();
+
         // Trigger Frappe Gantt's popup
         const taskId = bar.getAttribute('data-id');
         const task = this.tasks.find(t => t.id === taskId);
@@ -346,13 +386,44 @@ export class GanttRenderer {
             subtitle: `${task.start} - ${task.end}`,
             task: task
           });
+
+          // Reposition popup if it's cut off at the bottom
+          requestAnimationFrame(() => {
+            const popup = document.querySelector('.popup-wrapper');
+            if (popup) {
+              setupPopupHandlers();
+
+              const popupRect = popup.getBoundingClientRect();
+              const viewportHeight = window.innerHeight;
+
+              // If popup extends below viewport, move it above the bar
+              if (popupRect.bottom > viewportHeight - 10) {
+                const barRect = barGroup.getBoundingClientRect();
+                const popupHeight = popupRect.height;
+
+                // Switch to fixed positioning for viewport-relative placement
+                popup.style.position = 'fixed';
+                popup.style.top = `${barRect.top - popupHeight - 10}px`;
+                popup.style.left = `${barRect.left}px`;
+
+                // Flip the pointer arrow
+                const pointer = popup.querySelector('.pointer');
+                if (pointer) {
+                  pointer.style.borderTopColor = 'transparent';
+                  pointer.style.borderBottomColor = 'var(--bg-primary)';
+                  pointer.style.top = 'auto';
+                  pointer.style.bottom = '-10px';
+                  pointer.style.transform = 'rotate(180deg)';
+                }
+              }
+            }
+          });
         }
       };
 
       const onLeave = () => {
-        if (this.gantt) {
-          this.gantt.hide_popup();
-        }
+        isOverBar = false;
+        maybeHidePopup();
       };
 
       bar.addEventListener('mouseenter', onEnter);
