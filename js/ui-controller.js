@@ -306,7 +306,7 @@ export class UIController {
       html += `
         <tr>
           <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${bug.id}" target="_blank">${bug.id}</a></td>
-          <td>${this.truncate(bug.summary, 60)}</td>
+          <td title="${this.escapeHtml(bug.summary)}">${this.escapeHtml(this.truncate(bug.summary, 60))}</td>
         </tr>
       `;
     }
