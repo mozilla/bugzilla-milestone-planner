@@ -270,15 +270,15 @@ export class GanttRenderer {
     this.gantt = new Gantt(`#${this.containerId}`, ganttTasks, {
       view_mode: this.viewMode,
       date_format: 'YYYY-MM-DD',
-      popup_trigger: 'hover',
+      popup_trigger: 'click',
       custom_popup_html: (task) => this.createPopup(task),
       on_click: (task) => this.onTaskClick(task),
       on_date_change: (task, start, end) => this.onDateChange(task, start, end),
       on_view_change: (mode) => this.onViewChange(mode)
     });
 
-    // Set up drag-to-scroll
-    this.setupDragScroll();
+    // Note: drag-to-scroll removed as it interferes with Frappe Gantt click handling
+    // Users can scroll using the scrollbar or mouse wheel
 
     // Add milestone markers
     this.addMilestoneMarkers();
@@ -392,13 +392,21 @@ export class GanttRenderer {
     let startX = 0;
     let scrollLeft = 0;
 
-    container.style.cursor = 'grab';
-    container.style.userSelect = 'none';
-
     const onMouseDown = (e) => {
-      // Don't interfere with clicking on task bars or labels
-      if (e.target.closest('.bar-wrapper') || e.target.closest('.bar-label')) return;
+      // Only drag on grid/background areas, not on bars or interactive elements
+      const target = e.target;
+      const tagName = target.tagName.toLowerCase();
 
+      // Allow clicks on bars, text, and other interactive SVG elements
+      if (tagName === 'rect' || tagName === 'text' || tagName === 'tspan') {
+        // Check if it's part of the grid (background) vs a bar
+        const isGrid = target.classList.contains('grid-row') ||
+                       target.classList.contains('grid-header') ||
+                       target.closest('.grid');
+        if (!isGrid) return; // Let Frappe Gantt handle bar clicks
+      }
+
+      // Start dragging
       isDragging = true;
       container.style.cursor = 'grabbing';
       startX = e.clientX;
@@ -408,7 +416,7 @@ export class GanttRenderer {
     const onMouseUp = () => {
       if (isDragging) {
         isDragging = false;
-        container.style.cursor = 'grab';
+        container.style.cursor = '';
       }
     };
 
