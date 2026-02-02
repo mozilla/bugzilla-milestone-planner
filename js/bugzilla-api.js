@@ -56,7 +56,7 @@ export class BugzillaAPI {
       return this.cache.get(id);
     }
 
-    const url = `${BUGZILLA_API_BASE}/bug/${id}?include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords`;
+    const url = `${BUGZILLA_API_BASE}/bug/${id}?include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords,target_milestone`;
 
     try {
       const response = await fetch(url);
@@ -91,7 +91,7 @@ export class BugzillaAPI {
       return bugIds.map(id => this.cache.get(String(id)));
     }
 
-    const url = `${BUGZILLA_API_BASE}/bug?id=${uncachedIds.join(',')}&include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords`;
+    const url = `${BUGZILLA_API_BASE}/bug?id=${uncachedIds.join(',')}&include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords,target_milestone`;
 
     console.log(`[BugzillaAPI] Fetching URL: ${url.substring(0, 100)}...`);
 
@@ -153,6 +153,7 @@ export class BugzillaAPI {
       component: rawBug.component,
       product: rawBug.product,
       severity: rawBug.severity || 'N/A',
+      targetMilestone: rawBug.target_milestone || null,
       size: size,
       sizeEstimated: size === null,
       isMeta: isMeta

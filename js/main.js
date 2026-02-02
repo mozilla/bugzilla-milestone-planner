@@ -160,6 +160,7 @@ class EnterprisePlanner {
     const duplicates = this.graph.findDuplicateSummaries();
     const missingAssignees = this.graph.findMissingAssignees();
     const missingSizes = this.graph.findMissingSizes();
+    const milestoneMismatches = this.findMilestoneMismatches();
 
     // Only include untriaged bugs if that filter is enabled
     const untriaged = this.severityFilter === 'S2+untriaged'
@@ -172,8 +173,100 @@ class EnterprisePlanner {
       duplicates,
       missingAssignees,
       missingSizes,
+      milestoneMismatches,
       untriaged
     };
+  }
+
+  /**
+   * Find bugs where the Bugzilla target_milestone doesn't match
+   * the milestone determined by dependency relationships
+   */
+  findMilestoneMismatches() {
+    const mismatches = [];
+
+    // Map target_milestone values to our milestone names
+    // Adjust this mapping based on actual Bugzilla values
+    const milestoneNameMap = {
+      'foxfooding': 'Foxfooding',
+      'customer pilot': 'Customer Pilot',
+      'customerpilot': 'Customer Pilot',
+      'mvp': 'MVP',
+      '---': null  // Not set
+    };
+
+    // Build a map of bug ID -> dependency milestone (same logic as scheduler)
+    const bugToDependencyMilestone = new Map();
+    const sortedMilestones = [...MILESTONES].sort((a, b) =>
+      a.deadline.getTime() - b.deadline.getTime()
+    );
+
+    for (const [bugId, bug] of this.bugs) {
+      for (const milestone of sortedMilestones) {
+        const milestoneId = String(milestone.bugId);
+        if (bugId === milestoneId || this.isDependencyOf(bugId, milestoneId)) {
+          bugToDependencyMilestone.set(bugId, milestone);
+          break;
+        }
+      }
+    }
+
+    // Check each bug for mismatches
+    for (const [bugId, bug] of this.bugs) {
+      if (!bug.targetMilestone || bug.targetMilestone === '---') continue;
+
+      const normalizedTarget = bug.targetMilestone.toLowerCase().trim();
+      const mappedMilestone = milestoneNameMap[normalizedTarget];
+
+      // Skip if we don't recognize the milestone value
+      if (mappedMilestone === undefined) continue;
+
+      const depMilestone = bugToDependencyMilestone.get(bugId);
+
+      // Mismatch if: has a target milestone set, but connected to a different one
+      if (mappedMilestone && depMilestone && depMilestone.name !== mappedMilestone) {
+        mismatches.push({
+          bug,
+          targetMilestone: mappedMilestone,
+          dependencyMilestone: depMilestone.name
+        });
+      }
+      // Also flag if: has a target milestone set, but not connected to any milestone
+      else if (mappedMilestone && !depMilestone) {
+        mismatches.push({
+          bug,
+          targetMilestone: mappedMilestone,
+          dependencyMilestone: null
+        });
+      }
+    }
+
+    return mismatches;
+  }
+
+  /**
+   * Check if bugId is a (transitive) dependency of targetId
+   */
+  isDependencyOf(bugId, targetId) {
+    const visited = new Set();
+    const queue = [targetId];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (visited.has(current)) continue;
+      visited.add(current);
+
+      const bug = this.bugs.get(current);
+      if (!bug) continue;
+
+      for (const depId of bug.dependsOn || []) {
+        if (String(depId) === String(bugId)) return true;
+        if (!visited.has(String(depId))) {
+          queue.push(String(depId));
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -197,6 +290,7 @@ class EnterprisePlanner {
       .map(t => t.bug);
     this.ui.renderEstimatedTable(estimatedBugs);
     this.ui.renderRisksTable(risks);
+    this.ui.renderMilestoneMismatchesTable(errors.milestoneMismatches);
     this.ui.renderUntriagedTable(errors.untriaged);
 
     // Render errors markdown

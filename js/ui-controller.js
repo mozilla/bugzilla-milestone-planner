@@ -35,6 +35,8 @@ export class UIController {
       errorsContainer: document.getElementById('errors-container'),
       estimatedTable: document.getElementById('estimated-table'),
       risksTable: document.getElementById('risks-table'),
+      milestoneMismatchesCard: document.getElementById('milestone-mismatches-card'),
+      milestoneMismatchesTable: document.getElementById('milestone-mismatches-table'),
       untriagedCard: document.getElementById('untriaged-card'),
       untriagedTable: document.getElementById('untriaged-table'),
       errorsMarkdown: document.getElementById('errors-markdown'),
@@ -378,6 +380,54 @@ export class UIController {
 
     html += '</tbody></table>';
     this.elements.risksTable.innerHTML = html;
+  }
+
+  /**
+   * Render milestone mismatches table
+   * @param {Array<Object>} mismatches - Bugs with milestone inconsistencies
+   */
+  renderMilestoneMismatchesTable(mismatches) {
+    if (!this.elements.milestoneMismatchesTable || !this.elements.milestoneMismatchesCard) return;
+
+    // Hide the card if no mismatches
+    if (!mismatches || mismatches.length === 0) {
+      this.elements.milestoneMismatchesCard.style.display = 'none';
+      return;
+    }
+
+    this.elements.milestoneMismatchesCard.style.display = 'block';
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Bug ID</th>
+            <th>Title</th>
+            <th>Bugzilla Milestone</th>
+            <th>Dependency Milestone</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    for (const mismatch of mismatches.slice(0, 20)) {
+      const title = this.truncate(mismatch.bug.summary || '', 50);
+      const depMilestone = mismatch.dependencyMilestone || '(not connected)';
+      html += `
+        <tr>
+          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${mismatch.bug.id}" target="_blank">${mismatch.bug.id}</a></td>
+          <td title="${this.escapeHtml(mismatch.bug.summary || '')}">${this.escapeHtml(title)}</td>
+          <td>${mismatch.targetMilestone}</td>
+          <td>${depMilestone}</td>
+        </tr>
+      `;
+    }
+
+    html += '</tbody></table>';
+    if (mismatches.length > 20) {
+      html += `<p class="table-note">Showing 20 of ${mismatches.length} mismatches</p>`;
+    }
+    this.elements.milestoneMismatchesTable.innerHTML = html;
   }
 
   /**
