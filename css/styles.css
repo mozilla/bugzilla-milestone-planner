@@ -321,7 +321,7 @@ header p {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  padding: 8px 0 0;
+  padding: 8px 0 16px;
 }
 
 .zoom-btn {
@@ -376,6 +376,13 @@ header p {
 
 .gantt-at-risk .bar {
   fill: var(--color-at-risk) !important;
+}
+
+/* Scheduler-assigned tasks have dashed border to distinguish from Bugzilla-assigned */
+.gantt-scheduler-assigned .bar {
+  stroke: #666 !important;
+  stroke-width: 2 !important;
+  stroke-dasharray: 4, 2 !important;
 }
 
 /* Gantt Popup - Override Frappe Gantt's dark popup */
@@ -489,6 +496,11 @@ header p {
 
 .legend-color.at-risk {
   background: var(--color-at-risk);
+}
+
+.legend-color.scheduler-assigned {
+  background: var(--color-normal);
+  border: 2px dashed #666;
 }
 
 /* Tables Section */

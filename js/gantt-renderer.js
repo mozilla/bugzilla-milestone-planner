@@ -159,22 +159,38 @@ export class GanttRenderer {
         customClass = 'gantt-at-risk';
       }
 
+      // Determine if scheduler assigned engineer (vs original Bugzilla assignee)
+      const originalAssignee = task.bug.assignee;
+      const scheduledEngineer = task.engineer ? task.engineer.name : null;
+      const isSchedulerAssigned = !originalAssignee || originalAssignee === 'nobody@mozilla.org';
+
+      // Add scheduler-assigned class for visual distinction
+      if (isSchedulerAssigned && !atRisk) {
+        customClass += ' gantt-scheduler-assigned';
+      }
+
       // Build dependencies string
       const deps = graph.getDependencies(String(task.bug.id));
       const validDeps = deps.filter(depId => {
         return scheduledTasks.some(t => String(t.bug.id) === depId && !t.completed);
       });
 
+      // Format engineer display - show initials for compact display
+      const engineerInitials = scheduledEngineer ? this.getInitials(scheduledEngineer) : '?';
+      const engineerSuffix = isSchedulerAssigned ? ` [${engineerInitials}]` : ` (${engineerInitials})`;
+
       this.tasks.push({
         id: String(task.bug.id),
-        name: `#${task.bug.id}: ${this.truncate(task.bug.summary, 40)}`,
+        name: `#${task.bug.id}: ${this.truncate(task.bug.summary, 35)}${engineerSuffix}`,
         start: this.formatDate(task.startDate),
         end: this.formatDate(task.endDate),
         progress: 0,
         custom_class: customClass,
         dependencies: validDeps.join(', '),
         // Store extra data for tooltips
-        _engineer: task.engineer ? task.engineer.name : 'Unassigned',
+        _engineer: scheduledEngineer || 'Unassigned',
+        _originalAssignee: originalAssignee,
+        _isSchedulerAssigned: isSchedulerAssigned,
         _effort: task.effort ? task.effort.days : 0,
         _size: task.bug.size,
         _sizeEstimated: task.effort ? task.effort.sizeEstimated : false,
@@ -307,6 +323,8 @@ export class GanttRenderer {
     const size = task._size || '?';
     const sizeNote = task._sizeEstimated ? ' (est.)' : '';
     const isMeta = task._isMeta;
+    const isSchedulerAssigned = task._isSchedulerAssigned;
+    const assignmentNote = isSchedulerAssigned ? ' (scheduler assigned)' : '';
 
     // For meta bugs, don't show size/effort
     const sizeEffortLine = isMeta
@@ -317,7 +335,7 @@ export class GanttRenderer {
       <div class="gantt-popup">
         <h4>${task.name}</h4>
         <div class="popup-details">
-          <p><strong>Engineer:</strong> ${engineer}</p>
+          <p><strong>Engineer:</strong> ${engineer}${assignmentNote}</p>
           ${sizeEffortLine}
           <p><strong>Start:</strong> ${task.start}</p>
           <p><strong>End:</strong> ${task.end}</p>
@@ -403,6 +421,17 @@ export class GanttRenderer {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Get initials from a name
+   */
+  getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ')
+      .map(part => part.charAt(0).toUpperCase())
+      .join('')
+      .substring(0, 2);
   }
 
   /**
