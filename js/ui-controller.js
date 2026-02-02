@@ -339,6 +339,7 @@ export class UIController {
         <thead>
           <tr>
             <th>Bug ID</th>
+            <th>Title</th>
             <th>End Date</th>
             <th>Milestone</th>
             <th>Risk Type</th>
@@ -348,9 +349,11 @@ export class UIController {
     `;
 
     for (const risk of risks.slice(0, 20)) {
+      const title = this.truncate(risk.task.bug.summary || '', 50);
       html += `
         <tr class="risk-${risk.type}">
           <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${risk.task.bug.id}" target="_blank">${risk.task.bug.id}</a></td>
+          <td title="${this.escapeHtml(risk.task.bug.summary || '')}">${this.escapeHtml(title)}</td>
           <td>${this.formatDate(risk.task.endDate)}</td>
           <td>${risk.milestone.name}</td>
           <td>${risk.type === 'freeze' ? 'After Freeze' : 'After Deadline'}</td>
@@ -564,6 +567,16 @@ export class UIController {
     if (!str) return '';
     if (str.length <= maxLen) return str;
     return str.substring(0, maxLen - 3) + '...';
+  }
+
+  /**
+   * Escape HTML special characters using DOM
+   */
+  escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 }
 
