@@ -120,6 +120,12 @@ Fixed bugs:
 2. Worker evaluated milestone completion using only the milestone bug's end time instead of max of ALL transitive dependencies
 3. Worker compared working days to calendar days for deadline checks - now compares actual Date objects
 
+## Deployment
+
+Live demo: https://entplanner-cc8b9c69.pages.dev/
+
+Deployed automatically via Cloudflare Pages on each push to main.
+
 ## External Dependencies
 
 - **Frappe Gantt** - Loaded via CDN in index.html
