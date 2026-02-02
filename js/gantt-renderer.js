@@ -393,35 +393,11 @@ export class GanttRenderer {
             task: task
           });
 
-          // Reposition popup if it's cut off at the bottom
+          // Set up hover handlers for the popup
           requestAnimationFrame(() => {
             const popup = document.querySelector('.popup-wrapper');
             if (popup) {
               setupPopupHandlers();
-
-              const popupRect = popup.getBoundingClientRect();
-              const viewportHeight = window.innerHeight;
-
-              // If popup extends below viewport, move it above the bar
-              if (popupRect.bottom > viewportHeight - 10) {
-                const barRect = barGroup.getBoundingClientRect();
-                const popupHeight = popupRect.height;
-
-                // Switch to fixed positioning for viewport-relative placement
-                popup.style.position = 'fixed';
-                popup.style.top = `${barRect.top - popupHeight - 10}px`;
-                popup.style.left = `${barRect.left}px`;
-
-                // Flip the pointer arrow
-                const pointer = popup.querySelector('.pointer');
-                if (pointer) {
-                  pointer.style.borderTopColor = 'transparent';
-                  pointer.style.borderBottomColor = 'var(--bg-primary)';
-                  pointer.style.top = 'auto';
-                  pointer.style.bottom = '-10px';
-                  pointer.style.transform = 'rotate(180deg)';
-                }
-              }
             }
           });
         }
