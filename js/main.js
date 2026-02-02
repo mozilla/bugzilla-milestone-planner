@@ -575,6 +575,18 @@ class EnterprisePlanner {
                   message = `Improved makespan: ${data.makespan.toFixed(0)} days (was ${prevMakespan.toFixed(0)}). Deadlines: ${data.deadlinesMet}/${numMilestones}`;
                 }
                 this.ui.addOptimizationLogEntry(message, logType);
+
+                // Update milestone cards with current best estimates
+                if (data.deadlineDetails) {
+                  const completions = new Map();
+                  for (const detail of data.deadlineDetails) {
+                    const milestone = milestones.find(m => m.name === detail.name);
+                    if (milestone && detail.endDate) {
+                      completions.set(String(milestone.bugId), new Date(detail.endDate));
+                    }
+                  }
+                  this.ui.renderMilestoneCards(this.getActiveMilestones(), completions);
+                }
               }
               break;
 
@@ -664,6 +676,9 @@ class EnterprisePlanner {
     this.ui.updateOptimizationStatus('complete',
       `Best of ${this.numWorkers}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan.toFixed(0)} days`);
     this.ui.enableScheduleToggle(true);
+
+    // Auto-switch to optimal schedule
+    this.onScheduleTypeChange('optimal');
   }
 
   /**
