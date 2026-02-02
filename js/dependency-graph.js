@@ -212,21 +212,24 @@ export class DependencyGraph {
   }
 
   /**
-   * Find bugs with no assignee
+   * Find bugs with no assignee (excludes meta bugs)
    * @returns {Array<Object>} Array of bugs without assignees
    */
   findMissingAssignees() {
     return Array.from(this.nodes.values()).filter(bug => {
+      if (bug.isMeta) return false;
       return !bug.assignee || bug.assignee === 'nobody@mozilla.org';
     });
   }
 
   /**
-   * Find open bugs with missing sizes
+   * Find open bugs with missing sizes (excludes meta bugs)
    * @returns {Array<Object>} Array of open bugs without sizes
    */
   findMissingSizes() {
     return Array.from(this.nodes.values()).filter(bug => {
+      // Skip meta bugs - they take 0 days
+      if (bug.isMeta) return false;
       // Skip resolved/verified bugs - they don't need size estimates
       if (bug.status === 'RESOLVED' || bug.status === 'VERIFIED') return false;
       return bug.size === null;
