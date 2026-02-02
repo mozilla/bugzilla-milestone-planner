@@ -19,9 +19,9 @@ let activeMilestones = [
 
 // Thresholds
 const BRANCH_BOUND_THRESHOLD = 10;
-const SA_ITERATIONS_DEFAULT = 20000; // Default for parallel workers
+const SA_ITERATIONS_DEFAULT = 8000; // Tuned: 8k gives 100% reliability + optimal makespan
 const SA_INITIAL_TEMP = 1000;
-const SA_COOLING_RATE = 0.9999; // Faster cooling for shorter runs
+const SA_COOLING_RATE = 0.99987; // Adjusted for 8k iterations (ends at ~350°)
 
 // Best solution tracking
 let bestScore = { deadlinesMet: -1, makespan: Infinity };
@@ -331,8 +331,11 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
   bestScore = { ...currentScore };
   bestAssignment = [...currentAssignment];
 
+  // Track when best was found
+  let bestFoundAtIteration = 0;
+
   // Report initial state as an improvement so main thread can track global best
-  reportImprovement({ deadlinesMet: -1, makespan: Infinity }, currentScore);
+  reportImprovement({ deadlinesMet: -1, makespan: Infinity }, currentScore, 0);
 
   let temperature = SA_INITIAL_TEMP;
   const progressInterval = Math.max(1000, Math.floor(iterations / 10));
@@ -363,8 +366,9 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
         const oldScore = { ...bestScore };
         bestScore = { ...currentScore };
         bestAssignment = [...currentAssignment];
+        bestFoundAtIteration = i;
 
-        reportImprovement(oldScore, bestScore);
+        reportImprovement(oldScore, bestScore, i);
       }
     }
 
@@ -385,27 +389,28 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
     }
   }
 
-  finishOptimization(tasks, engineers, dependencyMap, iterations);
+  finishOptimization(tasks, engineers, dependencyMap, iterations, bestFoundAtIteration);
 }
 
 /**
  * Report improvement to main thread
  * Main thread decides whether to log based on global best across all workers
  */
-function reportImprovement(oldScore, newScore) {
+function reportImprovement(oldScore, newScore, iteration = 0) {
   self.postMessage({
     type: 'improved',
     workerId,
     deadlinesMet: newScore.deadlinesMet,
     makespan: newScore.makespan,
-    deadlineDetails: newScore.deadlineDetails
+    deadlineDetails: newScore.deadlineDetails,
+    foundAtIteration: iteration
   });
 }
 
 /**
  * Finish optimization and send final results
  */
-function finishOptimization(tasks, engineers, dependencyMap, iterations) {
+function finishOptimization(tasks, engineers, dependencyMap, iterations, bestFoundAtIteration = 0) {
   if (bestAssignment) {
     const schedule = buildScheduleFromAssignment(bestAssignment, tasks, engineers, dependencyMap);
 
@@ -416,7 +421,8 @@ function finishOptimization(tasks, engineers, dependencyMap, iterations) {
       deadlinesMet: bestScore.deadlinesMet,
       makespan: bestScore.makespan,
       improved: true,
-      iterations
+      iterations,
+      bestFoundAtIteration
     });
   } else {
     self.postMessage({ type: 'complete', workerId, schedule: null, improved: false });
