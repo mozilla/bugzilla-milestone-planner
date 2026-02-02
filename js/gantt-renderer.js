@@ -65,6 +65,17 @@ export class GanttRenderer {
         this.handleZoom('out');
       }
     });
+
+    // Zoom buttons
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener('click', () => this.handleZoom('in'));
+    }
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener('click', () => this.handleZoom('out'));
+    }
   }
 
   /**
