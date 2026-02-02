@@ -572,6 +572,15 @@ export class UIController {
   }
 
   /**
+   * Set the schedule type in the UI
+   * @param {string} type - 'greedy' or 'optimal'
+   */
+  setScheduleType(type) {
+    if (!this.elements.scheduleTypeSelect) return;
+    this.elements.scheduleTypeSelect.value = type;
+  }
+
+  /**
    * Add entry to optimization log
    * @param {string} message - Log message
    * @param {string} type - 'improvement', 'deadline', 'status'

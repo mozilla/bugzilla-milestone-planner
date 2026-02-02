@@ -718,6 +718,7 @@ class EnterprisePlanner {
    */
   onScheduleTypeChange(type) {
     this.currentScheduleType = type;
+    this.ui.setScheduleType(type);
 
     const fullSchedule = type === 'optimal' && this.optimalSchedule
       ? this.optimalSchedule
