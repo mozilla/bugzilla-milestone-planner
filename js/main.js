@@ -437,6 +437,14 @@ class EnterprisePlanner {
     const completedBugs = allBugs.filter(bug => resolvedStatuses.includes(bug.status));
     const openBugs = allBugs.filter(bug => !resolvedStatuses.includes(bug.status));
 
+    // Get estimated size bugs from the current schedule
+    const schedule = this.currentScheduleType === 'optimal' && this.optimalSchedule
+      ? this.optimalSchedule
+      : this.greedySchedule;
+    const estimatedBugs = schedule
+      ? schedule.filter(t => t.effort && t.effort.sizeEstimated).map(t => t.bug)
+      : [];
+
     // Get project end date from scheduler
     const schedulerStats = this.scheduler ? this.scheduler.getStats() : {};
 
@@ -444,7 +452,7 @@ class EnterprisePlanner {
       totalBugs: allBugs,
       completedBugs,
       openBugs,
-      totalDays: schedulerStats.totalDays || 0,
+      estimatedBugs,
       latestEnd: schedulerStats.latestEnd
     };
   }

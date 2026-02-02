@@ -259,6 +259,7 @@ export class UIController {
     const totalUrl = bugzillaListUrl(stats.totalBugs);
     const completedUrl = bugzillaListUrl(stats.completedBugs);
     const openUrl = bugzillaListUrl(stats.openBugs);
+    const estimatedUrl = bugzillaListUrl(stats.estimatedBugs);
 
     const linkOrSpan = (url, value) => {
       if (url) {
@@ -282,8 +283,8 @@ export class UIController {
           <div class="stat-label">Open</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${stats.totalDays || 0}</div>
-          <div class="stat-label">Total Days</div>
+          <div class="stat-value">${linkOrSpan(estimatedUrl, stats.estimatedBugs?.length || 0)}</div>
+          <div class="stat-label">Estimated Sizes</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${stats.latestEnd ? this.formatDate(stats.latestEnd) : 'N/A'}</div>
