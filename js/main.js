@@ -192,6 +192,7 @@ class EnterprisePlanner {
       .map(t => t.bug);
     this.ui.renderEstimatedTable(estimatedBugs);
     this.ui.renderRisksTable(risks);
+    this.ui.renderUntriagedTable(errors.untriaged);
 
     // Render errors markdown
     this.ui.renderErrorsMarkdown(errors);

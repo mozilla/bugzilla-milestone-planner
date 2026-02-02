@@ -313,14 +313,16 @@ export class GanttRenderer {
     const hoverHandlers = [];
 
     bars.forEach(bar => {
-      const onEnter = () => {
+      const onEnter = (e) => {
         // Trigger Frappe Gantt's popup
         const taskId = bar.getAttribute('data-id');
         const task = this.tasks.find(t => t.id === taskId);
-        const barRect = bar.querySelector('.bar');
-        if (task && this.gantt && barRect) {
+        // Use the bar-group as target (includes both rect and label)
+        // This ensures popup stays visible when hovering over label text
+        const barGroup = bar.querySelector('.bar-group');
+        if (task && this.gantt && barGroup) {
           this.gantt.show_popup({
-            target_element: barRect,
+            target_element: barGroup,
             title: task.name,
             subtitle: `${task.start} - ${task.end}`,
             task: task

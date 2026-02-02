@@ -35,6 +35,8 @@ export class UIController {
       errorsContainer: document.getElementById('errors-container'),
       estimatedTable: document.getElementById('estimated-table'),
       risksTable: document.getElementById('risks-table'),
+      untriagedCard: document.getElementById('untriaged-card'),
+      untriagedTable: document.getElementById('untriaged-table'),
       errorsMarkdown: document.getElementById('errors-markdown'),
       legend: document.getElementById('legend'),
       milestoneCards: document.getElementById('milestone-cards')
@@ -361,6 +363,57 @@ export class UIController {
 
     html += '</tbody></table>';
     this.elements.risksTable.innerHTML = html;
+  }
+
+  /**
+   * Render untriaged bugs table
+   * @param {Array<Object>} bugs - Untriaged bugs (no severity set)
+   */
+  renderUntriagedTable(bugs) {
+    if (!this.elements.untriagedTable || !this.elements.untriagedCard) return;
+
+    // Hide the card if no untriaged bugs
+    if (!bugs || bugs.length === 0) {
+      this.elements.untriagedCard.style.display = 'none';
+      return;
+    }
+
+    // Show the card
+    this.elements.untriagedCard.style.display = '';
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Bug ID</th>
+            <th>Title</th>
+            <th>Assignee</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    for (const bug of bugs.slice(0, 20)) {
+      const title = this.truncate(bug.summary || '', 50);
+      const assignee = bug.assignee && bug.assignee !== 'nobody@mozilla.org'
+        ? bug.assignee.split('@')[0]
+        : 'Unassigned';
+      html += `
+        <tr>
+          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${bug.id}" target="_blank">${bug.id}</a></td>
+          <td title="${this.escapeHtml(bug.summary || '')}">${this.escapeHtml(title)}</td>
+          <td>${this.escapeHtml(assignee)}</td>
+        </tr>
+      `;
+    }
+
+    html += '</tbody></table>';
+
+    if (bugs.length > 20) {
+      html += `<p class="table-note">...and ${bugs.length - 20} more</p>`;
+    }
+
+    this.elements.untriagedTable.innerHTML = html;
   }
 
   /**
