@@ -409,6 +409,7 @@ export class Scheduler {
 
   /**
    * Check for deadline risks
+   * Only flags tasks that are at risk for their own milestone
    * @param {Array<{bugId: number, deadline: Date, freezeDate: Date, name: string}>} milestoneInfo
    * @returns {Array<Object>} Tasks at risk
    */
@@ -417,42 +418,27 @@ export class Scheduler {
 
     for (const task of this.schedule) {
       if (task.completed) continue;
+      if (!task.milestone) continue; // Tasks without milestone aren't deadline risks
 
-      for (const milestone of milestoneInfo) {
-        // Check if this bug blocks the milestone
-        if (String(task.bug.id) === String(milestone.bugId) ||
-            this.isBlockingMilestone(task.bug.id, milestone.bugId)) {
-
-          // Check against feature freeze date
-          if (task.endDate > milestone.freezeDate) {
-            risks.push({
-              task,
-              milestone,
-              type: 'freeze',
-              message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${milestone.name} feature freeze ${this.formatDate(milestone.freezeDate)}`
-            });
-          } else if (task.endDate > milestone.deadline) {
-            risks.push({
-              task,
-              milestone,
-              type: 'deadline',
-              message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${milestone.name} deadline ${this.formatDate(milestone.deadline)}`
-            });
-          }
-        }
+      // Only check against the task's own milestone
+      if (task.endDate > task.milestone.freezeDate) {
+        risks.push({
+          task,
+          milestone: task.milestone,
+          type: 'freeze',
+          message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${task.milestone.name} feature freeze ${this.formatDate(task.milestone.freezeDate)}`
+        });
+      } else if (task.endDate > task.milestone.deadline) {
+        risks.push({
+          task,
+          milestone: task.milestone,
+          type: 'deadline',
+          message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${task.milestone.name} deadline ${this.formatDate(task.milestone.deadline)}`
+        });
       }
     }
 
     return risks;
-  }
-
-  /**
-   * Check if a bug blocks a milestone (simplified check)
-   */
-  isBlockingMilestone(bugId, milestoneBugId) {
-    // This would need the graph to properly determine
-    // For now, assume all bugs in the schedule are relevant
-    return true;
   }
 
   /**
