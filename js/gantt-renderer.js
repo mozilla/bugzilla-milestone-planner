@@ -368,6 +368,10 @@ export class GanttRenderer {
           isOverPopup = false;
           maybeHidePopup();
         });
+        // Prevent clicks inside popup from bubbling up and hiding the popup
+        popup.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
       }
     };
 
