@@ -534,6 +534,7 @@ class EnterprisePlanner {
 
     this.workerResults = [];
     let completedWorkers = 0;
+    let globalBest = { deadlinesMet: -1, makespan: Infinity };
 
     try {
       for (let i = 0; i < this.numWorkers; i++) {
@@ -544,17 +545,28 @@ class EnterprisePlanner {
 
           switch (type) {
             case 'log':
-              this.ui.addOptimizationLogEntry(data.message, data.logType);
+              // Don't forward individual worker logs to UI
+              console.log(`[Worker ${workerId}]`, data.message);
               break;
 
             case 'progress':
-              // Show progress from any worker
+              // Show aggregate progress
               this.ui.updateOptimizationStatus('running',
-                `${completedWorkers}/${this.numWorkers} done | Worker ${workerId}: ${data.bestDeadlines}/${numMilestones} deadlines`);
+                `${completedWorkers}/${this.numWorkers} done | Best: ${globalBest.deadlinesMet}/${numMilestones} deadlines, ${globalBest.makespan === Infinity ? '?' : globalBest.makespan.toFixed(0)} days`);
               break;
 
             case 'improved':
-              console.log(`Worker ${workerId} found improvement:`, data);
+              // Only log if this is a new global best
+              const isNewDeadline = data.deadlinesMet > globalBest.deadlinesMet;
+              const isBetterMakespan = data.deadlinesMet === globalBest.deadlinesMet && data.makespan < globalBest.makespan;
+              if (isNewDeadline || isBetterMakespan) {
+                const logType = isNewDeadline ? 'deadline' : 'improvement';
+                globalBest = { deadlinesMet: data.deadlinesMet, makespan: data.makespan };
+                this.ui.addOptimizationLogEntry(
+                  `${data.deadlinesMet}/${numMilestones} deadlines, ${data.makespan.toFixed(0)} days`,
+                  logType
+                );
+              }
               break;
 
             case 'complete':
