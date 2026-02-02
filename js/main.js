@@ -502,9 +502,16 @@ class EnterprisePlanner {
     this.stopOptimalScheduler();
 
     const numMilestones = milestones.length;
+    const totalIterations = this.numWorkers * this.iterationsPerWorker;
 
     this.ui.updateOptimizationStatus('running', `Starting ${this.numWorkers} parallel workers...`);
     this.ui.clearOptimizationLog();
+    this.ui.addOptimizationLogEntry(
+      `Using ${this.numWorkers} CPU cores, ${this.iterationsPerWorker.toLocaleString()} iterations each (${totalIterations.toLocaleString()} total)`,
+      'status'
+    );
+
+    this.optimizationStartTime = performance.now();
 
     // Build graph edges for workers
     const graphEdges = {};
@@ -599,8 +606,17 @@ class EnterprisePlanner {
    * Pick the best result from all workers
    */
   finalizeOptimalSchedule(numMilestones) {
+    const elapsedMs = performance.now() - this.optimizationStartTime;
+    const elapsedSec = elapsedMs / 1000;
+    const totalIterations = this.numWorkers * this.iterationsPerWorker;
+    const itersPerSec = Math.round(totalIterations / elapsedSec);
+
     if (this.workerResults.length === 0) {
       this.ui.updateOptimizationStatus('complete', 'Greedy schedule is optimal');
+      this.ui.addOptimizationLogEntry(
+        `Completed in ${elapsedSec.toFixed(1)}s (${itersPerSec.toLocaleString()} iter/sec)`,
+        'status'
+      );
       return;
     }
 
@@ -620,6 +636,10 @@ class EnterprisePlanner {
       endDate: task.endDate ? new Date(task.endDate) : null
     }));
 
+    this.ui.addOptimizationLogEntry(
+      `Completed in ${elapsedSec.toFixed(1)}s (${itersPerSec.toLocaleString()} iter/sec)`,
+      'status'
+    );
     this.ui.updateOptimizationStatus('complete',
       `Best of ${this.numWorkers}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan.toFixed(0)} days`);
     this.ui.enableScheduleToggle(true);
