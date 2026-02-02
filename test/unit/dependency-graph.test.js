@@ -263,6 +263,51 @@ describe('DependencyGraph', () => {
 
       expect(missing).toHaveLength(0);
     });
+
+    it('should exclude resolved bugs', () => {
+      graph.addNode({
+        id: 1,
+        summary: 'Resolved bug without assignee',
+        assignee: null,
+        component: 'Client',
+        status: 'RESOLVED',
+        dependsOn: []
+      });
+
+      const missing = graph.findMissingAssignees();
+
+      expect(missing).toHaveLength(0);
+    });
+
+    it('should exclude closed bugs', () => {
+      graph.addNode({
+        id: 1,
+        summary: 'Closed bug without assignee',
+        assignee: null,
+        component: 'Client',
+        status: 'CLOSED',
+        dependsOn: []
+      });
+
+      const missing = graph.findMissingAssignees();
+
+      expect(missing).toHaveLength(0);
+    });
+
+    it('should exclude meta bugs', () => {
+      graph.addNode({
+        id: 1,
+        summary: 'Meta bug without assignee',
+        assignee: null,
+        component: 'Client',
+        isMeta: true,
+        dependsOn: []
+      });
+
+      const missing = graph.findMissingAssignees();
+
+      expect(missing).toHaveLength(0);
+    });
   });
 
   describe('findMissingSizes', () => {
@@ -297,6 +342,51 @@ describe('DependencyGraph', () => {
         summary: 'Non-client bug without size',
         size: null,
         component: 'Server',
+        dependsOn: []
+      });
+
+      const missing = graph.findMissingSizes();
+
+      expect(missing).toHaveLength(0);
+    });
+
+    it('should exclude resolved bugs', () => {
+      graph.addNode({
+        id: 1,
+        summary: 'Resolved bug without size',
+        size: null,
+        component: 'Client',
+        status: 'RESOLVED',
+        dependsOn: []
+      });
+
+      const missing = graph.findMissingSizes();
+
+      expect(missing).toHaveLength(0);
+    });
+
+    it('should exclude closed bugs', () => {
+      graph.addNode({
+        id: 1,
+        summary: 'Closed bug without size',
+        size: null,
+        component: 'Client',
+        status: 'CLOSED',
+        dependsOn: []
+      });
+
+      const missing = graph.findMissingSizes();
+
+      expect(missing).toHaveLength(0);
+    });
+
+    it('should exclude meta bugs', () => {
+      graph.addNode({
+        id: 1,
+        summary: 'Meta bug without size',
+        size: null,
+        component: 'Client',
+        isMeta: true,
         dependsOn: []
       });
 

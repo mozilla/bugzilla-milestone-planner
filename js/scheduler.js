@@ -288,7 +288,7 @@ export class Scheduler {
     }
 
     // Skip completed bugs
-    if (bug.status === 'RESOLVED' || bug.status === 'VERIFIED') {
+    if (bug.status === 'RESOLVED' || bug.status === 'VERIFIED' || bug.status === 'CLOSED') {
       taskEndDates.set(String(bug.id), today);
       this.schedule.push({
         bug,

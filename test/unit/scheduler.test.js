@@ -304,6 +304,51 @@ describe('Scheduler', () => {
       const completedRisks = risks.filter(r => r.task.completed);
       expect(completedRisks).toHaveLength(0);
     });
+
+    it('should only flag tasks against their own milestone', () => {
+      // MVP milestone bug that ends after Foxfooding freeze but before MVP freeze
+      const mvpBug = {
+        id: 1980739, // MVP milestone ID
+        summary: 'MVP milestone bug',
+        status: 'NEW',
+        dependsOn: [],
+        size: 3 // 10 days - will end well before MVP deadline
+      };
+
+      const bugMap = new Map();
+      bugMap.set('1980739', mvpBug);
+      graph.buildFromBugs(bugMap);
+
+      scheduler.scheduleTasks([mvpBug], graph);
+      const risks = scheduler.checkDeadlineRisks(testMilestones);
+
+      // MVP bug should not be flagged as risk for Foxfooding
+      const foxfoodingRisks = risks.filter(r =>
+        r.task.bug.id === 1980739 && r.milestone.name === 'Foxfooding'
+      );
+      expect(foxfoodingRisks).toHaveLength(0);
+    });
+
+    it('should not flag tasks without a milestone', () => {
+      const orphanBug = {
+        id: 99999,
+        summary: 'Bug not in any milestone',
+        status: 'NEW',
+        dependsOn: [],
+        size: 5 // Large - would be late for any milestone
+      };
+
+      const bugMap = new Map();
+      bugMap.set('99999', orphanBug);
+      graph.buildFromBugs(bugMap);
+
+      scheduler.scheduleTasks([orphanBug], graph);
+      const risks = scheduler.checkDeadlineRisks(testMilestones);
+
+      // Orphan bugs without milestone should not be flagged
+      const orphanRisks = risks.filter(r => r.task.bug.id === 99999);
+      expect(orphanRisks).toHaveLength(0);
+    });
   });
 
   describe('getStats', () => {

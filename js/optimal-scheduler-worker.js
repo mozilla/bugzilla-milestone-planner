@@ -56,7 +56,7 @@ self.onmessage = function(e) {
  * Main optimization entry point
  */
 function optimize(bugs, engineers, graph) {
-  const tasks = bugs.filter(b => b.status !== 'RESOLVED' && b.status !== 'VERIFIED');
+  const tasks = bugs.filter(b => b.status !== 'RESOLVED' && b.status !== 'VERIFIED' && b.status !== 'CLOSED');
 
   self.postMessage({
     type: 'log',
