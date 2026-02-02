@@ -57,6 +57,56 @@ test.describe('Schedule Type Switch', () => {
     expect(optimalResult.success).toBe(true);
   });
 
+  test('should auto-switch to optimal schedule when optimization completes', async ({ page }) => {
+    // Initial state should be greedy
+    const initialValue = await page.$eval('#schedule-type', el => el.value);
+    expect(initialValue).toBe('greedy');
+
+    // Wait for optimization to complete (option becomes enabled AND selected)
+    await page.waitForFunction(() => {
+      const select = document.querySelector('#schedule-type');
+      const opt = select?.querySelector('option[value="optimal"]');
+      return opt && !opt.disabled && select.value === 'optimal';
+    }, { timeout: 90000 });
+
+    // Dropdown should now show "optimal"
+    const finalValue = await page.$eval('#schedule-type', el => el.value);
+    expect(finalValue).toBe('optimal');
+
+    // Gantt should have rendered with optimal schedule
+    const barCount = await page.evaluate(() =>
+      document.querySelectorAll('.bar-wrapper').length
+    );
+    expect(barCount).toBeGreaterThan(0);
+  });
+
+  test('should update milestone cards during optimization', async ({ page }) => {
+    // Milestone cards should exist
+    const initialCards = await page.evaluate(() =>
+      document.querySelectorAll('.milestone-card').length
+    );
+    expect(initialCards).toBeGreaterThan(0);
+
+    // Wait for at least one optimization improvement (card status may change)
+    // Check that cards have status indicators after optimization starts
+    await page.waitForFunction(() => {
+      const cards = document.querySelectorAll('.milestone-card');
+      // At least one card should have a status class
+      return Array.from(cards).some(card =>
+        card.classList.contains('milestone-on-track') ||
+        card.classList.contains('milestone-at-risk') ||
+        card.classList.contains('milestone-late')
+      );
+    }, { timeout: 90000 });
+
+    // Cards should still be present and have estimated completions
+    const cardsWithEstimates = await page.evaluate(() => {
+      const cards = document.querySelectorAll('.milestone-card .estimated strong');
+      return Array.from(cards).filter(el => el.textContent !== 'Not scheduled').length;
+    });
+    expect(cardsWithEstimates).toBeGreaterThan(0);
+  });
+
   test('should have only one gantt-container after schedule switch', async ({ page }) => {
     // Check initial state
     let containerCount = await page.evaluate(() =>
