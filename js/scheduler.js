@@ -325,22 +325,29 @@ export class Scheduler {
       return;
     }
 
-    const { engineer, startDate, effort, endDate } = assignment;
+    let { engineer, startDate, effort, endDate } = assignment;
 
-    // Check for skill mismatch warning
-    if (effort.skillRank === 3 && bug.language) {
-      this.warnings.push({
-        type: 'skill_mismatch',
-        bug,
-        engineer,
-        message: `${engineer.name} using tertiary skill for ${bug.language} (bug ${bug.id})`
-      });
+    // Meta bugs (0 days) complete when dependencies complete, not affected by engineer availability
+    if (effort.days === 0) {
+      startDate = earliestStart;
+      endDate = earliestStart;
+      // Don't update engineer schedule - meta bugs don't consume engineer time
+    } else {
+      // Check for skill mismatch warning
+      if (effort.skillRank === 3 && bug.language) {
+        this.warnings.push({
+          type: 'skill_mismatch',
+          bug,
+          engineer,
+          message: `${engineer.name} using tertiary skill for ${bug.language} (bug ${bug.id})`
+        });
+      }
+
+      // Update engineer schedule
+      const engineerSchedule = this.engineerSchedules.get(engineer.id);
+      engineerSchedule.nextAvailable = new Date(endDate);
+      engineerSchedule.tasks.push(bug.id);
     }
-
-    // Update engineer schedule
-    const engineerSchedule = this.engineerSchedules.get(engineer.id);
-    engineerSchedule.nextAvailable = new Date(endDate);
-    engineerSchedule.tasks.push(bug.id);
 
     // Record task end date
     taskEndDates.set(String(bug.id), endDate);

@@ -465,4 +465,185 @@ describe('Scheduler', () => {
       expect(workloads.every(w => typeof w.totalDays === 'number')).toBe(true);
     });
   });
+
+  describe('deadline comparison (working days vs calendar days)', () => {
+    it('working days and calendar days differ due to weekends', () => {
+      // This test verifies the bug that was fixed: comparing working days
+      // to calendar days is incorrect because they're different units
+      const monday = new Date('2026-02-02'); // Monday
+      const targetFriday = new Date('2026-02-13'); // Friday, 11 calendar days later
+
+      // 11 calendar days contains 2 weekend days, so only 9 working days
+      const calendarDays = Math.floor((targetFriday - monday) / (1000 * 60 * 60 * 24));
+      expect(calendarDays).toBe(11);
+
+      // But addWorkingDays(monday, 9) should reach targetFriday
+      const resultAfter9WorkDays = scheduler.addWorkingDays(monday, 9);
+      expect(resultAfter9WorkDays.toDateString()).toBe(targetFriday.toDateString());
+
+      // If we incorrectly compared 9 working days <= 11 calendar days, we'd think
+      // the task finishes "before" the target. But that's correct by coincidence.
+      // The real bug is comparing 12 working days <= 11 calendar days (true!)
+      // when 12 working days actually extends beyond the 11 calendar day deadline.
+      const resultAfter12WorkDays = scheduler.addWorkingDays(monday, 12);
+      // 12 working days from Monday Feb 2 = Feb 18 (Wednesday, after 2 weekends)
+      expect(resultAfter12WorkDays > targetFriday).toBe(true);
+
+      // The bug: comparing working days (12) <= calendar days (11) would be false,
+      // which is accidentally correct. But compare 10 working days <= 11 calendar:
+      const resultAfter10WorkDays = scheduler.addWorkingDays(monday, 10);
+      // 10 working days from Feb 2 = Feb 16 (Monday)
+      // Comparing 10 <= 11 (working vs calendar) = true
+      // But Feb 16 > Feb 13, so deadline is actually MISSED!
+      expect(resultAfter10WorkDays > targetFriday).toBe(true);
+      // This proves that comparing working days to calendar days gives wrong results
+    });
+
+    it('deadline check should compare actual dates, not mixed units', () => {
+      // Correct approach: compare Date objects directly
+      const today = new Date('2026-02-02');
+      const freezeDate = new Date('2026-02-16'); // 14 calendar days = 10 working days
+
+      // Task scheduled for 10 working days
+      const taskEndDate = scheduler.addWorkingDays(today, 10);
+      // Should be Feb 16
+
+      // Correct comparison: Date <= Date
+      expect(taskEndDate <= freezeDate).toBe(true);
+
+      // Task scheduled for 11 working days
+      const lateTaskEndDate = scheduler.addWorkingDays(today, 11);
+      // Should be Feb 17
+
+      // Correct comparison shows it's late
+      expect(lateTaskEndDate <= freezeDate).toBe(false);
+    });
+  });
+
+  describe('meta bugs', () => {
+    it('should calculate 0 days effort for meta bugs', () => {
+      const engineer = testEngineers[0];
+      const metaBug = { id: 1, size: 3, language: 'JavaScript', isMeta: true };
+
+      const effort = scheduler.calculateEffort(metaBug, engineer);
+
+      expect(effort.days).toBe(0);
+      expect(effort.isMeta).toBe(true);
+    });
+
+    it('should schedule meta bugs with same start and end date', () => {
+      const metaBug = {
+        id: 999,
+        summary: '[meta] Tracking bug',
+        status: 'NEW',
+        dependsOn: [],
+        size: 3,
+        language: 'JavaScript',
+        isMeta: true
+      };
+
+      const bugMap = new Map();
+      bugMap.set('999', metaBug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = scheduler.scheduleTasks([metaBug], graph, {}, {});
+
+      expect(schedule).toHaveLength(1);
+      expect(schedule[0].effort.days).toBe(0);
+      // Start and end should be the same for 0-day tasks
+      expect(schedule[0].startDate.getTime()).toBe(schedule[0].endDate.getTime());
+    });
+
+    it('should not delay meta bugs by engineer availability', () => {
+      // Schedule a real bug first to make engineer busy
+      const realBug = {
+        id: 100,
+        summary: 'Real bug',
+        status: 'NEW',
+        dependsOn: [],
+        size: 2, // 5 days
+        language: 'JavaScript',
+        isMeta: false
+      };
+
+      // Meta bug depends on real bug
+      const metaBug = {
+        id: 999,
+        summary: '[meta] Tracking bug',
+        status: 'NEW',
+        dependsOn: [100],
+        size: 3,
+        language: 'JavaScript',
+        isMeta: true
+      };
+
+      const bugMap = new Map();
+      bugMap.set('100', realBug);
+      bugMap.set('999', metaBug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = scheduler.scheduleTasks([realBug, metaBug], graph, {}, {});
+
+      expect(schedule).toHaveLength(2);
+
+      const realTask = schedule.find(t => t.bug.id === 100);
+      const metaTask = schedule.find(t => t.bug.id === 999);
+
+      // Meta bug should complete exactly when real bug completes (its dependency)
+      // Not delayed by engineer availability
+      expect(metaTask.endDate.getTime()).toBe(realTask.endDate.getTime());
+    });
+
+    it('should complete meta bug when ALL dependencies complete', () => {
+      // Two parallel bugs with different durations
+      const bug1 = {
+        id: 101,
+        summary: 'Bug 1',
+        status: 'NEW',
+        dependsOn: [],
+        size: 1, // 1 day
+        language: 'JavaScript',
+        isMeta: false
+      };
+
+      const bug2 = {
+        id: 102,
+        summary: 'Bug 2',
+        status: 'NEW',
+        dependsOn: [],
+        size: 2, // 5 days
+        language: 'JavaScript',
+        isMeta: false
+      };
+
+      // Meta bug depends on both
+      const metaBug = {
+        id: 999,
+        summary: '[meta] Tracking bug',
+        status: 'NEW',
+        dependsOn: [101, 102],
+        size: 3,
+        language: 'JavaScript',
+        isMeta: true
+      };
+
+      const bugMap = new Map();
+      bugMap.set('101', bug1);
+      bugMap.set('102', bug2);
+      bugMap.set('999', metaBug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = scheduler.scheduleTasks([bug1, bug2, metaBug], graph, {}, {});
+
+      expect(schedule).toHaveLength(3);
+
+      const task1 = schedule.find(t => t.bug.id === 101);
+      const task2 = schedule.find(t => t.bug.id === 102);
+      const metaTask = schedule.find(t => t.bug.id === 999);
+
+      // Meta bug should complete when the LATER dependency completes
+      const latestDep = task1.endDate > task2.endDate ? task1 : task2;
+      expect(metaTask.endDate.getTime()).toBe(latestDep.endDate.getTime());
+    });
+  });
 });

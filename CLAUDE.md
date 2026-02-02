@@ -92,7 +92,7 @@ Meta bugs take 0 days (tracking bugs). Detected by:
 Filters are applied in this order:
 1. **Resolved Filter**: Excludes bugs with status RESOLVED, VERIFIED, or CLOSED (milestone bugs always included)
 2. **Component Filter**: Only bugs from "Client" component (milestone bugs always included)
-3. **Severity Filter**: Dropdown - S1 only, S1-S2 (default), S1-S3, or All (includes bugs without severity)
+3. **Severity Filter**: Dropdown - S1 only, S1-S2 (default), S1+S2+untriaged (includes bugs without severity), S1-S3, or All
 4. **Milestone Filter**: Dropdown to show only bugs in a specific milestone's dependency tree
 
 ## Testing
@@ -110,6 +110,12 @@ Usually means the worker received malformed data. Check that:
 
 ### Filters not taking effect
 The app caches data. A hard refresh (Cmd+Shift+R) may be needed after code changes.
+
+### Optimal schedule shows later dates than greedy
+Fixed bugs:
+1. Meta bugs (0 days) were incorrectly delayed by engineer availability - now they complete immediately when dependencies complete
+2. Worker evaluated milestone completion using only the milestone bug's end time instead of max of ALL transitive dependencies
+3. Worker compared working days to calendar days for deadline checks - now compares actual Date objects
 
 ## External Dependencies
 

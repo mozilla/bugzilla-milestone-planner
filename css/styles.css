@@ -375,7 +375,8 @@ header p {
 
 .gantt-popup {
   padding: 12px;
-  max-width: 300px;
+  min-width: 280px;
+  max-width: 400px;
   background: var(--bg-primary);
   color: var(--text-primary);
 }

@@ -396,6 +396,16 @@ class EnterprisePlanner {
    */
   filterBugsBySeverity(bugs) {
     if (!this.severityFilter) return bugs;
+
+    // Special case: S1+S2+untriaged
+    if (this.severityFilter === 'S2+untriaged') {
+      return bugs.filter(bug => {
+        if (MILESTONES.some(m => String(m.bugId) === String(bug.id))) return true;
+        const sev = bug.severity || 'N/A';
+        return sev === 'S1' || sev === 'S2' || sev === 'N/A' || sev === '--';
+      });
+    }
+
     const severityOrder = ['S1', 'S2', 'S3', 'S4'];
     const maxIdx = severityOrder.indexOf(this.severityFilter);
     if (maxIdx === -1) return bugs;
@@ -508,7 +518,12 @@ class EnterprisePlanner {
 
           case 'complete':
             if (data.improved && data.schedule) {
-              this.optimalSchedule = data.schedule;
+              // Convert serialized dates back to Date objects
+              this.optimalSchedule = data.schedule.map(task => ({
+                ...task,
+                startDate: task.startDate ? new Date(task.startDate) : null,
+                endDate: task.endDate ? new Date(task.endDate) : null
+              }));
               this.ui.updateOptimizationStatus('complete',
                 `Final: ${data.deadlinesMet}/${numMilestones} deadlines, ${data.makespan.toFixed(0)} days`);
               this.ui.enableScheduleToggle(true);
@@ -524,10 +539,11 @@ class EnterprisePlanner {
         this.ui.updateOptimizationStatus('error', 'Optimization failed');
       };
 
-      // Build graph edges for worker
+      // Build graph edges for worker - use ALL bugs to capture full dependency chains
+      // (not just filtered bugs, as dependencies may chain through non-Client bugs)
       const graphEdges = {};
-      for (const bug of sortedBugs) {
-        graphEdges[bug.id] = bug.dependsOn || [];
+      for (const [bugId, bug] of this.bugs) {
+        graphEdges[bugId] = bug.dependsOn || [];
       }
 
       // Start optimization with milestones

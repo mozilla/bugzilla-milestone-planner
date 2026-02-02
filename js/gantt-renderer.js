@@ -115,6 +115,10 @@ export class GanttRenderer {
     this.tasks = [];
 
     for (const task of scheduledTasks) {
+      // Skip milestone bugs - they're tracking bugs shown in milestone cards, not actual work
+      const isMilestoneBug = MILESTONES.some(m => String(m.bugId) === String(task.bug.id));
+      if (isMilestoneBug) continue;
+
       if (task.completed) {
         // Include completed tasks with a marker
         this.tasks.push({
@@ -167,6 +171,7 @@ export class GanttRenderer {
         _effort: task.effort ? task.effort.days : 0,
         _size: task.bug.size,
         _sizeEstimated: task.effort ? task.effort.sizeEstimated : false,
+        _isMeta: task.bug.isMeta || (task.effort && task.effort.isMeta),
         _language: task.bug.language,
         _skillRank: task.effort ? task.effort.skillRank : null
       });
@@ -292,17 +297,22 @@ export class GanttRenderer {
     const engineer = task._engineer || 'Unassigned';
     const effort = task._effort || '?';
     const size = task._size || '?';
-    const sizeNote = task._sizeEstimated ? ' (estimated)' : '';
+    const sizeNote = task._sizeEstimated ? ' (est.)' : '';
     const language = task._language || 'Unknown';
     const skillInfo = task._skillRank ? this.getSkillInfo(task._skillRank) : '';
+    const isMeta = task._isMeta;
+
+    // For meta bugs, don't show size/effort
+    const sizeEffortLine = isMeta
+      ? '<p><em>Meta/tracking bug</em></p>'
+      : `<p><strong>Size/Effort:</strong> ${size}${sizeNote} / ${effort} days</p>`;
 
     return `
       <div class="gantt-popup">
         <h4>${task.name}</h4>
         <div class="popup-details">
           <p><strong>Engineer:</strong> ${engineer}</p>
-          <p><strong>Effort:</strong> ${effort} days</p>
-          <p><strong>Size:</strong> ${size}${sizeNote}</p>
+          ${sizeEffortLine}
           <p><strong>Language:</strong> ${language}</p>
           ${skillInfo ? `<p><strong>Skill Match:</strong> ${skillInfo}</p>` : ''}
           <p><strong>Start:</strong> ${task.start}</p>

@@ -11,9 +11,9 @@ const SKILL_MODIFIERS = { 1: 1.0, 2: 1.25, 3: 1.5 };
 
 // Default milestones (overridden by passed milestones)
 let activeMilestones = [
-  { name: 'Foxfooding', bugId: 1980342, deadline: new Date('2025-02-23'), freezeDate: new Date('2025-02-16') },
-  { name: 'Customer Pilot', bugId: 2012055, deadline: new Date('2025-03-30'), freezeDate: new Date('2025-03-23') },
-  { name: 'MVP', bugId: 1980739, deadline: new Date('2025-09-15'), freezeDate: new Date('2025-09-08') }
+  { name: 'Foxfooding', bugId: 1980342, deadline: new Date('2026-02-23'), freezeDate: new Date('2026-02-16') },
+  { name: 'Customer Pilot', bugId: 2012055, deadline: new Date('2026-03-30'), freezeDate: new Date('2026-03-23') },
+  { name: 'MVP', bugId: 1980739, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') }
 ];
 
 // Thresholds
@@ -69,10 +69,19 @@ function optimize(bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMa
     return;
   }
 
-  // Build dependency map
+  // Build dependency map from the FULL graph (not just filtered bugs)
+  // This ensures we can traverse dependency chains through non-scheduled bugs
   const dependencyMap = new Map();
-  for (const task of bugs) {
-    dependencyMap.set(String(task.id), task.dependsOn || []);
+  for (const [bugId, deps] of Object.entries(graph)) {
+    dependencyMap.set(String(bugId), deps.map(d => String(d)));
+  }
+
+  // Log milestone-aware scheduling info
+  const bugToMilestone = assignBugsToMilestones(tasks, dependencyMap);
+  const sortedMilestones = [...activeMilestones].sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+  for (const milestone of sortedMilestones) {
+    const count = [...bugToMilestone.values()].filter(m => String(m.bugId) === String(milestone.bugId)).length;
+    console.log(`[Worker] Milestone ${milestone.name}: ${count} tasks`);
   }
 
   // Reset best tracking
@@ -98,10 +107,108 @@ function optimize(bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMa
 }
 
 /**
+ * Assign bugs to milestones based on dependency relationships
+ * A bug belongs to the earliest milestone that depends on it (directly or transitively)
+ * This mirrors the logic in scheduler.js
+ */
+function assignBugsToMilestones(tasks, dependencyMap) {
+  const bugToMilestone = new Map();
+
+  // Sort milestones by deadline (earliest first)
+  const sortedMilestones = [...activeMilestones].sort((a, b) =>
+    a.deadline.getTime() - b.deadline.getTime()
+  );
+
+  // For each bug, find which milestone(s) depend on it
+  // Assign to the earliest such milestone
+  for (const task of tasks) {
+    const bugId = String(task.id);
+
+    for (const milestone of sortedMilestones) {
+      const milestoneId = String(milestone.bugId);
+
+      // Check if this bug is the milestone itself or a dependency of the milestone
+      if (bugId === milestoneId || isDependencyOf(bugId, milestoneId, dependencyMap)) {
+        bugToMilestone.set(bugId, milestone);
+        break; // Assign to earliest milestone only
+      }
+    }
+  }
+
+  return bugToMilestone;
+}
+
+/**
+ * Check if bugId is a (transitive) dependency of targetId
+ */
+function isDependencyOf(bugId, targetId, dependencyMap) {
+  const visited = new Set();
+  const queue = [targetId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+
+    const deps = dependencyMap.get(currentId) || [];
+    for (const depId of deps) {
+      if (String(depId) === bugId) return true;
+      if (!visited.has(String(depId))) {
+        queue.push(String(depId));
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Get all transitive dependencies for a bug
+ */
+function getAllDependencies(bugId, dependencyMap) {
+  const visited = new Set();
+  const queue = [String(bugId)];
+
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (visited.has(id)) continue;
+    visited.add(id);
+
+    const deps = dependencyMap.get(id) || [];
+    for (const depId of deps) {
+      if (!visited.has(String(depId))) {
+        queue.push(String(depId));
+      }
+    }
+  }
+
+  visited.delete(String(bugId)); // Don't include the bug itself
+  return visited;
+}
+
+/**
+ * Calculate milestone completion date by finding max end time of ALL transitive dependencies
+ * This matches the UI's calculateMilestoneCompletions logic
+ */
+function getMilestoneCompletionDays(milestoneBugId, taskEndTimes, dependencyMap) {
+  const deps = getAllDependencies(milestoneBugId, dependencyMap);
+  let maxEndDays = taskEndTimes[String(milestoneBugId)] || 0;
+
+  for (const depId of deps) {
+    const depEndDays = taskEndTimes[String(depId)];
+    if (depEndDays !== undefined && depEndDays > maxEndDays) {
+      maxEndDays = depEndDays;
+    }
+  }
+
+  return maxEndDays;
+}
+
+/**
  * Evaluate a schedule and return score
  * Score prioritizes: 1) deadlines met, 2) lower makespan
  */
-function evaluateSchedule(taskEndTimes, tasks) {
+function evaluateSchedule(taskEndTimes, tasks, dependencyMap) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -114,20 +221,19 @@ function evaluateSchedule(taskEndTimes, tasks) {
     if (endDays > makespan) makespan = endDays;
   }
 
-  // Check each milestone
+  // Check each milestone - use max of ALL transitive dependency end times
   for (const milestone of activeMilestones) {
     const milestoneBugId = String(milestone.bugId);
-    const milestoneEndDays = taskEndTimes[milestoneBugId];
+    const milestoneEndDays = getMilestoneCompletionDays(milestoneBugId, taskEndTimes, dependencyMap);
 
-    if (milestoneEndDays !== undefined) {
+    if (milestoneEndDays > 0) {
       const endDate = addWorkingDays(today, milestoneEndDays);
-      const freezeDays = Math.floor((milestone.freezeDate - today) / (1000 * 60 * 60 * 24));
-
-      if (milestoneEndDays <= freezeDays) {
+      // Compare actual dates
+      if (endDate <= milestone.freezeDate) {
         deadlinesMet++;
-        deadlineDetails.push({ name: milestone.name, met: true, endDays: milestoneEndDays, freezeDays });
+        deadlineDetails.push({ name: milestone.name, met: true, endDate, freezeDate: milestone.freezeDate });
       } else {
-        deadlineDetails.push({ name: milestone.name, met: false, endDays: milestoneEndDays, freezeDays });
+        deadlineDetails.push({ name: milestone.name, met: false, endDate, freezeDate: milestone.freezeDate });
       }
     }
   }
@@ -169,7 +275,7 @@ function branchAndBound(tasks, engineers, dependencyMap, sizeEstimates, taskLang
 
     // Base case: all tasks assigned
     if (taskIndex === n) {
-      const score = evaluateSchedule(taskEndTimes, tasks);
+      const score = evaluateSchedule(taskEndTimes, tasks, dependencyMap);
 
       if (isBetter(score, bestScore)) {
         const oldScore = { ...bestScore };
@@ -240,7 +346,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, sizeEstimates, task
   // Generate initial solution
   let currentAssignment = generateInitialAssignment(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
   let currentEndTimes = computeEndTimes(currentAssignment, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
-  let currentScore = evaluateSchedule(currentEndTimes, tasks);
+  let currentScore = evaluateSchedule(currentEndTimes, tasks, dependencyMap);
 
   bestScore = { ...currentScore };
   bestAssignment = [...currentAssignment];
@@ -264,7 +370,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, sizeEstimates, task
     const neighborEndTimes = computeEndTimes(neighbor, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
     if (!neighborEndTimes) continue; // Invalid (cycle or error)
 
-    const neighborScore = evaluateSchedule(neighborEndTimes, tasks);
+    const neighborScore = evaluateSchedule(neighborEndTimes, tasks, dependencyMap);
 
     // Calculate acceptance
     const currentValue = currentScore.deadlinesMet * 10000 - currentScore.makespan;
@@ -390,6 +496,7 @@ function generateInitialAssignment(tasks, engineers, dependencyMap, sizeEstimate
 
 /**
  * Compute end times for an assignment
+ * Tasks are processed in milestone order (earliest deadline first) to match greedy scheduler
  */
 function computeEndTimes(assignment, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages) {
   const n = tasks.length;
@@ -399,10 +506,36 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap, sizeEstima
   let remaining = n;
   let maxIterations = n * n;
 
+  // Assign tasks to milestones and create processing order
+  const bugToMilestone = assignBugsToMilestones(tasks, dependencyMap);
+
+  // Sort milestones by deadline
+  const sortedMilestones = [...activeMilestones].sort((a, b) =>
+    a.deadline.getTime() - b.deadline.getTime()
+  );
+
+  // Create ordered index list: earlier milestones first, then unassigned
+  const taskOrder = [];
+  for (const milestone of sortedMilestones) {
+    for (let i = 0; i < n; i++) {
+      const taskMilestone = bugToMilestone.get(String(tasks[i].id));
+      if (taskMilestone && String(taskMilestone.bugId) === String(milestone.bugId)) {
+        taskOrder.push(i);
+      }
+    }
+  }
+  // Add any tasks not assigned to a milestone
+  for (let i = 0; i < n; i++) {
+    if (!taskOrder.includes(i)) {
+      taskOrder.push(i);
+    }
+  }
+
   while (remaining > 0 && maxIterations-- > 0) {
     let madeProgress = false;
 
-    for (let i = 0; i < n; i++) {
+    // Process tasks in milestone priority order
+    for (const i of taskOrder) {
       if (processed.has(i)) continue;
 
       const task = tasks[i];
@@ -432,10 +565,16 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap, sizeEstima
 
       const effort = calculateEffort(task, engineer, sizeEstimates, taskLanguages);
 
-      const startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
-      const endTime = startTime + effort.days;
-
-      engineerAvailable[engineerIdx] = endTime;
+      // Meta bugs (0 days) complete when dependencies complete
+      let startTime, endTime;
+      if (effort.days === 0) {
+        startTime = earliestStart;
+        endTime = earliestStart;
+      } else {
+        startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
+        endTime = startTime + effort.days;
+        engineerAvailable[engineerIdx] = endTime;
+      }
       taskEndTimes[taskId] = endTime;
       processed.add(i);
       remaining--;
@@ -452,6 +591,7 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap, sizeEstima
 
 /**
  * Build schedule from assignment array
+ * Tasks are processed in milestone order (earliest deadline first) to match greedy scheduler
  */
 function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages) {
   const n = tasks.length;
@@ -464,8 +604,34 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
   const processed = new Set();
   let remaining = n;
 
-  while (remaining > 0) {
+  // Assign tasks to milestones and create processing order
+  const bugToMilestone = assignBugsToMilestones(tasks, dependencyMap);
+
+  // Sort milestones by deadline
+  const sortedMilestones = [...activeMilestones].sort((a, b) =>
+    a.deadline.getTime() - b.deadline.getTime()
+  );
+
+  // Create ordered index list: earlier milestones first, then unassigned
+  const taskOrder = [];
+  for (const milestone of sortedMilestones) {
     for (let i = 0; i < n; i++) {
+      const taskMilestone = bugToMilestone.get(String(tasks[i].id));
+      if (taskMilestone && String(taskMilestone.bugId) === String(milestone.bugId)) {
+        taskOrder.push(i);
+      }
+    }
+  }
+  // Add any tasks not assigned to a milestone
+  for (let i = 0; i < n; i++) {
+    if (!taskOrder.includes(i)) {
+      taskOrder.push(i);
+    }
+  }
+
+  while (remaining > 0) {
+    // Process tasks in milestone priority order
+    for (const i of taskOrder) {
       if (processed.has(i)) continue;
 
       const task = tasks[i];
@@ -498,10 +664,17 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
 
       const effort = calculateEffort(task, engineer, sizeEstimates, taskLanguages);
 
-      const startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
-      const endTime = startTime + effort.days;
-
-      engineerAvailable[engineerIdx] = endTime;
+      // Meta bugs (0 days) complete when dependencies complete, not affected by engineer availability
+      let startTime, endTime;
+      if (effort.days === 0) {
+        startTime = earliestStart;
+        endTime = earliestStart;
+        // Don't update engineerAvailable - meta bugs don't consume engineer time
+      } else {
+        startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
+        endTime = startTime + effort.days;
+        engineerAvailable[engineerIdx] = endTime;
+      }
       taskEndTimes[taskId] = endTime;
 
       schedule.push({
