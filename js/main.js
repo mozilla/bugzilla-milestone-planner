@@ -561,11 +561,20 @@ class EnterprisePlanner {
               const isBetterMakespan = data.deadlinesMet === globalBest.deadlinesMet && data.makespan < globalBest.makespan;
               if (isNewDeadline || isBetterMakespan) {
                 const logType = isNewDeadline ? 'deadline' : 'improvement';
+                const prevMakespan = globalBest.makespan;
                 globalBest = { deadlinesMet: data.deadlinesMet, makespan: data.makespan };
-                this.ui.addOptimizationLogEntry(
-                  `${data.deadlinesMet}/${numMilestones} deadlines, ${data.makespan.toFixed(0)} days`,
-                  logType
-                );
+
+                let message;
+                if (isNewDeadline) {
+                  const metNames = data.deadlineDetails
+                    ?.filter(d => d.met)
+                    .map(d => d.name)
+                    .join(', ') || '';
+                  message = `NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNames}). Makespan: ${data.makespan.toFixed(0)} days`;
+                } else {
+                  message = `Improved makespan: ${data.makespan.toFixed(0)} days (was ${prevMakespan.toFixed(0)}). Deadlines: ${data.deadlinesMet}/${numMilestones}`;
+                }
+                this.ui.addOptimizationLogEntry(message, logType);
               }
               break;
 
