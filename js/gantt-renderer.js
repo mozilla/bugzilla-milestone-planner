@@ -277,9 +277,6 @@ export class GanttRenderer {
       on_view_change: (mode) => this.onViewChange(mode)
     });
 
-    // Note: drag-to-scroll removed as it interferes with Frappe Gantt click handling
-    // Users can scroll using the scrollbar or mouse wheel
-
     // Add milestone markers
     this.addMilestoneMarkers();
 
@@ -289,8 +286,101 @@ export class GanttRenderer {
     // Update the legend with engineer colors
     this.updateEngineerLegend();
 
+    // Add hover and drag interactions after Gantt renders
+    setTimeout(() => this.setupInteractions(), 200);
+
     // Scroll to show the earliest task start date
     this.scrollToDate(this.earliestTaskDate);
+  }
+
+  /**
+   * Set up hover popups and drag-to-scroll after Gantt renders
+   */
+  setupInteractions() {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+
+    // Clean up previous listeners
+    if (this._interactionCleanup) {
+      this._interactionCleanup();
+    }
+
+    // --- Hover popup support ---
+    const bars = container.querySelectorAll('.bar-wrapper');
+    const hoverHandlers = [];
+
+    bars.forEach(bar => {
+      const onEnter = () => {
+        // Trigger Frappe Gantt's popup
+        const taskId = bar.getAttribute('data-id');
+        const task = this.tasks.find(t => t.id === taskId);
+        const barRect = bar.querySelector('.bar');
+        if (task && this.gantt && barRect) {
+          this.gantt.show_popup({
+            target_element: barRect,
+            title: task.name,
+            subtitle: `${task.start} - ${task.end}`,
+            task: task
+          });
+        }
+      };
+
+      const onLeave = () => {
+        if (this.gantt) {
+          this.gantt.hide_popup();
+        }
+      };
+
+      bar.addEventListener('mouseenter', onEnter);
+      bar.addEventListener('mouseleave', onLeave);
+      hoverHandlers.push({ bar, onEnter, onLeave });
+    });
+
+    // --- Drag-to-scroll support ---
+    let isDragging = false;
+    let startX = 0;
+    let scrollLeft = 0;
+
+    const onMouseDown = (e) => {
+      // Only start drag if NOT clicking on a bar
+      if (e.target.closest('.bar-wrapper')) return;
+
+      isDragging = true;
+      container.style.cursor = 'grabbing';
+      startX = e.clientX;
+      scrollLeft = container.scrollLeft;
+    };
+
+    const onMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+        container.style.cursor = 'grab';
+      }
+    };
+
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const walk = startX - e.clientX;
+      container.scrollLeft = scrollLeft + walk;
+    };
+
+    container.style.cursor = 'grab';
+    container.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('mousemove', onMouseMove);
+
+    // Store cleanup function
+    this._interactionCleanup = () => {
+      hoverHandlers.forEach(({ bar, onEnter, onLeave }) => {
+        bar.removeEventListener('mouseenter', onEnter);
+        bar.removeEventListener('mouseleave', onLeave);
+      });
+      container.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('mousemove', onMouseMove);
+      container.style.cursor = '';
+    };
   }
 
   /**
@@ -374,70 +464,6 @@ export class GanttRenderer {
         label.appendChild(initialsSpan);
       }
     }, 100);
-  }
-
-  /**
-   * Set up drag-to-scroll functionality
-   */
-  setupDragScroll() {
-    const container = document.getElementById(this.containerId);
-    if (!container) return;
-
-    // Remove any existing drag scroll handlers
-    if (this._dragScrollCleanup) {
-      this._dragScrollCleanup();
-    }
-
-    let isDragging = false;
-    let startX = 0;
-    let scrollLeft = 0;
-
-    const onMouseDown = (e) => {
-      // Only drag on grid/background areas, not on bars or interactive elements
-      const target = e.target;
-      const tagName = target.tagName.toLowerCase();
-
-      // Allow clicks on bars, text, and other interactive SVG elements
-      if (tagName === 'rect' || tagName === 'text' || tagName === 'tspan') {
-        // Check if it's part of the grid (background) vs a bar
-        const isGrid = target.classList.contains('grid-row') ||
-                       target.classList.contains('grid-header') ||
-                       target.closest('.grid');
-        if (!isGrid) return; // Let Frappe Gantt handle bar clicks
-      }
-
-      // Start dragging
-      isDragging = true;
-      container.style.cursor = 'grabbing';
-      startX = e.clientX;
-      scrollLeft = container.scrollLeft;
-    };
-
-    const onMouseUp = () => {
-      if (isDragging) {
-        isDragging = false;
-        container.style.cursor = '';
-      }
-    };
-
-    const onMouseMove = (e) => {
-      if (!isDragging) return;
-      e.preventDefault();
-      const x = e.clientX;
-      const walk = (startX - x) * 1.5; // Scroll speed multiplier
-      container.scrollLeft = scrollLeft + walk;
-    };
-
-    container.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('mouseup', onMouseUp);
-    document.addEventListener('mousemove', onMouseMove);
-
-    // Store cleanup function
-    this._dragScrollCleanup = () => {
-      container.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.removeEventListener('mousemove', onMouseMove);
-    };
   }
 
   /**
@@ -641,10 +667,10 @@ export class GanttRenderer {
    * Destroy the Gantt chart
    */
   destroy() {
-    // Clean up drag scroll handlers
-    if (this._dragScrollCleanup) {
-      this._dragScrollCleanup();
-      this._dragScrollCleanup = null;
+    // Clean up interaction handlers
+    if (this._interactionCleanup) {
+      this._interactionCleanup();
+      this._interactionCleanup = null;
     }
 
     if (this.gantt) {
