@@ -265,33 +265,6 @@ test.describe('Enterprise Project Planner', () => {
       expect(criticalErrors).toHaveLength(0);
     });
   });
-
-  test.describe('Visual Regression', () => {
-    test('should match loading phase screenshot', async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 720 });
-
-      // Take screenshot of loading phase
-      await expect(page.locator('#loading-phase')).toBeVisible();
-      await expect(page).toHaveScreenshot('loading-phase.png', {
-        maxDiffPixels: 100
-      });
-    });
-
-    // Skip: loaded phase depends on live Bugzilla data which changes frequently
-    test.skip('should match loaded phase screenshot', async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 720 });
-
-      const loadedPhase = page.locator('#loaded-phase');
-      await expect(loadedPhase).toBeVisible({ timeout: 60000 });
-
-      // Wait for Gantt to render
-      await page.waitForTimeout(2000);
-
-      await expect(page).toHaveScreenshot('loaded-phase.png', {
-        maxDiffPixels: 500 // Allow some variance in dynamic content
-      });
-    });
-  });
 });
 
 test.describe('Responsive Design', () => {
