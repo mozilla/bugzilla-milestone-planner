@@ -8,33 +8,29 @@ import { Scheduler } from '../../js/scheduler.js';
 import { DependencyGraph } from '../../js/dependency-graph.js';
 import mockData from '../fixtures/mock-bugs.json' assert { type: 'json' };
 
-// Test engineers with defined skill orders
+// Test engineers
 const testEngineers = [
   {
     id: 'janika',
     name: 'Janika Neuberger',
-    skills: ['JavaScript', 'Rust'],
     availability: 1.0,
     unavailability: []
   },
   {
     id: 'alissy',
     name: 'Alexandre Lissy',
-    skills: ['C++', 'Rust', 'JavaScript'],
     availability: 1.0,
     unavailability: []
   },
   {
     id: 'gcp',
     name: 'Gian-Carlo Pascutto',
-    skills: ['C++', 'Rust', 'JavaScript'],
     availability: 1.0,
     unavailability: []
   },
   {
     id: 'jonathan',
     name: 'Jonathan Mendez',
-    skills: ['C++', 'JavaScript', 'Rust'],
     availability: 1.0,
     unavailability: []
   }
@@ -73,13 +69,13 @@ describe('Scheduler', () => {
   describe('calculateEffort', () => {
     it('should calculate base days correctly for each size', () => {
       // Size to days: 1=1d, 2=5d, 3=10d, 4=20d, 5=60d
-      const engineer = testEngineers[0]; // Janika: JS, Rust
+      const engineer = testEngineers[0];
 
-      const size1Bug = { id: 1, size: 1, language: 'JavaScript' };
-      const size2Bug = { id: 2, size: 2, language: 'JavaScript' };
-      const size3Bug = { id: 3, size: 3, language: 'JavaScript' };
-      const size4Bug = { id: 4, size: 4, language: 'JavaScript' };
-      const size5Bug = { id: 5, size: 5, language: 'JavaScript' };
+      const size1Bug = { id: 1, size: 1 };
+      const size2Bug = { id: 2, size: 2 };
+      const size3Bug = { id: 3, size: 3 };
+      const size4Bug = { id: 4, size: 4 };
+      const size5Bug = { id: 5, size: 5 };
 
       expect(scheduler.calculateEffort(size1Bug, engineer).baseDays).toBe(1);
       expect(scheduler.calculateEffort(size2Bug, engineer).baseDays).toBe(5);
@@ -88,68 +84,25 @@ describe('Scheduler', () => {
       expect(scheduler.calculateEffort(size5Bug, engineer).baseDays).toBe(60);
     });
 
-    it('should apply no modifier for primary skill', () => {
-      const engineer = testEngineers[0]; // Janika: JS (primary), Rust
-      const bug = { id: 1, size: 3, language: 'JavaScript' };
-
-      const effort = scheduler.calculateEffort(bug, engineer);
-
-      expect(effort.modifier).toBe(1.0);
-      expect(effort.skillRank).toBe(1);
-      expect(effort.days).toBe(10); // 10 * 1.0
-    });
-
-    it('should apply +25% modifier for secondary skill', () => {
-      const engineer = testEngineers[0]; // Janika: JS, Rust (secondary)
-      const bug = { id: 1, size: 3, language: 'Rust' };
-
-      const effort = scheduler.calculateEffort(bug, engineer);
-
-      expect(effort.modifier).toBe(1.25);
-      expect(effort.skillRank).toBe(2);
-      expect(effort.days).toBe(13); // ceil(10 * 1.25)
-    });
-
-    it('should apply +50% modifier for tertiary skill', () => {
-      const engineer = testEngineers[1]; // Alissy: C++, Rust, JS (tertiary)
-      const bug = { id: 1, size: 3, language: 'JavaScript' };
-
-      const effort = scheduler.calculateEffort(bug, engineer);
-
-      expect(effort.modifier).toBe(1.5);
-      expect(effort.skillRank).toBe(3);
-      expect(effort.days).toBe(15); // ceil(10 * 1.5)
-    });
-
-    it('should use default size 3 when size is null', () => {
+    it('should support fractional sizes via interpolation', () => {
       const engineer = testEngineers[0];
-      const bug = { id: 1, size: null, sizeEstimated: true, language: 'JavaScript' };
+
+      // Size 2.5 should be between size 2 (5 days) and size 3 (10 days)
+      const fractionalBug = { id: 1, size: 2.5 };
+      const effort = scheduler.calculateEffort(fractionalBug, engineer);
+
+      // 5 + 0.5 * (10 - 5) = 7.5 -> ceil = 8
+      expect(effort.baseDays).toBe(8);
+    });
+
+    it('should use default size 3 (2 weeks) when size is null', () => {
+      const engineer = testEngineers[0];
+      const bug = { id: 1, size: null };
 
       const effort = scheduler.calculateEffort(bug, engineer);
 
-      expect(effort.baseDays).toBe(10); // Size 3 default
+      expect(effort.baseDays).toBe(10); // Size 3 default = 10 days = 2 weeks
       expect(effort.sizeEstimated).toBe(true);
-    });
-
-    it('should use manual size estimate when provided', () => {
-      const engineer = testEngineers[0];
-      const bug = { id: 1, size: null, language: 'JavaScript' };
-      const sizeEstimates = { 1: 2 }; // Override to size 2
-
-      const effort = scheduler.calculateEffort(bug, engineer, sizeEstimates);
-
-      expect(effort.baseDays).toBe(5); // Size 2
-      expect(effort.sizeEstimated).toBe(true);
-    });
-
-    it('should handle missing language (use tertiary modifier)', () => {
-      const engineer = testEngineers[0];
-      const bug = { id: 1, size: 3, language: null };
-
-      const effort = scheduler.calculateEffort(bug, engineer);
-
-      expect(effort.skillRank).toBe(3);
-      expect(effort.modifier).toBe(1.5);
     });
 
     it('should adjust for engineer availability', () => {
@@ -157,7 +110,7 @@ describe('Scheduler', () => {
         ...testEngineers[0],
         availability: 0.5
       };
-      const bug = { id: 1, size: 3, language: 'JavaScript' };
+      const bug = { id: 1, size: 3 };
 
       const fullScheduler = new Scheduler([testEngineers[0]], testMilestones);
       const halfScheduler = new Scheduler([halfTimeEngineer], testMilestones);
@@ -167,11 +120,24 @@ describe('Scheduler', () => {
 
       expect(halfEffort.days).toBe(fullEffort.days * 2);
     });
+
+    it('should scale correctly for 20% availability', () => {
+      const partTimeEngineer = {
+        ...testEngineers[0],
+        availability: 0.2
+      };
+      const bug = { id: 1, size: 2 }; // 5 base days
+
+      const effort = scheduler.calculateEffort(bug, partTimeEngineer);
+
+      // 5 days / 0.2 = 25 days
+      expect(effort.days).toBe(25);
+    });
   });
 
   describe('findBestEngineer', () => {
     it('should pick engineer with earliest completion time', () => {
-      const bug = { id: 1, size: 2, language: 'JavaScript' };
+      const bug = { id: 1, size: 2 };
       const earliestStart = new Date();
 
       const result = scheduler.findBestEngineer(bug, earliestStart);
@@ -183,27 +149,12 @@ describe('Scheduler', () => {
       expect(result.effort).toBeDefined();
     });
 
-    it('should prefer engineers with better skill match', () => {
-      // Create a fresh scheduler for this test
-      const freshScheduler = new Scheduler(testEngineers, testMilestones);
-      const bug = { id: 1, size: 2, language: 'JavaScript' };
-      const earliestStart = new Date();
-
-      const result = freshScheduler.findBestEngineer(bug, earliestStart);
-
-      // Janika should be preferred for JavaScript (primary skill)
-      expect(result.engineer.id).toBe('janika');
-      expect(result.effort.skillRank).toBe(1);
-    });
-
     it('should respect engineer availability', () => {
-      // Schedule a task first to make Janika busy
-      const bug1 = { id: 1, size: 3, language: 'JavaScript' };
+      // All engineers are equal now, so scheduling should pick first available
+      const bug1 = { id: 1, size: 3 };
       scheduler.findBestEngineer(bug1, new Date());
 
-      // Now Janika is busy; next JS task might go to someone else
-      // or wait for Janika if that's still optimal
-      const bug2 = { id: 2, size: 1, language: 'JavaScript' };
+      const bug2 = { id: 2, size: 1 };
       const result = scheduler.findBestEngineer(bug2, new Date());
 
       expect(result).not.toBeNull();
@@ -217,17 +168,15 @@ describe('Scheduler', () => {
       const bugMap = new Map();
 
       for (const bug of mockData.bugs) {
-        const sizeMatch = bug.whiteboard.match(/\[size=(\d)\]/i);
+        const sizeMatch = bug.whiteboard.match(/\[size=(\d+\.?\d*)\]/i);
         const processedBug = {
           id: bug.id,
           summary: bug.summary,
           status: bug.status,
           assignee: bug.assigned_to,
           dependsOn: bug.depends_on,
-          size: sizeMatch ? parseInt(sizeMatch[1], 10) : null,
-          sizeEstimated: !sizeMatch,
-          language: bug.component.includes('Rust') ? 'Rust' :
-                    bug.component.includes('C++') ? 'C++' : 'JavaScript'
+          size: sizeMatch ? parseFloat(sizeMatch[1]) : null,
+          sizeEstimated: !sizeMatch
         };
         bugs.push(processedBug);
         bugMap.set(String(bug.id), processedBug);
@@ -237,7 +186,7 @@ describe('Scheduler', () => {
       const { sorted } = graph.topologicalSort();
       const sortedBugs = sorted.map(id => bugMap.get(id)).filter(Boolean);
 
-      const schedule = scheduler.scheduleTasks(sortedBugs, graph, {}, {});
+      const schedule = scheduler.scheduleTasks(sortedBugs, graph);
 
       expect(schedule.length).toBeGreaterThan(0);
 
@@ -261,66 +210,19 @@ describe('Scheduler', () => {
         summary: 'Completed bug',
         status: 'RESOLVED',
         dependsOn: [],
-        size: 2,
-        language: 'JavaScript'
+        size: 2
       };
 
       const bugMap = new Map();
       bugMap.set('1000002', completedBug);
       graph.buildFromBugs(bugMap);
 
-      const schedule = scheduler.scheduleTasks([completedBug], graph, {}, {});
+      const schedule = scheduler.scheduleTasks([completedBug], graph);
 
       expect(schedule).toHaveLength(1);
       expect(schedule[0].completed).toBe(true);
       expect(schedule[0].startDate).toBeNull();
       expect(schedule[0].endDate).toBeNull();
-    });
-
-    it('should apply task language overrides', () => {
-      const bug = {
-        id: 999,
-        summary: 'Test bug',
-        status: 'NEW',
-        dependsOn: [],
-        size: 2,
-        language: 'JavaScript'
-      };
-
-      const bugMap = new Map();
-      bugMap.set('999', bug);
-      graph.buildFromBugs(bugMap);
-
-      // Override language to Rust
-      const taskLanguages = { 999: 'Rust' };
-      const schedule = scheduler.scheduleTasks([bug], graph, {}, taskLanguages);
-
-      expect(schedule).toHaveLength(1);
-      expect(schedule[0].bug.language).toBe('Rust');
-    });
-
-    it('should generate skill mismatch warnings', () => {
-      // Create a bug requiring C++ but only engineers with C++ as secondary/tertiary
-      const cppBug = {
-        id: 888,
-        summary: 'C++ bug for Janika',
-        status: 'NEW',
-        dependsOn: [],
-        size: 2,
-        language: 'C++'
-      };
-
-      // Use only Janika who doesn't have C++ at all
-      const janikaOnly = new Scheduler([testEngineers[0]], testMilestones);
-      const bugMap = new Map();
-      bugMap.set('888', cppBug);
-      graph.buildFromBugs(bugMap);
-
-      janikaOnly.scheduleTasks([cppBug], graph, {}, {});
-
-      // Should have a skill mismatch warning
-      const mismatches = janikaOnly.warnings.filter(w => w.type === 'skill_mismatch');
-      expect(mismatches.length).toBeGreaterThan(0);
     });
   });
 
@@ -368,15 +270,14 @@ describe('Scheduler', () => {
         summary: 'Late task',
         status: 'NEW',
         dependsOn: [],
-        size: 5, // 60 days - will definitely be late
-        language: 'JavaScript'
+        size: 5 // 60 days - will definitely be late
       };
 
       const bugMap = new Map();
       bugMap.set('1980342', lateBug);
       graph.buildFromBugs(bugMap);
 
-      const schedule = scheduler.scheduleTasks([lateBug], graph, {}, {});
+      const schedule = scheduler.scheduleTasks([lateBug], graph);
       const risks = scheduler.checkDeadlineRisks(testMilestones);
 
       // Should have at least one risk
@@ -389,15 +290,14 @@ describe('Scheduler', () => {
         summary: 'Completed milestone',
         status: 'RESOLVED',
         dependsOn: [],
-        size: 1,
-        language: 'JavaScript'
+        size: 1
       };
 
       const bugMap = new Map();
       bugMap.set('1980342', completedBug);
       graph.buildFromBugs(bugMap);
 
-      const schedule = scheduler.scheduleTasks([completedBug], graph, {}, {});
+      const schedule = scheduler.scheduleTasks([completedBug], graph);
       const risks = scheduler.checkDeadlineRisks(testMilestones);
 
       // Completed tasks should not be flagged as risks
@@ -412,15 +312,14 @@ describe('Scheduler', () => {
       const bugMap = new Map();
 
       for (const bug of mockData.bugs.slice(0, 5)) {
-        const sizeMatch = bug.whiteboard.match(/\[size=(\d)\]/i);
+        const sizeMatch = bug.whiteboard.match(/\[size=(\d+\.?\d*)\]/i);
         const processedBug = {
           id: bug.id,
           summary: bug.summary,
           status: bug.status,
           dependsOn: bug.depends_on,
-          size: sizeMatch ? parseInt(sizeMatch[1], 10) : null,
-          sizeEstimated: !sizeMatch,
-          language: 'JavaScript'
+          size: sizeMatch ? parseFloat(sizeMatch[1]) : null,
+          sizeEstimated: !sizeMatch
         };
         bugs.push(processedBug);
         bugMap.set(String(bug.id), processedBug);
@@ -430,7 +329,7 @@ describe('Scheduler', () => {
       const { sorted } = graph.topologicalSort();
       const sortedBugs = sorted.map(id => bugMap.get(id)).filter(Boolean);
 
-      scheduler.scheduleTasks(sortedBugs, graph, {}, {});
+      scheduler.scheduleTasks(sortedBugs, graph);
       const stats = scheduler.getStats();
 
       expect(stats.totalTasks).toBeGreaterThan(0);
@@ -448,15 +347,14 @@ describe('Scheduler', () => {
         summary: 'Test bug',
         status: 'NEW',
         dependsOn: [],
-        size: 2,
-        language: 'JavaScript'
+        size: 2
       };
 
       const bugMap = new Map();
       bugMap.set('1', bug);
       graph.buildFromBugs(bugMap);
 
-      scheduler.scheduleTasks([bug], graph, {}, {});
+      scheduler.scheduleTasks([bug], graph);
       const workloads = scheduler.getEngineerWorkloads();
 
       expect(workloads).toHaveLength(testEngineers.length);
@@ -523,7 +421,7 @@ describe('Scheduler', () => {
   describe('meta bugs', () => {
     it('should calculate 0 days effort for meta bugs', () => {
       const engineer = testEngineers[0];
-      const metaBug = { id: 1, size: 3, language: 'JavaScript', isMeta: true };
+      const metaBug = { id: 1, size: 3, isMeta: true };
 
       const effort = scheduler.calculateEffort(metaBug, engineer);
 
@@ -538,7 +436,6 @@ describe('Scheduler', () => {
         status: 'NEW',
         dependsOn: [],
         size: 3,
-        language: 'JavaScript',
         isMeta: true
       };
 
@@ -546,7 +443,7 @@ describe('Scheduler', () => {
       bugMap.set('999', metaBug);
       graph.buildFromBugs(bugMap);
 
-      const schedule = scheduler.scheduleTasks([metaBug], graph, {}, {});
+      const schedule = scheduler.scheduleTasks([metaBug], graph);
 
       expect(schedule).toHaveLength(1);
       expect(schedule[0].effort.days).toBe(0);
@@ -562,7 +459,6 @@ describe('Scheduler', () => {
         status: 'NEW',
         dependsOn: [],
         size: 2, // 5 days
-        language: 'JavaScript',
         isMeta: false
       };
 
@@ -573,7 +469,6 @@ describe('Scheduler', () => {
         status: 'NEW',
         dependsOn: [100],
         size: 3,
-        language: 'JavaScript',
         isMeta: true
       };
 
@@ -582,7 +477,7 @@ describe('Scheduler', () => {
       bugMap.set('999', metaBug);
       graph.buildFromBugs(bugMap);
 
-      const schedule = scheduler.scheduleTasks([realBug, metaBug], graph, {}, {});
+      const schedule = scheduler.scheduleTasks([realBug, metaBug], graph);
 
       expect(schedule).toHaveLength(2);
 
@@ -602,7 +497,6 @@ describe('Scheduler', () => {
         status: 'NEW',
         dependsOn: [],
         size: 1, // 1 day
-        language: 'JavaScript',
         isMeta: false
       };
 
@@ -612,7 +506,6 @@ describe('Scheduler', () => {
         status: 'NEW',
         dependsOn: [],
         size: 2, // 5 days
-        language: 'JavaScript',
         isMeta: false
       };
 
@@ -623,7 +516,6 @@ describe('Scheduler', () => {
         status: 'NEW',
         dependsOn: [101, 102],
         size: 3,
-        language: 'JavaScript',
         isMeta: true
       };
 
@@ -633,7 +525,7 @@ describe('Scheduler', () => {
       bugMap.set('999', metaBug);
       graph.buildFromBugs(bugMap);
 
-      const schedule = scheduler.scheduleTasks([bug1, bug2, metaBug], graph, {}, {});
+      const schedule = scheduler.scheduleTasks([bug1, bug2, metaBug], graph);
 
       expect(schedule).toHaveLength(3);
 

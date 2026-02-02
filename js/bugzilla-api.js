@@ -137,7 +137,6 @@ export class BugzillaAPI {
    */
   processBug(rawBug) {
     const size = this.extractSize(rawBug.whiteboard);
-    const language = this.extractLanguage(rawBug.whiteboard, rawBug.component);
     const keywords = rawBug.keywords || [];
     const isMeta = this.isMeta(rawBug.whiteboard, keywords, rawBug.summary);
 
@@ -156,7 +155,6 @@ export class BugzillaAPI {
       severity: rawBug.severity || 'N/A',
       size: size,
       sizeEstimated: size === null,
-      language: language,
       isMeta: isMeta
     };
   }
@@ -182,39 +180,20 @@ export class BugzillaAPI {
   }
 
   /**
-   * Extract size from whiteboard - format [size=x] per SPEC.md
+   * Extract size from whiteboard - format [size=x] or [size=x.y] per SPEC.md
+   * Supports fractional sizes like [size=3.5]
    */
   extractSize(whiteboard) {
     if (!whiteboard) return null;
 
-    // Primary format from SPEC: [size=x]
-    const match = whiteboard.match(/\[size=(\d)\]/i);
+    // Format: [size=x] or [size=x.y] (supports fractional)
+    const match = whiteboard.match(/\[size=(\d+\.?\d*)\]/i);
     if (match) {
-      const size = parseInt(match[1], 10);
+      const size = parseFloat(match[1]);
       if (size >= 1 && size <= 5) {
         return size;
       }
     }
-    return null;
-  }
-
-  /**
-   * Extract language from whiteboard or component
-   */
-  extractLanguage(whiteboard, component) {
-    const text = `${whiteboard} ${component}`.toLowerCase();
-
-    if (text.includes('rust')) return 'Rust';
-    if (text.includes('c++') || text.includes('cpp')) return 'C++';
-    if (text.includes('javascript') || text.includes('js') || text.includes('frontend')) return 'JavaScript';
-
-    // Default based on component patterns
-    if (component) {
-      const comp = component.toLowerCase();
-      if (comp.includes('ui') || comp.includes('frontend')) return 'JavaScript';
-      if (comp.includes('core') || comp.includes('engine')) return 'C++';
-    }
-
     return null;
   }
 

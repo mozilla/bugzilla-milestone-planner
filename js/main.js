@@ -18,8 +18,6 @@ class EnterprisePlanner {
     this.ui = new UIController();
 
     this.engineers = [];
-    this.taskLanguages = {};
-    this.sizeEstimates = {};
     this.bugs = new Map();
 
     // Optimal scheduler
@@ -72,18 +70,6 @@ class EnterprisePlanner {
       const engineersData = await engineersRes.json();
       this.engineers = engineersData.engineers || [];
       console.log(`Loaded ${this.engineers.length} engineers`);
-
-      // Load task-language mappings
-      const langRes = await fetch('./data/task-languages.json');
-      const langData = await langRes.json();
-      this.taskLanguages = langData.mappings || {};
-      console.log(`Loaded ${Object.keys(this.taskLanguages).length} language mappings`);
-
-      // Load size estimates
-      const sizeRes = await fetch('./data/size-estimates.json');
-      const sizeData = await sizeRes.json();
-      this.sizeEstimates = sizeData.estimates || {};
-      console.log(`Loaded ${Object.keys(this.sizeEstimates).length} size estimates`);
 
     } catch (error) {
       console.error('Error loading static data:', error);
@@ -139,12 +125,7 @@ class EnterprisePlanner {
       // Schedule tasks
       console.log('Scheduling tasks...');
       this.scheduler = new Scheduler(this.engineers, activeMilestones);
-      const schedule = this.scheduler.scheduleTasks(
-        filteredBugs,
-        this.graph,
-        this.sizeEstimates,
-        this.taskLanguages
-      );
+      const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
       console.log(`Scheduled ${schedule.length} tasks`);
 
       // Check deadline risks
@@ -174,13 +155,7 @@ class EnterprisePlanner {
     const orphaned = this.graph.findOrphanedDependencies();
     const duplicates = this.graph.findDuplicateSummaries();
     const missingAssignees = this.graph.findMissingAssignees();
-
-    // Find bugs missing sizes in BOTH Bugzilla whiteboard AND manual estimates
-    const allMissingSizes = this.graph.findMissingSizes();
-    const missingSizes = allMissingSizes.filter(bug => {
-      // Check if we have a manual estimate for this bug
-      return !this.sizeEstimates[bug.id] && !this.sizeEstimates[String(bug.id)];
-    });
+    const missingSizes = this.graph.findMissingSizes();
 
     return {
       cycles,
@@ -211,8 +186,6 @@ class EnterprisePlanner {
       .filter(t => t.effort && t.effort.sizeEstimated)
       .map(t => t.bug);
     this.ui.renderEstimatedTable(estimatedBugs);
-
-    this.ui.renderMismatchTable(this.scheduler.warnings);
     this.ui.renderRisksTable(risks);
 
     // Render errors markdown
@@ -447,7 +420,7 @@ class EnterprisePlanner {
     console.log(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved, Client only), ${activeMilestones.length} milestones`);
 
     this.scheduler = new Scheduler(this.engineers, activeMilestones);
-    const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph, this.sizeEstimates, this.taskLanguages);
+    const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
     this.greedySchedule = schedule;
     const errors = this.detectErrors();
     const risks = this.scheduler.checkDeadlineRisks(activeMilestones);
@@ -553,9 +526,6 @@ class EnterprisePlanner {
           bugs: sortedBugs,
           engineers: this.engineers,
           graph: graphEdges,
-          sizeEstimates: this.sizeEstimates,
-          taskLanguages: this.taskLanguages,
-          greedyMakespan,
           milestones: milestones.map(m => ({
             name: m.name,
             bugId: m.bugId,

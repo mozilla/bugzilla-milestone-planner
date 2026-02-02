@@ -4,17 +4,17 @@
 
 The Enterprise Project Planner solves a variant of the **Resource-Constrained Project Scheduling Problem (RCPSP)**, which is a generalization of the classic **Job Shop Scheduling Problem**.
 
-### Problem Definition
+### Problem Definition (Simplified)
 
 Given:
 - A set of **tasks** (bugs) with:
-  - Estimated duration (size 1-5 mapped to days)
-  - Required skill/language (JavaScript, Rust, C++)
+  - Estimated duration (size 1-5 mapped to days, supports fractional sizes)
   - Dependency constraints (task A must complete before task B)
 - A set of **resources** (engineers) with:
-  - Skill proficiency ordering (primary, secondary, tertiary)
-  - Availability constraints (holidays, part-time)
+  - Availability factor (0.0-1.0, e.g., 0.2 = 20% time)
+  - Unavailability periods (holidays, PTO)
 - **Deadlines** (milestone freeze dates)
+- **Milestones** organized hierarchically (Foxfooding → Customer Pilot → MVP)
 
 Find: An assignment of tasks to engineers and start times that:
 1. Respects all dependency constraints
@@ -27,7 +27,6 @@ Find: An assignment of tasks to engineers and start times that:
 This problem is **NP-hard**. Specifically:
 - Even the simpler Job Shop Problem (JSP) is NP-hard
 - Adding precedence constraints makes it RCPSP, also NP-hard
-- Adding skill-based effort modifiers adds another dimension
 - Multi-objective optimization (deadlines + makespan) compounds difficulty
 
 For `n` tasks and `m` engineers, the search space is `O(m^n)` possible assignments, each requiring `O(n²)` time to evaluate due to dependency resolution.
@@ -39,36 +38,41 @@ For `n` tasks and `m` engineers, the search space is `O(m^n)` possible assignmen
 **Time Complexity:** O(n² × m)
 
 **Approach:**
-1. Topologically sort tasks by dependencies
-2. For each task in order:
+1. Assign tasks to milestones based on dependency chains
+2. Process milestones in deadline order (Foxfooding first, then Customer Pilot, then MVP)
+3. For each milestone's tasks in topological order:
    - Find the engineer who can complete it earliest
-   - Consider skill match (prefer primary skill)
-   - Assign task to best available engineer
+   - Assign task to that engineer
+4. Process remaining (unassigned) tasks last
+
+**Milestone-Aware Scheduling:**
+This is a key insight: by processing earlier milestones first, we ensure their tasks get priority for engineer time. Engineer availability then "cascades" to later milestones. This prevents a Customer Pilot task from blocking a Foxfooding task when deadlines are tight.
 
 **Pros:**
 - Very fast, runs in milliseconds
 - Produces reasonable schedules
 - Deterministic
+- Naturally prioritizes earlier deadlines
 
 **Cons:**
-- No global optimization
-- May miss deadline-meeting solutions that require non-obvious assignments
-- Cannot backtrack from locally optimal but globally suboptimal choices
+- No global optimization within a milestone
+- May miss solutions that require non-obvious task ordering
 
 ### 2. Branch and Bound (Exact, Exponential)
 
 **Time Complexity:** O(m^n) worst case, often much better with pruning
 
 **Approach:**
-1. Recursively try all engineer assignments
-2. Prune branches that cannot improve on best known solution
-3. Prioritize by deadlines met, then makespan
+1. Process tasks in milestone order (same as greedy)
+2. Recursively try all engineer assignments
+3. Prune branches that cannot improve on best known solution
+4. Prioritize by deadlines met, then makespan
 
 **Pruning strategies:**
 - If current partial solution already exceeds best makespan (when all deadlines met), prune
 - Try engineers in order of expected completion time for better pruning
 
-**Used when:** ≤ 10-12 unassigned tasks
+**Used when:** ≤ 10 unassigned tasks
 
 **Pros:**
 - Guaranteed optimal solution
@@ -83,11 +87,12 @@ For `n` tasks and `m` engineers, the search space is `O(m^n)` possible assignmen
 **Time Complexity:** O(iterations × n²)
 
 **Approach:**
-1. Start with skill-biased random assignment
-2. Iteratively make small changes (reassign one task)
-3. Accept improvements always
-4. Accept worse solutions with probability `e^(-Δ/T)` where T decreases over time
-5. Track best solution found
+1. Start with random assignment
+2. Process tasks in milestone order when evaluating (critical fix!)
+3. Iteratively make small changes (reassign one task to different engineer)
+4. Accept improvements always
+5. Accept worse solutions with probability `e^(-Δ/T)` where T decreases over time
+6. Track best solution found
 
 **Parameters:**
 - Initial temperature: 1000
@@ -100,6 +105,9 @@ score = deadlines_met × 10000 - makespan
 ```
 This heavily weights deadline compliance over makespan reduction.
 
+**Critical Implementation Detail:**
+The SA must process tasks in milestone order when computing end times, just like the greedy algorithm. Without this, SA produces worse schedules than greedy because later-milestone tasks can "steal" engineer time from earlier-milestone tasks.
+
 **Pros:**
 - Can escape local optima
 - Works for any problem size
@@ -110,81 +118,69 @@ This heavily weights deadline compliance over makespan reduction.
 - Requires parameter tuning
 - Results vary between runs
 
-## State of the Art Approaches
+## Lessons Learned
 
-### Exact Methods
+### 1. Milestone Ordering is Critical
 
-1. **Integer Linear Programming (ILP)**
-   - Model as binary variables for task-engineer-timeslot assignments
-   - Use solvers like CPLEX, Gurobi, or open-source CBC
-   - Can prove optimality or provide bounds
-   - Practical for up to ~50-100 tasks with good formulations
+The most important scheduling insight: process tasks by milestone deadline order. This ensures:
+- Foxfooding tasks complete before Customer Pilot tasks begin consuming engineer time
+- Natural prioritization without explicit priority scores
+- Both greedy and SA produce comparable results
 
-2. **Constraint Programming (CP)**
-   - Natural fit for scheduling constraints
-   - Solvers like Google OR-Tools, IBM CP Optimizer
-   - Specialized propagation for precedence and resource constraints
-   - Often faster than ILP for scheduling
+### 2. Meta Bugs Need Special Handling
 
-3. **Dynamic Programming**
-   - Requires special problem structure
-   - Pseudo-polynomial for some variants
-   - Not directly applicable to general RCPSP
+Tracking bugs ([meta] in whiteboard/keywords/summary) should:
+- Take 0 days effort
+- Not consume engineer availability
+- Complete exactly when their dependencies complete
+- Not appear in the Gantt chart (they're tracking artifacts, not work)
 
-### Metaheuristics
+### 3. Date Comparisons Must Be Consistent
 
-1. **Genetic Algorithms (GA)**
-   - Encode solutions as permutations or priority lists
-   - Crossover and mutation operators
-   - Good for exploring diverse solutions
+When checking deadlines:
+- Always compare actual Date objects, not working days vs calendar days
+- The scheduler uses working days internally, but deadline comparison must convert to actual dates
+- Mixing units causes subtle bugs where tasks appear to meet deadlines but actually miss them
 
-2. **Tabu Search**
-   - Local search with memory of recent moves
-   - Prevents cycling back to recent solutions
-   - Often outperforms SA for scheduling
+### 4. Dependency Graphs Must Be Complete
 
-3. **Ant Colony Optimization (ACO)**
-   - Probabilistic construction based on pheromone trails
-   - Good for problems with strong local structure
+When building the dependency map for the optimizer:
+- Include ALL bugs, not just filtered bugs
+- Dependencies may chain through bugs that don't pass filters
+- Incomplete graphs cause incorrect scheduling
 
-4. **Hybrid Methods**
-   - Combine metaheuristics with local search
-   - Use LP relaxations to guide search
-   - Often achieve best practical results
+### 5. Availability Scaling is Multiplicative
 
-### Machine Learning Approaches
-
-1. **Reinforcement Learning**
-   - Train agents to make scheduling decisions
-   - Can learn problem-specific heuristics
-   - Active research area
-
-2. **Graph Neural Networks**
-   - Encode task dependencies as graphs
-   - Learn to predict good assignments
-   - Promising for generalization
-
-## Why We Use Greedy + SA
-
-For this application:
-
-1. **Interactive UI requirement**: Users need immediate feedback, greedy provides instant results
-
-2. **Background optimization**: SA can progressively improve while user reviews greedy solution
-
-3. **Problem size**: Bugzilla dependency graphs can have 50-200 tasks, too large for B&B
-
-4. **Deadline priority**: Our scoring function prioritizes meeting deadlines, which SA handles well through its probabilistic acceptance
-
-5. **No solver dependencies**: Runs entirely in browser JavaScript without external solvers
+For an engineer with 20% availability:
+- A 5-day task takes 25 working days (5 / 0.2)
+- This represents actual calendar time until completion
+- Part-time engineers effectively have lower throughput
 
 ## Potential Improvements
 
+### Near-term
+1. **Parallel SA**: Run multiple SA instances with different random seeds
+2. **Early termination**: Stop SA if no improvement for N iterations
+3. **Better initial solution**: Use greedy result as SA starting point
+
+### Medium-term
 1. **Implement Tabu Search**: Often better than SA for scheduling
 2. **Add constraint propagation**: Reduce search space before optimization
-3. **Parallel SA**: Run multiple SA instances with different parameters
-4. **Learn from history**: Use past schedules to warm-start optimization
-5. **LP relaxation bounds**: Compute lower bounds to measure solution quality
+3. **Learn from history**: Use past schedules to warm-start optimization
+
+### Long-term
+1. **LP relaxation bounds**: Compute lower bounds to measure solution quality
+2. **Hybrid methods**: Combine metaheuristics with local search
+3. **Constraint Programming**: Use OR-Tools for more sophisticated solving
+
+## State of the Art
+
+For production systems with similar requirements:
+- Google OR-Tools CP-SAT solver handles precedence-constrained scheduling well
+- Gurobi/CPLEX for ILP formulations with optimality guarantees
+- OptaPlanner for Java-based constraint optimization
+
+Our browser-based approach trades solution quality for deployment simplicity (no solver dependencies, runs in client-side JavaScript).
 
 ## References
 

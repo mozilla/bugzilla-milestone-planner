@@ -2,7 +2,7 @@
 
 ## Overview
 
-Single-page web app that fetches Mozilla Bugzilla data and visualizes project schedules as a Gantt chart. It builds a dependency graph from bug relationships, assigns tasks to engineers based on skills, and optimizes the schedule using simulated annealing in a Web Worker.
+Single-page web app that fetches Mozilla Bugzilla data and visualizes project schedules as a Gantt chart. It builds a dependency graph from bug relationships, assigns tasks to engineers, and optimizes the schedule using simulated annealing in a Web Worker.
 
 ## Commands
 
@@ -35,8 +35,9 @@ E2E tests expect the server on port 8081 (see playwright.config.js).
 
 - **js/scheduler.js** - Greedy scheduler
   - Milestone-aware: processes milestones in deadline order
-  - Assigns bugs to engineers by skill match
+  - Assigns bugs to engineer who can complete them earliest
   - Engineer availability cascades between milestones
+  - Supports fractional sizes via interpolation
 
 - **js/optimal-scheduler-worker.js** - Background optimizer
   - Branch-and-bound + simulated annealing
@@ -45,16 +46,14 @@ E2E tests expect the server on port 8081 (see playwright.config.js).
 
 - **js/gantt-renderer.js** - Frappe Gantt wrapper
   - Contains `MILESTONES` constant with deadlines/freeze dates
-  - Color codes tasks by status (estimated, at-risk, skill mismatch)
+  - Color codes tasks by status (estimated size, at-risk)
 
 - **js/ui-controller.js** - DOM event handling
   - Filter dropdowns, view mode, export buttons
 
 ### Data Files
 
-- **data/engineers.json** - Team members with skills and availability
-- **data/size-estimates.json** - Size estimates for bugs missing whiteboard tags
-- **data/task-languages.json** - Language mapping for bugs
+- **data/engineers.json** - Team members with availability factors and unavailability periods
 
 ## Key Constants
 
@@ -76,16 +75,20 @@ E2E tests expect the server on port 8081 (see playwright.config.js).
 | 4 | 20 |
 | 5 | 60 |
 
-Meta bugs take 0 days (tracking bugs). Detected by:
+**Fractional sizes** (e.g., `[size=2.5]`) are interpolated between integer values. For example, size 2.5 = ceil(5 + 0.5 × (10 - 5)) = 8 days.
+
+**Default size** is 3 (10 days / 2 weeks) for bugs without a `[size=X]` whiteboard tag. These are listed in the "Missing Sizes" table.
+
+**Meta bugs** take 0 days (tracking bugs). Detected by:
 - `[meta]` in whiteboard
 - `meta` keyword
 - `[meta]` in bug title
 
-### Skill Penalty
+### Availability Scaling
 
-- Primary skill: 1x effort
-- Secondary skill: 1.25x effort
-- Tertiary skill: 1.5x effort
+Engineer availability is a factor from 0.0 to 1.0. A task's duration is scaled by `1 / availability`. For example:
+- Engineer with 100% availability: 5-day task takes 5 days
+- Engineer with 20% availability: 5-day task takes 25 days (5 / 0.2)
 
 ## Filters
 

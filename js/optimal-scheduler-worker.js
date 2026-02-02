@@ -7,7 +7,7 @@
 // Size to days mapping (must match scheduler.js)
 const SIZE_TO_DAYS = { 1: 1, 2: 5, 3: 10, 4: 20, 5: 60 };
 const DEFAULT_SIZE = 3;
-const SKILL_MODIFIERS = { 1: 1.0, 2: 1.25, 3: 1.5 };
+const DEFAULT_DAYS = 10;
 
 // Default milestones (overridden by passed milestones)
 let activeMilestones = [
@@ -33,7 +33,7 @@ self.onmessage = function(e) {
   const { type, data } = e.data;
 
   if (type === 'start') {
-    const { bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMakespan, milestones } = data;
+    const { bugs, engineers, graph, milestones } = data;
 
     // Update active milestones if provided
     if (milestones && milestones.length > 0) {
@@ -46,7 +46,7 @@ self.onmessage = function(e) {
       console.log('[Worker] Using', activeMilestones.length, 'milestones:', activeMilestones.map(m => m.name).join(', '));
     }
 
-    optimize(bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMakespan);
+    optimize(bugs, engineers, graph);
   } else if (type === 'stop') {
     self.close();
   }
@@ -55,7 +55,7 @@ self.onmessage = function(e) {
 /**
  * Main optimization entry point
  */
-function optimize(bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMakespan) {
+function optimize(bugs, engineers, graph) {
   const tasks = bugs.filter(b => b.status !== 'RESOLVED' && b.status !== 'VERIFIED');
 
   self.postMessage({
@@ -95,14 +95,14 @@ function optimize(bugs, engineers, graph, sizeEstimates, taskLanguages, greedyMa
       logType: 'status',
       message: `Using branch-and-bound (${tasks.length} tasks)`
     });
-    branchAndBound(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
+    branchAndBound(tasks, engineers, dependencyMap);
   } else {
     self.postMessage({
       type: 'log',
       logType: 'status',
       message: `Using simulated annealing (${tasks.length} tasks, ${SA_ITERATIONS.toLocaleString()} iterations)`
     });
-    simulatedAnnealing(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
+    simulatedAnnealing(tasks, engineers, dependencyMap);
   }
 }
 
@@ -256,7 +256,7 @@ function isBetter(newScore, oldScore) {
 /**
  * Branch and Bound for small problems
  */
-function branchAndBound(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages) {
+function branchAndBound(tasks, engineers, dependencyMap) {
   const n = tasks.length;
   const numEngineers = engineers.length;
   let nodesExplored = 0;
@@ -302,7 +302,7 @@ function branchAndBound(tasks, engineers, dependencyMap, sizeEstimates, taskLang
     const candidates = [];
     for (let e = 0; e < numEngineers; e++) {
       const engineer = engineers[e];
-      const effort = calculateEffort(task, engineer, sizeEstimates, taskLanguages);
+      const effort = calculateEffort(task, engineer);
       const startTime = Math.max(engineerAvailable[e], earliestStart);
       const endTime = startTime + effort.days;
       candidates.push({ e, startTime, endTime, effort });
@@ -333,19 +333,19 @@ function branchAndBound(tasks, engineers, dependencyMap, sizeEstimates, taskLang
 
   search(0, initialAssignment, initialAvailable, initialEndTimes);
 
-  finishOptimization(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages, nodesExplored);
+  finishOptimization(tasks, engineers, dependencyMap, nodesExplored);
 }
 
 /**
  * Simulated Annealing for larger problems
  */
-function simulatedAnnealing(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages) {
+function simulatedAnnealing(tasks, engineers, dependencyMap) {
   const n = tasks.length;
   const numEngineers = engineers.length;
 
-  // Generate initial solution
-  let currentAssignment = generateInitialAssignment(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
-  let currentEndTimes = computeEndTimes(currentAssignment, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
+  // Generate initial solution (random assignment)
+  let currentAssignment = generateInitialAssignment(tasks, engineers);
+  let currentEndTimes = computeEndTimes(currentAssignment, tasks, engineers, dependencyMap);
   let currentScore = evaluateSchedule(currentEndTimes, tasks, dependencyMap);
 
   bestScore = { ...currentScore };
@@ -367,7 +367,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, sizeEstimates, task
     const newEngineer = Math.floor(Math.random() * numEngineers);
     neighbor[taskIdx] = newEngineer;
 
-    const neighborEndTimes = computeEndTimes(neighbor, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
+    const neighborEndTimes = computeEndTimes(neighbor, tasks, engineers, dependencyMap);
     if (!neighborEndTimes) continue; // Invalid (cycle or error)
 
     const neighborScore = evaluateSchedule(neighborEndTimes, tasks, dependencyMap);
@@ -408,7 +408,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, sizeEstimates, task
     }
   }
 
-  finishOptimization(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages, SA_ITERATIONS);
+  finishOptimization(tasks, engineers, dependencyMap, SA_ITERATIONS);
 }
 
 /**
@@ -446,9 +446,9 @@ function reportImprovement(oldScore, newScore) {
 /**
  * Finish optimization and send final results
  */
-function finishOptimization(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages, iterations) {
+function finishOptimization(tasks, engineers, dependencyMap, iterations) {
   if (bestAssignment) {
-    const schedule = buildScheduleFromAssignment(bestAssignment, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages);
+    const schedule = buildScheduleFromAssignment(bestAssignment, tasks, engineers, dependencyMap);
 
     self.postMessage({
       type: 'log',
@@ -470,25 +470,14 @@ function finishOptimization(tasks, engineers, dependencyMap, sizeEstimates, task
 }
 
 /**
- * Generate initial assignment (skill-biased random)
+ * Generate initial assignment (random)
  */
-function generateInitialAssignment(tasks, engineers, dependencyMap, sizeEstimates, taskLanguages) {
+function generateInitialAssignment(tasks, engineers) {
   const assignment = [];
 
   for (const task of tasks) {
-    const language = taskLanguages[task.id] || task.language;
-    let bestEngineer = 0;
-    let bestRank = Infinity;
-
-    for (let e = 0; e < engineers.length; e++) {
-      const rank = getSkillRank(engineers[e], language);
-      if (rank < bestRank || (rank === bestRank && Math.random() < 0.3)) {
-        bestRank = rank;
-        bestEngineer = e;
-      }
-    }
-
-    assignment.push(Math.random() < 0.7 ? bestEngineer : Math.floor(Math.random() * engineers.length));
+    // Random assignment to any engineer
+    assignment.push(Math.floor(Math.random() * engineers.length));
   }
 
   return assignment;
@@ -498,7 +487,7 @@ function generateInitialAssignment(tasks, engineers, dependencyMap, sizeEstimate
  * Compute end times for an assignment
  * Tasks are processed in milestone order (earliest deadline first) to match greedy scheduler
  */
-function computeEndTimes(assignment, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages) {
+function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
   const n = tasks.length;
   const engineerAvailable = new Array(engineers.length).fill(0);
   const taskEndTimes = {};
@@ -563,7 +552,7 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap, sizeEstima
 
       if (!engineer) continue;
 
-      const effort = calculateEffort(task, engineer, sizeEstimates, taskLanguages);
+      const effort = calculateEffort(task, engineer);
 
       // Meta bugs (0 days) complete when dependencies complete
       let startTime, endTime;
@@ -593,7 +582,7 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap, sizeEstima
  * Build schedule from assignment array
  * Tasks are processed in milestone order (earliest deadline first) to match greedy scheduler
  */
-function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap, sizeEstimates, taskLanguages) {
+function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap) {
   const n = tasks.length;
   const engineerAvailable = new Array(engineers.length).fill(0);
   const taskEndTimes = {};
@@ -662,7 +651,7 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
         continue;
       }
 
-      const effort = calculateEffort(task, engineer, sizeEstimates, taskLanguages);
+      const effort = calculateEffort(task, engineer);
 
       // Meta bugs (0 days) complete when dependencies complete, not affected by engineer availability
       let startTime, endTime;
@@ -697,38 +686,52 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
 /**
  * Calculate effort for a task/engineer combination
  */
-function calculateEffort(task, engineer, sizeEstimates, taskLanguages) {
+function calculateEffort(task, engineer) {
   // Meta bugs take 0 time
   if (task.isMeta) {
-    return { days: 0, baseDays: 0, modifier: 1, skillRank: 1, sizeEstimated: false, isMeta: true };
+    return { days: 0, baseDays: 0, sizeEstimated: false, isMeta: true };
   }
 
   let size = task.size;
-  let sizeEstimated = task.sizeEstimated;
+  let sizeEstimated = task.sizeEstimated || false;
 
   if (size === null || size === undefined) {
-    size = sizeEstimates[task.id] || DEFAULT_SIZE;
+    size = DEFAULT_SIZE;
     sizeEstimated = true;
   }
 
-  const baseDays = SIZE_TO_DAYS[size] || SIZE_TO_DAYS[DEFAULT_SIZE];
-  const language = taskLanguages[task.id] || task.language;
-  const skillRank = getSkillRank(engineer, language);
-  const modifier = SKILL_MODIFIERS[skillRank] || SKILL_MODIFIERS[3];
+  const baseDays = calculateDaysFromSize(size);
 
+  // Apply availability factor (e.g., 0.2 = 20% time means 5x longer)
   const availabilityFactor = engineer.availability || 1.0;
-  const days = Math.ceil((baseDays * modifier) / availabilityFactor);
+  const days = Math.ceil(baseDays / availabilityFactor);
 
-  return { days, baseDays, modifier, skillRank, sizeEstimated };
+  return { days, baseDays, sizeEstimated };
 }
 
 /**
- * Get skill rank (1-3) for engineer/language
+ * Calculate days from size, supporting fractional sizes
  */
-function getSkillRank(engineer, language) {
-  if (!language || !engineer.skills) return 3;
-  const idx = engineer.skills.findIndex(s => s.toLowerCase() === language.toLowerCase());
-  return idx === -1 ? 3 : idx + 1;
+function calculateDaysFromSize(size) {
+  // Integer sizes use the lookup table
+  if (Number.isInteger(size) && SIZE_TO_DAYS[size]) {
+    return SIZE_TO_DAYS[size];
+  }
+
+  // Fractional sizes: interpolate between adjacent values
+  const lowerSize = Math.floor(size);
+  const upperSize = Math.ceil(size);
+
+  // Handle edge cases
+  if (lowerSize < 1) return SIZE_TO_DAYS[1];
+  if (upperSize > 5) return SIZE_TO_DAYS[5];
+  if (lowerSize === upperSize) return SIZE_TO_DAYS[lowerSize] || DEFAULT_DAYS;
+
+  const lowerDays = SIZE_TO_DAYS[lowerSize] || DEFAULT_DAYS;
+  const upperDays = SIZE_TO_DAYS[upperSize] || DEFAULT_DAYS;
+  const fraction = size - lowerSize;
+
+  return Math.ceil(lowerDays + fraction * (upperDays - lowerDays));
 }
 
 /**

@@ -1,9 +1,9 @@
 /**
  * Resource Scheduler module
- * Greedy scheduling algorithm with skill-based effort modifiers
+ * Greedy scheduling algorithm for task assignment
  */
 
-// Size to days mapping
+// Size to days mapping (fractional sizes interpolate)
 const SIZE_TO_DAYS = {
   1: 1,
   2: 5,
@@ -12,15 +12,9 @@ const SIZE_TO_DAYS = {
   5: 60
 };
 
-// Default size when not specified
+// Default size when not specified (2 weeks = 10 working days)
 const DEFAULT_SIZE = 3;
-
-// Effort modifiers based on skill order
-const SKILL_MODIFIERS = {
-  1: 1.0,   // Primary skill - no modifier
-  2: 1.25,  // Secondary skill - +25%
-  3: 1.5    // Tertiary skill - +50%
-};
+const DEFAULT_DAYS = 10;
 
 export class Scheduler {
   constructor(engineers, milestones) {
@@ -44,76 +38,84 @@ export class Scheduler {
    * Calculate effort in days for a task
    * @param {Object} bug - Bug object
    * @param {Object} engineer - Engineer object
-   * @param {Object} sizeEstimates - Manual size estimates
-   * @returns {{days: number, modifier: number, skillRank: number}}
+   * @returns {{days: number, baseDays: number, sizeEstimated: boolean}}
    */
-  calculateEffort(bug, engineer, sizeEstimates = {}) {
+  calculateEffort(bug, engineer) {
     // Meta bugs take 0 time (they're tracking bugs)
     if (bug.isMeta) {
       return {
         days: 0,
         baseDays: 0,
-        modifier: 1,
-        skillRank: 1,
         sizeEstimated: false,
         isMeta: true
       };
     }
 
-    // Get size from bug, manual estimate, or default
+    // Get size from bug or use default (2 weeks)
     let size = bug.size;
-    let sizeEstimated = bug.sizeEstimated;
+    let sizeEstimated = bug.sizeEstimated || false;
 
-    if (size === null) {
-      size = sizeEstimates[bug.id] || DEFAULT_SIZE;
+    if (size === null || size === undefined) {
+      size = DEFAULT_SIZE;
       sizeEstimated = true;
     }
 
-    const baseDays = SIZE_TO_DAYS[size] || SIZE_TO_DAYS[DEFAULT_SIZE];
+    // Calculate base days, supporting fractional sizes via interpolation
+    const baseDays = this.calculateDaysFromSize(size);
 
-    // Determine skill rank and modifier
-    let skillRank = 3; // Default to lowest skill
-    let modifier = SKILL_MODIFIERS[3];
-
-    if (bug.language && engineer.skills) {
-      const skillIndex = engineer.skills.findIndex(
-        s => s.toLowerCase() === bug.language.toLowerCase()
-      );
-      if (skillIndex !== -1) {
-        skillRank = skillIndex + 1;
-        modifier = SKILL_MODIFIERS[skillRank];
-      }
-    }
-
-    // Apply availability factor
+    // Apply availability factor (e.g., 0.2 = 20% time means 5x longer)
     const availabilityFactor = engineer.availability || 1.0;
-    const adjustedDays = Math.ceil((baseDays * modifier) / availabilityFactor);
+    const adjustedDays = Math.ceil(baseDays / availabilityFactor);
 
     return {
       days: adjustedDays,
       baseDays,
-      modifier,
-      skillRank,
       sizeEstimated
     };
+  }
+
+  /**
+   * Calculate days from size, supporting fractional sizes
+   * @param {number} size - Size value (can be fractional like 3.5)
+   * @returns {number} Days of effort
+   */
+  calculateDaysFromSize(size) {
+    // Integer sizes use the lookup table
+    if (Number.isInteger(size) && SIZE_TO_DAYS[size]) {
+      return SIZE_TO_DAYS[size];
+    }
+
+    // Fractional sizes: interpolate between adjacent values
+    const lowerSize = Math.floor(size);
+    const upperSize = Math.ceil(size);
+
+    // Handle edge cases
+    if (lowerSize < 1) return SIZE_TO_DAYS[1];
+    if (upperSize > 5) return SIZE_TO_DAYS[5];
+    if (lowerSize === upperSize) return SIZE_TO_DAYS[lowerSize] || DEFAULT_DAYS;
+
+    const lowerDays = SIZE_TO_DAYS[lowerSize] || DEFAULT_DAYS;
+    const upperDays = SIZE_TO_DAYS[upperSize] || DEFAULT_DAYS;
+    const fraction = size - lowerSize;
+
+    return Math.ceil(lowerDays + fraction * (upperDays - lowerDays));
   }
 
   /**
    * Find the best available engineer for a task
    * @param {Object} bug - Bug object
    * @param {Date} earliestStart - Earliest possible start date
-   * @param {Object} sizeEstimates - Manual size estimates
    * @returns {{engineer: Object, startDate: Date, effort: Object}|null}
    */
-  findBestEngineer(bug, earliestStart, sizeEstimates = {}) {
+  findBestEngineer(bug, earliestStart) {
     let bestMatch = null;
-    let bestScore = Infinity;
+    let bestEndTime = Infinity;
 
     for (const [engineerId, schedule] of this.engineerSchedules) {
       const engineer = schedule.engineer;
 
       // Calculate effort for this engineer
-      const effort = this.calculateEffort(bug, engineer, sizeEstimates);
+      const effort = this.calculateEffort(bug, engineer);
 
       // Determine start date (max of engineer availability and earliest start)
       const startDate = new Date(Math.max(
@@ -121,12 +123,11 @@ export class Scheduler {
         earliestStart.getTime()
       ));
 
-      // Score: prefer earlier completion and better skill match
+      // Score: prefer earlier completion
       const endDate = this.addWorkingDays(startDate, effort.days, engineer);
-      const score = endDate.getTime() + (effort.skillRank * 86400000); // Penalize skill mismatch
 
-      if (score < bestScore) {
-        bestScore = score;
+      if (endDate.getTime() < bestEndTime) {
+        bestEndTime = endDate.getTime();
         bestMatch = {
           engineer,
           startDate,
@@ -146,11 +147,9 @@ export class Scheduler {
    *
    * @param {Array<Object>} sortedBugs - Bugs in topological order
    * @param {DependencyGraph} graph - Dependency graph
-   * @param {Object} sizeEstimates - Manual size estimates
-   * @param {Object} taskLanguages - Bug ID to language mapping
    * @returns {Array<Object>} Scheduled tasks
    */
-  scheduleTasks(sortedBugs, graph, sizeEstimates = {}, taskLanguages = {}) {
+  scheduleTasks(sortedBugs, graph) {
     this.schedule = [];
     this.warnings = [];
 
@@ -192,7 +191,7 @@ export class Scheduler {
 
       // Schedule this milestone's bugs
       for (const bug of milestoneBugs) {
-        this.scheduleBug(bug, graph, taskEndDates, sizeEstimates, taskLanguages, today);
+        this.scheduleBug(bug, graph, taskEndDates, today);
       }
     }
 
@@ -203,7 +202,7 @@ export class Scheduler {
     if (remainingBugs.length > 0) {
       console.log(`[Scheduler] Scheduling ${remainingBugs.length} remaining bugs not in any milestone`);
       for (const bug of remainingBugs) {
-        this.scheduleBug(bug, graph, taskEndDates, sizeEstimates, taskLanguages, today);
+        this.scheduleBug(bug, graph, taskEndDates, today);
       }
     }
 
@@ -277,15 +276,10 @@ export class Scheduler {
   /**
    * Schedule a single bug
    */
-  scheduleBug(bug, graph, taskEndDates, sizeEstimates, taskLanguages, today) {
+  scheduleBug(bug, graph, taskEndDates, today) {
     // Skip if already scheduled
     if (taskEndDates.has(String(bug.id))) {
       return;
-    }
-
-    // Apply manual language override if available
-    if (taskLanguages[bug.id]) {
-      bug.language = taskLanguages[bug.id];
     }
 
     // Skip completed bugs
@@ -314,7 +308,7 @@ export class Scheduler {
     }
 
     // Find best engineer
-    const assignment = this.findBestEngineer(bug, earliestStart, sizeEstimates);
+    const assignment = this.findBestEngineer(bug, earliestStart);
 
     if (!assignment) {
       this.warnings.push({
@@ -333,16 +327,6 @@ export class Scheduler {
       endDate = earliestStart;
       // Don't update engineer schedule - meta bugs don't consume engineer time
     } else {
-      // Check for skill mismatch warning
-      if (effort.skillRank === 3 && bug.language) {
-        this.warnings.push({
-          type: 'skill_mismatch',
-          bug,
-          engineer,
-          message: `${engineer.name} using tertiary skill for ${bug.language} (bug ${bug.id})`
-        });
-      }
-
       // Update engineer schedule
       const engineerSchedule = this.engineerSchedules.get(engineer.id);
       engineerSchedule.nextAvailable = new Date(endDate);

@@ -142,10 +142,6 @@ export class GanttRenderer {
         customClass = 'gantt-estimated';
       }
 
-      if (task.effort && task.effort.skillRank === 3) {
-        customClass = 'gantt-skill-mismatch';
-      }
-
       // Check if at risk for deadline
       const atRisk = this.isAtRisk(task);
       if (atRisk) {
@@ -171,9 +167,7 @@ export class GanttRenderer {
         _effort: task.effort ? task.effort.days : 0,
         _size: task.bug.size,
         _sizeEstimated: task.effort ? task.effort.sizeEstimated : false,
-        _isMeta: task.bug.isMeta || (task.effort && task.effort.isMeta),
-        _language: task.bug.language,
-        _skillRank: task.effort ? task.effort.skillRank : null
+        _isMeta: task.bug.isMeta || (task.effort && task.effort.isMeta)
       });
     }
 
@@ -298,8 +292,6 @@ export class GanttRenderer {
     const effort = task._effort || '?';
     const size = task._size || '?';
     const sizeNote = task._sizeEstimated ? ' (est.)' : '';
-    const language = task._language || 'Unknown';
-    const skillInfo = task._skillRank ? this.getSkillInfo(task._skillRank) : '';
     const isMeta = task._isMeta;
 
     // For meta bugs, don't show size/effort
@@ -313,8 +305,6 @@ export class GanttRenderer {
         <div class="popup-details">
           <p><strong>Engineer:</strong> ${engineer}</p>
           ${sizeEffortLine}
-          <p><strong>Language:</strong> ${language}</p>
-          ${skillInfo ? `<p><strong>Skill Match:</strong> ${skillInfo}</p>` : ''}
           <p><strong>Start:</strong> ${task.start}</p>
           <p><strong>End:</strong> ${task.end}</p>
         </div>
@@ -322,18 +312,6 @@ export class GanttRenderer {
            target="_blank" class="popup-link">View in Bugzilla</a>
       </div>
     `;
-  }
-
-  /**
-   * Get skill match description
-   */
-  getSkillInfo(skillRank) {
-    switch (skillRank) {
-      case 1: return 'Primary skill';
-      case 2: return 'Secondary skill (+25%)';
-      case 3: return 'Tertiary skill (+50%)';
-      default: return '';
-    }
   }
 
   /**

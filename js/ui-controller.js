@@ -34,7 +34,6 @@ export class UIController {
       statsContainer: document.getElementById('stats-container'),
       errorsContainer: document.getElementById('errors-container'),
       estimatedTable: document.getElementById('estimated-table'),
-      mismatchTable: document.getElementById('mismatch-table'),
       risksTable: document.getElementById('risks-table'),
       errorsMarkdown: document.getElementById('errors-markdown'),
       legend: document.getElementById('legend'),
@@ -321,48 +320,6 @@ export class UIController {
     }
 
     this.elements.estimatedTable.innerHTML = html;
-  }
-
-  /**
-   * Render skill mismatch table
-   * @param {Array<Object>} warnings - Skill mismatch warnings
-   */
-  renderMismatchTable(warnings) {
-    if (!this.elements.mismatchTable) return;
-
-    const mismatches = warnings.filter(w => w.type === 'skill_mismatch');
-
-    if (mismatches.length === 0) {
-      this.elements.mismatchTable.innerHTML = '<p>No skill mismatches</p>';
-      return;
-    }
-
-    let html = `
-      <table>
-        <thead>
-          <tr>
-            <th>Bug ID</th>
-            <th>Engineer</th>
-            <th>Language</th>
-            <th>Impact</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    for (const mismatch of mismatches.slice(0, 20)) {
-      html += `
-        <tr>
-          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${mismatch.bug.id}" target="_blank">${mismatch.bug.id}</a></td>
-          <td>${mismatch.engineer.name}</td>
-          <td>${mismatch.bug.language}</td>
-          <td>+50% effort</td>
-        </tr>
-      `;
-    }
-
-    html += '</tbody></table>';
-    this.elements.mismatchTable.innerHTML = html;
   }
 
   /**
