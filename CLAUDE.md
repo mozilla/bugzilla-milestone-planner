@@ -102,7 +102,19 @@ Filters are applied in this order:
 
 Unit tests in `test/unit/` use Vitest. E2E tests in `test/e2e/` use Playwright.
 
-Test fixtures in `test/fixtures/mock-bugs.json`.
+### Test fixtures
+- `test/fixtures/mock-bugs.json` - Synthetic data for unit tests
+- `test/fixtures/live-snapshot.json` - Real Bugzilla data snapshot
+
+### Capturing a new snapshot
+
+To update the live snapshot from Bugzilla:
+
+```bash
+node scripts/capture-snapshot.js
+```
+
+This fetches the complete bug tree for all milestones and saves statistics. The snapshot is used by `test/unit/snapshot.test.js` to verify scheduler determinism and bug count consistency.
 
 ## Common Issues
 

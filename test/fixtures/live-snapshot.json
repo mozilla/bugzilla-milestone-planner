@@ -1,0 +1,3294 @@
+{
+  "capturedAt": "2026-02-02T15:21:36.870Z",
+  "milestones": [
+    {
+      "name": "Foxfooding",
+      "bugId": 1980342
+    },
+    {
+      "name": "Customer Pilot",
+      "bugId": 2012055
+    },
+    {
+      "name": "MVP",
+      "bugId": 1980739
+    }
+  ],
+  "stats": {
+    "totalBugs": 158,
+    "resolvedBugs": 49,
+    "unresolvedBugs": 109,
+    "clientBugs": 109,
+    "metaBugs": 16,
+    "bugsWithSize": 32,
+    "bugsWithoutSize": 126,
+    "bugsWithAssignee": 158,
+    "bugsWithoutAssignee": 0,
+    "severityCounts": {
+      "--": 104,
+      "S1": 19,
+      "S3": 24,
+      "S2": 11
+    },
+    "componentCounts": {
+      "Client": 109,
+      "General": 7,
+      "Console": 26,
+      "Services": 8,
+      "Searchfox": 3,
+      "SQLite and Embedded Database Bindings": 1,
+      "Treeherder: Data Ingestion": 1,
+      "Firefox-CI Administration": 3
+    },
+    "clientUnresolvedBugs": 70,
+    "clientSeverityCounts": {
+      "--": 19,
+      "S1": 17,
+      "S3": 24,
+      "S2": 10
+    }
+  },
+  "bugs": [
+    {
+      "id": 1980342,
+      "summary": "[meta] Firefox Enterprise Client [Foxfooding]",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        1980344,
+        1980741,
+        1980747,
+        1988760,
+        1998384,
+        1998386,
+        1998394,
+        2002462,
+        2002463,
+        2002562,
+        2003772,
+        2004657,
+        2004715,
+        2004921,
+        2005147,
+        2005206,
+        2005507,
+        2005719,
+        2005726,
+        2006637,
+        2007103,
+        2007107,
+        2007117,
+        2007347,
+        2010518,
+        2012080,
+        1980736,
+        1980919,
+        1998385,
+        1998396,
+        1998461,
+        1998475,
+        1998944,
+        2002478,
+        2002482,
+        2002576,
+        2004347,
+        2004875,
+        2005177,
+        2005181,
+        2005529,
+        2005533,
+        2005732,
+        2005735,
+        2005760,
+        2012535
+      ],
+      "blocks": [
+        1980739,
+        1980951,
+        2013712
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1980739,
+      "summary": "[meta] Firefox Enterprise Client MVP",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        1980342,
+        1980738,
+        1980740,
+        1980918,
+        1989272,
+        2002486,
+        2005494,
+        2011841,
+        2013712
+      ],
+      "blocks": [],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 2012055,
+      "summary": "[meta] Firefox Enterprise Customer Pilot 1 delivery",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2012061,
+        2013712,
+        2013652
+      ],
+      "blocks": [],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "General",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1980344,
+      "summary": "[meta] Firefox Enterprise Installers [Foxfooding]",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        1980733,
+        1980734,
+        1980735
+      ],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1980736,
+      "summary": "SSO login flow for Firefox Launcher",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342,
+        1980737
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1980738,
+      "summary": "[meta] Block Firefox Enterprise profiles from interacting",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980739
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1980740,
+      "summary": "Support profile encryption",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980739,
+        2002486
+      ],
+      "whiteboard": "[size=3]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 3,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 1980741,
+      "summary": "[meta] Sign-out flow",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2012442,
+        2010529
+      ],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1980747,
+      "summary": "[meta] Custom Branding Support",
+      "status": "REOPENED",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2000864,
+        2003001,
+        1998760,
+        2000855,
+        2001362
+      ],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1980918,
+      "summary": "Policy control over application close / authentication",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980739
+      ],
+      "whiteboard": "[size=3]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 3,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 1980919,
+      "summary": "Blocklisted domain notification and logging",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        1980953
+      ],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1988760,
+      "summary": "[meta] Follow ups to investigate / fix / clean after September Demo",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [
+        1989272,
+        1991914,
+        1990439,
+        1990447,
+        1990452,
+        1990495,
+        2001078
+      ],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1989272,
+      "summary": "Live Policies implementation: apply and unapply",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [
+        1990793
+      ],
+      "blocks": [
+        1980739,
+        1988760,
+        1989273
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1998384,
+      "summary": "Firefox Enterprise can be opened without authenticating",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "gpascutto@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980342,
+        2013712
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 1998385,
+      "summary": "[macOS] Firefox Enterprise authentication screen is not displayed as expected",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "jneuberger@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1998386,
+      "summary": "[Windows] Private Window icon is displayed on the Authentication screen and system Taskbar",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jneuberger@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980342,
+        2013712
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 1998394,
+      "summary": "Failure to fetch policies => Firefox Enterprise closes and we return to Felt",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342,
+        2013712
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 1998396,
+      "summary": "Custom theme is not applied to Firefox Enterprise",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "dtownsend@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1998461,
+      "summary": "Unable to re-open the Felt Login window after it's closed",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1998475,
+      "summary": "Firefox crashes on shutdown",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1998944,
+      "summary": "Disable legacy Telemetry submissions",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2002462,
+      "summary": "[macOS/pkg] Opening an external link or launching a profile in a new browser will create another Firefox Enterprise icon in the dock",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "gpascutto@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980342,
+        2013712
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2002463,
+      "summary": "[macOS/linux] Opening an external link will not Focus the client",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342,
+        2013712
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2002478,
+      "summary": "[macOS/dmg] Firefox Enterprise is not correctly displayed inside the .dmg window",
+      "status": "VERIFIED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2002482,
+      "summary": "SSO bypass - new Firefox Enterprise profile opens unauthenticated browsing window",
+      "status": "VERIFIED",
+      "resolution": "FIXED",
+      "assignee": "dtownsend@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2002486,
+      "summary": "Firefox Enterprise profiles can be opened with normal Firefox",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        1980740
+      ],
+      "blocks": [
+        1980739
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2002562,
+      "summary": "Keyboard navigation cannot focus or activate the Mozilla Badge button",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [
+        "access"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2002576,
+      "summary": "Empty confirmation message displayed after renaming an Organizational Unit",
+      "status": "VERIFIED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2003772,
+      "summary": "[win] Pinning the authentication window to the taskbar and opening it from there will also open a private window next to the authentication window",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2004347,
+      "summary": "Intermittent Crash reported at => [4756] Hit MOZ_CRASH() at /builds/worker/checkouts/gecko/xpcom/build/LateWriteChecks.cpp:X",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2004657,
+      "summary": "Opening the dev toolbox opens a felt authentication window",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2004715,
+      "summary": "Consider adding a System Theme in Firefox Enterprise so browser theme follows OS theme",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2004875,
+      "summary": "[mac] Authetification screen has light theme when Enterprise and OS dark theme is selected",
+      "status": "RESOLVED",
+      "resolution": "WORKSFORME",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2004921,
+      "summary": "[intermittent] Sometimes the client does not open after a successful authentication",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005147,
+      "summary": "[mac/linux] The SSO ID is no longer prefilled after restarting the machine",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2005177,
+      "summary": "The SSO ID is not filled after crashing Firefox Enterprise",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005181,
+      "summary": "Firefox Enterprise enters a crashing loop after login after a first crash",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005206,
+      "summary": "Sign-Out is not forced on Firefox Enterprise after OS User Switch",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2005494,
+      "summary": "[macOS] Firefox Enterprise authetification screen is not opened on login if the `Reopen windows when logging in` option is enabled",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980739
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005507,
+      "summary": "Duplicate and Invalid events are generated for a single user action",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jmendez@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2005529,
+      "summary": "The Total Users count is inconsistent across the Dashboard and Users sections",
+      "status": "VERIFIED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005533,
+      "summary": "Total active sessions count is incorrect in the Users section",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "felash@gmail.com",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005719,
+      "summary": "Authentication screen does not regain focus when opening a second link",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005726,
+      "summary": "Console does not consistently update user status after sign-out",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005732,
+      "summary": "Multiple “Invalid” Event reports generated in the Console after restarting Firefox Enterprise",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005735,
+      "summary": "[Ubuntu] Firefox Enterprise tooltip appears as Nightly",
+      "status": "RESOLVED",
+      "resolution": "WORKSFORME",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2005760,
+      "summary": "Firefox Enterprise shows as Nightly on Ubuntu 24LTS",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2006637,
+      "summary": "When encryption is failing - Felt is exited unexpectedly",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "General",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2007103,
+      "summary": "Focus may be missing on PopupNotification shown on WebAuthn prompt",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2006566
+      ],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2007107,
+      "summary": "Sync is re-enabled after signing out and back into Firefox Enterprise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Services",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2007117,
+      "summary": "Send tab to device and send link to device options are available, but not working",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Services",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2007347,
+      "summary": "Sync related errors are logged in the Browser Console",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Services",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2010518,
+      "summary": "Obtain remote settings URL from the console address",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342,
+        2012076
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2011841,
+      "summary": "Prevent unauthenticated calls to the console in Felt startup",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980739
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012061,
+      "summary": "Helm chart allows on premises deployment of the Firefox Enterprise infrastructure",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2012056,
+        2012060,
+        2012063,
+        2012064,
+        2012066,
+        2012071
+      ],
+      "blocks": [
+        2012055
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Services",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012080,
+      "summary": "Starting shutdown/exit should inform Felt",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012535,
+      "summary": "Use public key entitlement on macOS",
+      "status": "VERIFIED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        1980342,
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013652,
+      "summary": "Device posture does not report some interfaces, wg0, wwan0 missing",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012055
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "General",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013712,
+      "summary": "[meta] Firefox Enterprise Customer Pilot 1 delivery - Client",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        1980342,
+        1998384,
+        1998386,
+        1998394,
+        2002462,
+        2002463,
+        2002494,
+        2002549,
+        2012076,
+        2012258,
+        2013303
+      ],
+      "blocks": [
+        1980739,
+        2012055
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1980733,
+      "summary": "Firefox Enterprise Installer for Windows",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980344
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 1980734,
+      "summary": "Firefox Enterprise Installer for macOS",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980344
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 1980735,
+      "summary": "Firefox Enterprise Debian package",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980344
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 1980953,
+      "summary": "[meta] Provide a feature to \"log\" certain events with details with Glean Telemetry",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "gpascutto@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980951,
+        1980919
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 1990439,
+      "summary": "Properly fix the situation with starting firefox and checking cookies in tests for macOS dock icon fix",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1988760
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1990447,
+      "summary": "Profile for felt",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1988760
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1990452,
+      "summary": "Enterprise profile name hardcoded",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1988760
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1990495,
+      "summary": "Make ConsoleClient a singleton or an XPCOM",
+      "status": "RESOLVED",
+      "resolution": "WONTFIX",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1988760
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1990793,
+      "summary": "Live policies proper application",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        1989272,
+        1989273
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1991914,
+      "summary": "Harden command line parsing for felt detection",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        1988760
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1998760,
+      "summary": "Remove duplicated felt.ftl",
+      "status": "RESOLVED",
+      "resolution": "DUPLICATE",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [
+        2012078
+      ],
+      "blocks": [
+        1980747
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2000855,
+      "summary": "Add \"Learn more\" link in enterprise panel",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "jneuberger@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980747
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2000864,
+      "summary": "Handle unsuccessful GET request to /whoami",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980747
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2001078,
+      "summary": "ConsoleClient shouldn't use the _get function to initiate POST requests",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "jneuberger@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1988760
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2001362,
+      "summary": "Support dark mode and high contrast themes in enterprise badge and panel",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "jneuberger@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980747
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2002494,
+      "summary": "Mozilla Badge is not displayed according to Figma specifications",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jneuberger@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2013712
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2002549,
+      "summary": "[Windows] Firefox Enterprise launch shows skeleton window before Authentication window",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2013712
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2003001,
+      "summary": "Pass user info from Felt to Firefox to avoid network request on startup",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980747
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2006566,
+      "summary": "No doorhanger for security keys during onboarding",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2007103
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2010529,
+      "summary": "Simple sign out scenario: exiting the browser signs out",
+      "status": "RESOLVED",
+      "resolution": "DUPLICATE",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980741,
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012056,
+      "summary": "Console is deployable on premises",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2012057,
+        2012058,
+        2012059,
+        2012065,
+        2012067,
+        2012424,
+        2012430,
+        2012387
+      ],
+      "blocks": [
+        2012061
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012060,
+      "summary": "Sync is deployable on premise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012061
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Services",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012063,
+      "summary": "Remote settings is deployable on premise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012061
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Services",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012064,
+      "summary": "Sync token service is deployable on premise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012061
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Services",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012066,
+      "summary": "Push service is deployable on premise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012061
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Services",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012071,
+      "summary": "Deployment guide for on premise deployments",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012061
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "General",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012076,
+      "summary": "[meta] Repacking for on-premise client deployment",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2010518,
+        2012078,
+        2012079,
+        2012081,
+        2012082,
+        2012421,
+        2012433,
+        2012438,
+        2012440,
+        2012442,
+        2012452,
+        2012455,
+        2012458,
+        2012461,
+        2012667,
+        2012690,
+        2010529,
+        2012087,
+        2012386,
+        2012453,
+        2012535
+      ],
+      "blocks": [
+        2013712
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 2012258,
+      "summary": "[meta] Green tests on Treeherder",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2012259,
+        2012260,
+        2012956,
+        2013529,
+        2013172,
+        2013173,
+        2013181
+      ],
+      "blocks": [
+        2013712
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 2012442,
+      "summary": "Closing Firefox logs out the user from Firefox Enterprise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        1980741,
+        2012076
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2013303,
+      "summary": "[meta] Client CI required for Pilot",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2013308,
+        2013557,
+        2013304
+      ],
+      "blocks": [
+        2013712
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 2012057,
+      "summary": "MITM service can be deployed as part of the console",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012056
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012058,
+      "summary": "Updater can be deployed as part of the console",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012056
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012059,
+      "summary": "Captive portal detection can be deployed as part of the console",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012056
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012065,
+      "summary": "Crash reporter service can be deployed as part of the console",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012056
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012067,
+      "summary": "Access connector service can be deployed as part of the console",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012056
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012078,
+      "summary": "Repack supports fr and en-us locales",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076,
+        1998760
+      ],
+      "whiteboard": "[size=3]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 3,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012079,
+      "summary": "[meta] Repack installers supports required client OS and format",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        1996558,
+        2013811
+      ],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 2012081,
+      "summary": "Repack supports connectivity to on premises infrastructure",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012082,
+      "summary": "Repack adds custom enterprise logo on toolbar",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012087,
+      "summary": "Client can receive Push notifications",
+      "status": "RESOLVED",
+      "resolution": "DUPLICATE",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012259,
+      "summary": "Fix marionette tests for Enterprise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2012262,
+        2012267,
+        2012494,
+        2012263,
+        2012264,
+        2012266
+      ],
+      "blocks": [
+        2012258
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012260,
+      "summary": "[meta] Fix xpcshell tests for Enterprise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2012268,
+        2012272,
+        2013821,
+        2013823,
+        2012261,
+        2012271,
+        2012400,
+        2012401
+      ],
+      "blocks": [
+        2012258
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 2012386,
+      "summary": "Client location received is \"France\" always",
+      "status": "RESOLVED",
+      "resolution": "WONTFIX",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012387,
+      "summary": "Location service can be deployed as part of the console",
+      "status": "RESOLVED",
+      "resolution": "WONTFIX",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012056
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012421,
+      "summary": "Client enables connecting to private infrastructure apps through access connector",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=4]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 4,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012424,
+      "summary": "Console management UI can be deployed as part of the console",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2012425,
+        2012427,
+        2012437,
+        2012441,
+        2012444,
+        2012445,
+        2012446,
+        2012447,
+        2012448,
+        2012449,
+        2012456,
+        2012457
+      ],
+      "blocks": [
+        2012056
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012430,
+      "summary": "Splunk SIEM data integration",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012056
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012433,
+      "summary": "Client can handle forced client updates",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012438,
+      "summary": "Send security event in case of local policy inconsistency",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012440,
+      "summary": "Repack disables local policies.json and GPO",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012452,
+      "summary": "Users are informed in case of an authentication failure on FELT",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=2]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": 2,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012453,
+      "summary": "User authentication is gated by posture control",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012455,
+      "summary": "Client supports lockdown mode",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "dtownsend@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=4]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 4,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012458,
+      "summary": "Client supports BYoAI",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "mozilla@kaply.com",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=3]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 3,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012461,
+      "summary": "Repack strings are merged on MC and localized in Pontoon",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "gpascutto@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012667,
+      "summary": "Repack disables non necessary features calling pieces of Mozilla infrastructure that are not on customer premises",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2012690,
+      "summary": "Ensure felt cannot open new window",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012076
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "General",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012956,
+      "summary": "Regression: TEST-UNEXPECTED-FAIL | test_felt_2_device_posture_content | AssertionError('Device posture reports network interfaces (IPv6)')",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012258
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013172,
+      "summary": "Regression: netwerk/base/nsNetworkInterface.h:0 | invalid header guard nsNetworkInterface_h__, using '__' in a macro name is reserved (header-guards)",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012258
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013173,
+      "summary": "macOS debug / PR build signing fails with: KeyError: 'entitlements-url'",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012258
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013181,
+      "summary": "Intermittent linux64 enterprise-tests TEST-UNEXPECTED-ERROR | test_felt_00_chrome_on_email_submit | WebDriverException() because crash",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012258
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013304,
+      "summary": "Add treeherder for enterprise-release branch",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2013303
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "General",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013308,
+      "summary": "Make builds from enterprise-release branch",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [
+        2009865,
+        2013344,
+        2013462
+      ],
+      "blocks": [
+        2013303
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "General",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013529,
+      "summary": "[meta] Revisit hacks and hacks made to get things working on enterprise-main PR and merges",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012258
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "meta"
+      ],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": true
+    },
+    {
+      "id": 2013557,
+      "summary": "Add Firefox Enterprise enterprise-release branch to searchfox",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [
+        2010040
+      ],
+      "blocks": [
+        2013303
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Searchfox",
+      "product": "Webtools",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 1996558,
+      "summary": "Automatically encrypt SQLite databases on disk",
+      "status": "ASSIGNED",
+      "resolution": null,
+      "assignee": "nwipper@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1996001,
+        2012079
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "SQLite and Embedded Database Bindings",
+      "product": "Core",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2009865,
+      "summary": "one pull request for enterprise-firefox try repository not listed, data contains revision for older pull request",
+      "status": "ASSIGNED",
+      "resolution": null,
+      "assignee": "aryx.bugmail@gmx-topmail.de",
+      "dependsOn": [],
+      "blocks": [
+        2013308
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Treeherder: Data Ingestion",
+      "product": "Tree Management",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2010040,
+      "summary": "Add Firefox Enterprise enterprise-main branch to searchfox",
+      "status": "ASSIGNED",
+      "resolution": null,
+      "assignee": "arai.unmht@gmail.com",
+      "dependsOn": [
+        2010300
+      ],
+      "blocks": [
+        2013557
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Searchfox",
+      "product": "Webtools",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012261,
+      "summary": "SyntaxError: redeclaration of const AppConstants at /builds/worker/workspace/build/tests/xpcshell/tests/browser/extensions/newtab/test/xpcshell/test_AboutHomeStartupCacheWorker.js:1",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012260
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012262,
+      "summary": "TEST-UNEXPECTED-FAIL | browser/components/customizableui/test/marionette/test_assert_no_toolbar_changes.py TestNoToolbarChanges.test_no_toolbar_changes | AssertionError: Lists differ",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012259
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012263,
+      "summary": "Failed to trigger opening a new window: openWindow() not supported in FirefoxEnterprise",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012259
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012264,
+      "summary": "Make Firefox Enterprise appear as Firefox with moz:browserFlavor in Marionette",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012259
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012266,
+      "summary": "TEST-UNEXPECTED-FAIL | toolkit/xre/test/marionette/xdg_config/test_xdg_config_legacy_existing.py TestXdgConfigHomeLegacyExisting.test_profile_dir | AssertionError: False is not true",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012259
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012267,
+      "summary": "browser/components/tests/marionette/test_no_errors_clean_profile.py failures on Enterprise",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012259
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012268,
+      "summary": "TEST-UNEXPECTED-FAIL | toolkit/crashreporter/test/unit/test_crashreporter_crash.js | run_test - [run_test : 168] The TelemetryServerURL field is present when the FHR is on - false == true",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012260
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012271,
+      "summary": "TEST-UNEXPECTED-FAIL | browser/components/enterprisepolicies/tests/xpcshell/test_sorted_alphabetically.js | test_policies_sorted - [test_policies_sorted : 18] policies-schema.json is alphabetically sorted. - false == true",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012260
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012272,
+      "summary": "TEST-UNEXPECTED-TIMEOUT | toolkit/components/glean/tests/xpcshell/test_OHTTP.js | Test timed out",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012260
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012400,
+      "summary": "TEST-UNEXPECTED-FAIL | xpcshell.toml:toolkit/mozapps/extensions/test/xpcshell/test_addon_manager_telemetry_events.js | test_basic_telemetry_events - [test_basic_telemetry_events : 172] Got the addonsManager Glean events in the expected order.",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "jmendez@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012260
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012401,
+      "summary": "TEST-UNEXPECTED-FAIL | xpcshell.toml:toolkit/mozapps/extensions/test/xpcshell/test_dictionary_webextension.js | test_validation - [test_validation : 139] Got the expected install Glean events for the corrupted dictionaries",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "jmendez@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012260
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012425,
+      "summary": "Access connector policy customizable on the console management UI",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012427,
+      "summary": "Crash report policy customizable on the console management UI",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012437,
+      "summary": "Forced client update policy customizable on the console management UI",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012441,
+      "summary": "Console management UI allows forcing a sign-out",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012444,
+      "summary": "Console management UI handles multi device users",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jwajsberg@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012445,
+      "summary": "Console management UI allows deleting a user",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jwajsberg@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012446,
+      "summary": "Genertic events are hidden in the console",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jwajsberg@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012447,
+      "summary": "Console management UI has localized policy descriptions",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jwajsberg@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012448,
+      "summary": "Console management UI reports user friendly OS versions",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jwajsberg@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012449,
+      "summary": "Hide elements related to inviting users on the console UI",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "jwajsberg@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012456,
+      "summary": "Lockdown mode policy customizable on the console management UI",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012457,
+      "summary": "BYoAI policy customizable on the console management UI",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "mozilla@kaply.com",
+      "dependsOn": [],
+      "blocks": [
+        2012424
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2012494,
+      "summary": "Move Enterprise Selenium tests to Marionette",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012259
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S3",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013344,
+      "summary": "Add enterprise-release as L3 branch",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2013308,
+        2013462
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Firefox-CI Administration",
+      "product": "Release Engineering",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013462,
+      "summary": "Add missing scopes for enterprise-release branch to allow scriptworker signing on macOS",
+      "status": "RESOLVED",
+      "resolution": "DUPLICATE",
+      "assignee": "ahal@mozilla.com",
+      "dependsOn": [
+        2013344
+      ],
+      "blocks": [
+        2013308
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Firefox-CI Administration",
+      "product": "Release Engineering",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013811,
+      "summary": "Add installers and complete MAR for Enterprise repacks",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
+      "blocks": [
+        2012079
+      ],
+      "whiteboard": "[size=1.5]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S1",
+      "size": 1.5,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
+      "id": 2013821,
+      "summary": "TEST-UNEXPECTED-FAIL | xpcshell.toml:toolkit/mozapps/extensions/test/xpcshell/test_amo_stats_telemetry.js | test_amo_stats_glean_metrics - [test_amo_stats_glean_metrics : 127] Got the expected theme metadata set on Glean addons.theme",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012260
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2013823,
+      "summary": "TEST-UNEXPECTED-FAIL | xpcshell.toml:toolkit/mozapps/extensions/test/xpcshell/test_amo_stats_telemetry.js | test_amo_stats_glean_metrics - [test_amo_stats_glean_metrics : 65] Extension left running at test shutdown - \"running\" == \"unloaded\"",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2012260
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2010300,
+      "summary": "Enable searchfox job on enterprise-firefox",
+      "status": "ASSIGNED",
+      "resolution": null,
+      "assignee": "arai.unmht@gmail.com",
+      "dependsOn": [
+        2010334
+      ],
+      "blocks": [
+        2010040
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Searchfox",
+      "product": "Webtools",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2010334,
+      "summary": "Enable cron in enterprise-firefox",
+      "status": "REOPENED",
+      "resolution": null,
+      "assignee": "ahal@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1986768,
+        2003626,
+        2010300
+      ],
+      "whiteboard": "",
+      "keywords": [
+        "leave-open"
+      ],
+      "component": "Firefox-CI Administration",
+      "product": "Release Engineering",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    }
+  ]
+}
