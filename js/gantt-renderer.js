@@ -326,6 +326,9 @@ export class GanttRenderer {
       this._interactionCleanup();
     }
 
+    // Track drag state (used by both hover and drag handlers)
+    let isDragging = false;
+
     // --- Hover popup support ---
     // Bars are inside .gantt-container, not outerContainer
     const bars = scrollContainer.querySelectorAll('.bar-wrapper');
@@ -370,6 +373,9 @@ export class GanttRenderer {
 
     bars.forEach(bar => {
       const onEnter = (e) => {
+        // Don't show popups while dragging
+        if (isDragging) return;
+
         isOverBar = true;
         cancelHide();
 
@@ -433,7 +439,6 @@ export class GanttRenderer {
 
     // --- Drag-to-scroll support ---
     // Target the .gantt-container which is the actual scrollable element
-    let isDragging = false;
     let startX = 0;
     let scrollLeft = 0;
 
@@ -445,6 +450,11 @@ export class GanttRenderer {
       scrollContainer.style.cursor = 'grabbing';
       startX = e.clientX;
       scrollLeft = scrollContainer.scrollLeft;
+
+      // Hide popup during drag to prevent position mismatch
+      if (this.gantt) {
+        this.gantt.hide_popup();
+      }
     };
 
     const onMouseUp = () => {
