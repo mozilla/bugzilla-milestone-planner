@@ -167,7 +167,8 @@ export class GanttRenderer {
         _effort: task.effort ? task.effort.days : 0,
         _size: task.bug.size,
         _sizeEstimated: task.effort ? task.effort.sizeEstimated : false,
-        _isMeta: task.bug.isMeta || (task.effort && task.effort.isMeta)
+        _isMeta: task.bug.isMeta || (task.effort && task.effort.isMeta),
+        _milestone: task.milestone ? task.milestone.name : null
       });
     }
 
@@ -175,16 +176,18 @@ export class GanttRenderer {
   }
 
   /**
-   * Check if task is at risk for any milestone
+   * Check if task is at risk for its milestone
+   * Only marks at-risk if task ends after its own milestone's freeze date
    */
   isAtRisk(task) {
     if (!task.endDate) return false;
 
-    for (const milestone of MILESTONES) {
-      if (task.endDate > milestone.freezeDate) {
-        return true;
-      }
+    // If task has a specific milestone, check against that milestone's freeze date
+    if (task.milestone) {
+      return task.endDate > task.milestone.freezeDate;
     }
+
+    // Tasks without a milestone are not at risk (they're not blocking any deadline)
     return false;
   }
 

@@ -191,7 +191,7 @@ export class Scheduler {
 
       // Schedule this milestone's bugs
       for (const bug of milestoneBugs) {
-        this.scheduleBug(bug, graph, taskEndDates, today);
+        this.scheduleBug(bug, graph, taskEndDates, today, milestone);
       }
     }
 
@@ -275,8 +275,13 @@ export class Scheduler {
 
   /**
    * Schedule a single bug
+   * @param {Object} bug - Bug object
+   * @param {DependencyGraph} graph - Dependency graph
+   * @param {Map} taskEndDates - Map of bug ID to end date
+   * @param {Date} today - Today's date
+   * @param {Object|null} milestone - Milestone this bug belongs to (optional)
    */
-  scheduleBug(bug, graph, taskEndDates, today) {
+  scheduleBug(bug, graph, taskEndDates, today, milestone = null) {
     // Skip if already scheduled
     if (taskEndDates.has(String(bug.id))) {
       return;
@@ -291,7 +296,8 @@ export class Scheduler {
         endDate: null,
         engineer: null,
         effort: null,
-        completed: true
+        completed: true,
+        milestone: milestone
       });
       return;
     }
@@ -343,7 +349,8 @@ export class Scheduler {
       endDate,
       engineer,
       effort,
-      completed: false
+      completed: false,
+      milestone: milestone
     });
   }
 
