@@ -135,7 +135,8 @@ class EnterprisePlanner {
 
       // Store full schedule and risks
       this.greedySchedule = schedule;
-      this.fullScheduleErrors = errors;
+      const unknownAssignees = this.collectUnknownAssignees();
+      this.fullScheduleErrors = { ...errors, unknownAssignees };
       this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(MILESTONES);
 
       // Render UI with milestone filter applied to view
@@ -565,7 +566,8 @@ class EnterprisePlanner {
     this.scheduler = new Scheduler(this.engineers, MILESTONES);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
     this.greedySchedule = schedule;
-    this.fullScheduleErrors = this.detectErrors();
+    const unknownAssignees = this.collectUnknownAssignees();
+    this.fullScheduleErrors = { ...this.detectErrors(), unknownAssignees };
     this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(MILESTONES);
 
     // Render with current milestone filter
@@ -585,6 +587,18 @@ class EnterprisePlanner {
     const filteredRisks = this.filterRisksByMilestone(this.fullScheduleRisks);
 
     this.renderResults(filteredSchedule, this.fullScheduleErrors, filteredRisks, activeMilestones);
+  }
+
+  /**
+   * Collect unknown assignee warnings from the scheduler
+   */
+  collectUnknownAssignees() {
+    if (!this.scheduler || !this.scheduler.warnings) return [];
+    const unknowns = this.scheduler.warnings.filter(w => w.type === 'unknown_assignee');
+    return unknowns.map(w => ({
+      bug: w.bug,
+      assignee: w.bug ? w.bug.assignee : null
+    }));
   }
 
   /**
@@ -726,11 +740,18 @@ class EnterprisePlanner {
             case 'complete':
               completedWorkers++;
               if (data.improved && data.schedule) {
+                const totalLateness = Number.isFinite(data.totalLateness)
+                  ? data.totalLateness
+                  : Number.POSITIVE_INFINITY;
+                if (!Number.isFinite(data.totalLateness)) {
+                  console.warn(`Worker ${workerId} missing totalLateness; treating as Infinity.`);
+                }
+
                 this.workerResults.push({
                   workerId,
                   schedule: data.schedule,
                   deadlinesMet: data.deadlinesMet,
-                  totalLateness: data.totalLateness || 0,
+                  totalLateness,
                   makespan: data.makespan,
                   bestFoundAtIteration: data.bestFoundAtIteration || 0,
                   totalIterations: data.iterations || this.iterationsPerWorker
@@ -793,8 +814,8 @@ class EnterprisePlanner {
     // This matches the worker's scoring: deadlines >> lateness >> makespan
     this.workerResults.sort((a, b) => {
       if (b.deadlinesMet !== a.deadlinesMet) return b.deadlinesMet - a.deadlinesMet;
-      const aLateness = a.totalLateness || 0;
-      const bLateness = b.totalLateness || 0;
+      const aLateness = Number.isFinite(a.totalLateness) ? a.totalLateness : Number.POSITIVE_INFINITY;
+      const bLateness = Number.isFinite(b.totalLateness) ? b.totalLateness : Number.POSITIVE_INFINITY;
       if (aLateness !== bLateness) return aLateness - bLateness;
       return a.makespan - b.makespan;
     });

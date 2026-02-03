@@ -7,13 +7,9 @@
 import {
   calculateEffort,
   addWorkingDays,
-  isResolved
+  isResolved,
+  normalizeAssigneeEmail
 } from './scheduler-core.js';
-
-function normalizeAssigneeEmail(assignee) {
-  if (!assignee || !assignee.includes('@')) return null;
-  return assignee.trim().toLowerCase();
-}
 
 function buildEngineerEmailIndex(engineers) {
   const map = new Map();

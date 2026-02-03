@@ -6,13 +6,9 @@
 import {
   calculateEffort as coreCalculateEffort,
   addWorkingDays as coreAddWorkingDays,
-  isResolved
+  isResolved,
+  normalizeAssigneeEmail
 } from './scheduler-core.js';
-
-function normalizeAssigneeEmail(assignee) {
-  if (!assignee || !assignee.includes('@')) return null;
-  return assignee.trim().toLowerCase();
-}
 
 export class Scheduler {
   constructor(engineers, milestones) {

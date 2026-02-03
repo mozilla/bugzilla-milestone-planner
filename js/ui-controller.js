@@ -530,6 +530,18 @@ export class UIController {
       markdown += '\n';
     }
 
+    if (errors.unknownAssignees && errors.unknownAssignees.length > 0) {
+      markdown += '## Unknown Assignees (not in engineer list)\n\n';
+      for (const item of errors.unknownAssignees.slice(0, 50)) {
+        const assignee = item.assignee || 'Unknown';
+        markdown += `- Bug ${item.bug.id}: ${item.bug.summary} (assignee: ${assignee})\n`;
+      }
+      if (errors.unknownAssignees.length > 50) {
+        markdown += `\n...and ${errors.unknownAssignees.length - 50} more\n`;
+      }
+      markdown += '\n';
+    }
+
     if (errors.missingSizes && errors.missingSizes.length > 0) {
       markdown += '## Missing Sizes\n\n';
       for (const bug of errors.missingSizes.slice(0, 50)) {

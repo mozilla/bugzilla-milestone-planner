@@ -121,6 +121,16 @@ export function addWorkingDays(startDate, days, engineer = null) {
 }
 
 /**
+ * Normalize an assignee email
+ * @param {string|null} assignee
+ * @returns {string|null}
+ */
+export function normalizeAssigneeEmail(assignee) {
+  if (!assignee || !assignee.includes('@')) return null;
+  return assignee.trim().toLowerCase();
+}
+
+/**
  * Check if a bug is resolved/closed
  * @param {Object} bug - Bug object
  * @returns {boolean}
