@@ -364,6 +364,11 @@ header p {
   outline-offset: 2px;
 }
 
+/* Gantt Bar Labels - override thin font */
+.gantt .bar-label {
+  font-weight: 500 !important;
+}
+
 /* Gantt Color Coding */
 .gantt-normal .bar {
   fill: var(--color-normal) !important;
