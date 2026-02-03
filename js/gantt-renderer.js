@@ -761,18 +761,25 @@ export class GanttRenderer {
           initialsSpan.setAttribute('font-weight', 'bold');
         }
 
-        let initialsColor = engineerColor;
-        const labelOverBar = isElementOverlapping(label, barRect);
-        if (labelOverBar && barFill && isDarkColor(barFill)) {
-          const inverted = invertRgbColor(engineerColor);
-          if (inverted) {
-            initialsColor = inverted;
-          }
-        }
-        initialsSpan.style.setProperty('fill', initialsColor, 'important');
+        // Default to engineer color; adjust after layout when bbox is valid.
+        initialsSpan.style.setProperty('fill', engineerColor, 'important');
 
         label.appendChild(mainSpan);
         label.appendChild(initialsSpan);
+
+        // After layout, determine if the label overlaps the bar and invert when needed.
+        requestAnimationFrame(() => {
+          if (!label.isConnected) return;
+          const labelOverBar = isElementOverlapping(label, barRect);
+          if (labelOverBar && barFill && isDarkColor(barFill)) {
+            const inverted = invertRgbColor(engineerColor);
+            if (inverted) {
+              initialsSpan.style.setProperty('fill', inverted, 'important');
+            }
+          } else {
+            initialsSpan.style.setProperty('fill', engineerColor, 'important');
+          }
+        });
       }
     }, 100);
   }
