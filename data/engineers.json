@@ -32,8 +32,15 @@
       "id": "dave",
       "name": "Dave Townsend",
       "email": "dtownsend@mozilla.com",
-      "availability": 0.2,
+      "availability": 0.33,
       "unavailability": []
+    },
+    {
+      "id": "vlg",
+      "name": "Victor Lopez Garcia",
+      "email": "tbd@mozilla.com",
+      "availability": 1.0,
+      "unavailability": [{"start": "2026-01-01", "end": "2026-04-01", "reason": "Not available yet"}]
     }
   ],
   "_comment": "availability is a fraction (0.2 = 20% time), unavailability is an array of {start: 'YYYY-MM-DD', end: 'YYYY-MM-DD', reason: 'string'} for holidays/PTO"
