@@ -657,14 +657,14 @@ export class UIController {
     if (optimalOption) {
       optimalOption.disabled = !enabled;
       if (enabled) {
-        optimalOption.textContent = 'Optimal';
+        optimalOption.textContent = 'Optimized';
       }
     }
   }
 
   /**
    * Set the schedule type in the UI
-   * @param {string} type - 'greedy' or 'optimal'
+   * @param {string} type - 'greedy', 'optimal', or 'exhaustive'
    */
   setScheduleType(type) {
     if (!this.elements.scheduleTypeSelect) return;

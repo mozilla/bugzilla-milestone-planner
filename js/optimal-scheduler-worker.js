@@ -49,7 +49,17 @@ self.onmessage = function(e) {
   const { type, data } = e.data;
 
   if (type === 'start') {
-    const { bugs, engineers, graph, milestones, iterations, id } = data;
+    const {
+      bugs,
+      engineers,
+      graph,
+      milestones,
+      iterations,
+      id,
+      startAssignment,
+      startTemperature,
+      reheat
+    } = data;
 
     workerId = id || 0;
 
@@ -63,7 +73,13 @@ self.onmessage = function(e) {
       }));
     }
 
-    optimize(bugs, engineers, graph, iterations || SA_ITERATIONS_DEFAULT);
+    optimize(
+      bugs,
+      engineers,
+      graph,
+      iterations || SA_ITERATIONS_DEFAULT,
+      { startAssignment, startTemperature, reheat: !!reheat }
+    );
   } else if (type === 'stop') {
     self.close();
   }
@@ -72,7 +88,7 @@ self.onmessage = function(e) {
 /**
  * Main optimization entry point
  */
-function optimize(bugs, engineers, graph, iterations) {
+function optimize(bugs, engineers, graph, iterations, options = {}) {
   const tasks = bugs.filter(b => !isResolved(b));
 
   if (tasks.length === 0) {
@@ -104,7 +120,7 @@ function optimize(bugs, engineers, graph, iterations) {
   if (tasks.length <= BRANCH_BOUND_THRESHOLD) {
     branchAndBound(tasks, engineers, dependencyMap);
   } else {
-    simulatedAnnealing(tasks, engineers, dependencyMap, iterations);
+    simulatedAnnealing(tasks, engineers, dependencyMap, iterations, options);
   }
 }
 
@@ -354,7 +370,7 @@ function branchAndBound(tasks, engineers, dependencyMap) {
 /**
  * Simulated Annealing for larger problems
  */
-function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
+function simulatedAnnealing(tasks, engineers, dependencyMap, iterations, options = {}) {
   const n = tasks.length;
   const numEngineers = engineers.length;
   const unlockedTasks = [];
@@ -366,6 +382,16 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
 
   // Generate initial solution (random assignment)
   let currentAssignment = generateInitialAssignment(tasks, engineers);
+  if (Array.isArray(options.startAssignment) && options.startAssignment.length === n) {
+    currentAssignment = options.startAssignment.slice();
+    if (options.reheat && unlockedTasks.length > 0) {
+      const tweakCount = Math.max(1, Math.floor(n * 0.05));
+      for (let i = 0; i < tweakCount; i++) {
+        const idx = unlockedTasks[Math.floor(Math.random() * unlockedTasks.length)];
+        currentAssignment[idx] = Math.floor(Math.random() * numEngineers);
+      }
+    }
+  }
   let currentEndTimes = computeEndTimes(currentAssignment, tasks, engineers, dependencyMap);
   let currentScore = evaluateSchedule(currentEndTimes, tasks, dependencyMap);
 
@@ -378,7 +404,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
   // Report initial state as an improvement so main thread can track global best
   reportImprovement({ deadlinesMet: -1, makespan: Infinity }, currentScore, 0);
 
-  let temperature = SA_INITIAL_TEMP;
+  let temperature = Number.isFinite(options.startTemperature) ? options.startTemperature : SA_INITIAL_TEMP;
   const progressInterval = Math.max(1000, Math.floor(iterations / 10));
 
   for (let i = 0; i < iterations; i++) {
@@ -432,7 +458,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
     }
   }
 
-  finishOptimization(tasks, engineers, dependencyMap, iterations, bestFoundAtIteration);
+  finishOptimization(tasks, engineers, dependencyMap, iterations, bestFoundAtIteration, temperature);
 }
 
 /**
@@ -453,7 +479,7 @@ function reportImprovement(oldScore, newScore, iteration = 0) {
 /**
  * Finish optimization and send final results
  */
-function finishOptimization(tasks, engineers, dependencyMap, iterations, bestFoundAtIteration = 0) {
+function finishOptimization(tasks, engineers, dependencyMap, iterations, bestFoundAtIteration = 0, finalTemperature = null) {
   if (bestAssignment) {
     const schedule = buildScheduleFromAssignment(bestAssignment, tasks, engineers, dependencyMap);
 
@@ -464,6 +490,8 @@ function finishOptimization(tasks, engineers, dependencyMap, iterations, bestFou
       deadlinesMet: bestScore.deadlinesMet,
       totalLateness: bestScore.totalLateness,
       makespan: bestScore.makespan,
+      bestAssignment,
+      finalTemperature,
       improved: true,
       iterations,
       bestFoundAtIteration
