@@ -121,6 +121,35 @@ export function addWorkingDays(startDate, days, engineer = null) {
 }
 
 /**
+ * Move a start date to the next available working day (skip weekends and unavailability).
+ */
+export function normalizeStartDate(startDate, engineer = null) {
+  const result = new Date(startDate);
+  while (true) {
+    const dayOfWeek = result.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      result.setDate(result.getDate() + 1);
+      continue;
+    }
+
+    if (engineer && engineer.unavailability) {
+      const dateStr = result.toISOString().split('T')[0];
+      const isUnavailable = engineer.unavailability.some(period => {
+        const start = new Date(period.start).toISOString().split('T')[0];
+        const end = new Date(period.end).toISOString().split('T')[0];
+        return dateStr >= start && dateStr <= end;
+      });
+      if (isUnavailable) {
+        result.setDate(result.getDate() + 1);
+        continue;
+      }
+    }
+
+    return result;
+  }
+}
+
+/**
  * Normalize an assignee email
  * @param {string|null} assignee
  * @returns {string|null}
