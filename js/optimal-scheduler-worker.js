@@ -10,6 +10,22 @@ import {
   isResolved
 } from './scheduler-core.js';
 
+function normalizeAssigneeEmail(assignee) {
+  if (!assignee || !assignee.includes('@')) return null;
+  return assignee.trim().toLowerCase();
+}
+
+function buildEngineerEmailIndex(engineers) {
+  const map = new Map();
+  for (let i = 0; i < engineers.length; i++) {
+    const email = normalizeAssigneeEmail(engineers[i]?.email);
+    if (email) {
+      map.set(email, i);
+    }
+  }
+  return map;
+}
+
 // Default milestones (overridden by passed milestones)
 let activeMilestones = [
   { name: 'Foxfooding', bugId: 1980342, deadline: new Date('2026-02-23'), freezeDate: new Date('2026-02-16') },
@@ -66,6 +82,16 @@ function optimize(bugs, engineers, graph, iterations) {
   if (tasks.length === 0) {
     self.postMessage({ type: 'complete', schedule: null, improved: false, workerId });
     return;
+  }
+
+  const engineerEmailIndex = buildEngineerEmailIndex(engineers);
+  for (const task of tasks) {
+    const assigneeEmail = normalizeAssigneeEmail(task.assignee);
+    if (assigneeEmail && assigneeEmail !== 'nobody@mozilla.org' && engineerEmailIndex.has(assigneeEmail)) {
+      task.lockedEngineerIndex = engineerEmailIndex.get(assigneeEmail);
+    } else {
+      task.lockedEngineerIndex = null;
+    }
   }
 
   // Build dependency map from the FULL graph (not just filtered bugs)
@@ -288,7 +314,12 @@ function branchAndBound(tasks, engineers, dependencyMap) {
 
     // Try each engineer, sorted by expected completion time
     const candidates = [];
-    for (let e = 0; e < numEngineers; e++) {
+    const lockedEngineerIndex = task.lockedEngineerIndex;
+    const engineerChoices = lockedEngineerIndex !== null && lockedEngineerIndex !== undefined
+      ? [lockedEngineerIndex]
+      : [...Array(numEngineers).keys()];
+
+    for (const e of engineerChoices) {
       const engineer = engineers[e];
       const effort = calculateEffort(task, engineer);
       const startTime = Math.max(engineerAvailable[e], earliestStart);
@@ -330,6 +361,12 @@ function branchAndBound(tasks, engineers, dependencyMap) {
 function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
   const n = tasks.length;
   const numEngineers = engineers.length;
+  const unlockedTasks = [];
+  for (let i = 0; i < n; i++) {
+    if (tasks[i].lockedEngineerIndex === null || tasks[i].lockedEngineerIndex === undefined) {
+      unlockedTasks.push(i);
+    }
+  }
 
   // Generate initial solution (random assignment)
   let currentAssignment = generateInitialAssignment(tasks, engineers);
@@ -350,8 +387,9 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations) {
 
   for (let i = 0; i < iterations; i++) {
     // Generate neighbor
+    if (unlockedTasks.length === 0) break;
     const neighbor = [...currentAssignment];
-    const taskIdx = Math.floor(Math.random() * n);
+    const taskIdx = unlockedTasks[Math.floor(Math.random() * unlockedTasks.length)];
     const newEngineer = Math.floor(Math.random() * numEngineers);
     neighbor[taskIdx] = newEngineer;
 
@@ -446,8 +484,12 @@ function generateInitialAssignment(tasks, engineers) {
   const assignment = [];
 
   for (const task of tasks) {
-    // Random assignment to any engineer
-    assignment.push(Math.floor(Math.random() * engineers.length));
+    if (task.lockedEngineerIndex !== null && task.lockedEngineerIndex !== undefined) {
+      assignment.push(task.lockedEngineerIndex);
+    } else {
+      // Random assignment to any engineer
+      assignment.push(Math.floor(Math.random() * engineers.length));
+    }
   }
 
   return assignment;
@@ -653,4 +695,3 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
 
   return schedule;
 }
-

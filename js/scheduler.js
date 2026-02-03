@@ -9,6 +9,11 @@ import {
   isResolved
 } from './scheduler-core.js';
 
+function normalizeAssigneeEmail(assignee) {
+  if (!assignee || !assignee.includes('@')) return null;
+  return assignee.trim().toLowerCase();
+}
+
 export class Scheduler {
   constructor(engineers, milestones) {
     this.engineers = engineers;
@@ -16,6 +21,7 @@ export class Scheduler {
     this.schedule = [];
     this.engineerSchedules = new Map();
     this.warnings = [];
+    this.engineerByEmail = new Map();
 
     // Initialize engineer schedules
     for (const engineer of engineers) {
@@ -24,6 +30,11 @@ export class Scheduler {
         tasks: [],
         nextAvailable: new Date()
       });
+
+      const email = normalizeAssigneeEmail(engineer.email);
+      if (email) {
+        this.engineerByEmail.set(email, engineer);
+      }
     }
   }
 
@@ -47,17 +58,9 @@ export class Scheduler {
     for (const [engineerId, schedule] of this.engineerSchedules) {
       const engineer = schedule.engineer;
 
-      // Calculate effort for this engineer
-      const effort = this.calculateEffort(bug, engineer);
-
-      // Determine start date (max of engineer availability and earliest start)
-      const startDate = new Date(Math.max(
-        schedule.nextAvailable.getTime(),
-        earliestStart.getTime()
-      ));
-
-      // Score: prefer earlier completion
-      const endDate = this.addWorkingDays(startDate, effort.days, engineer);
+      const assignment = this.assignToEngineer(bug, engineer, earliestStart);
+      if (!assignment) continue;
+      const { startDate, effort, endDate } = assignment;
 
       if (endDate.getTime() < bestEndTime) {
         bestEndTime = endDate.getTime();
@@ -246,8 +249,23 @@ export class Scheduler {
       }
     }
 
-    // Find best engineer
-    const assignment = this.findBestEngineer(bug, earliestStart);
+    let assignment = null;
+    const lockedEngineer = this.getAssignedEngineer(bug);
+
+    if (lockedEngineer) {
+      assignment = this.assignToEngineer(bug, lockedEngineer, earliestStart);
+    } else if (bug.assignee && bug.assignee !== 'nobody@mozilla.org') {
+      this.warnings.push({
+        type: 'unknown_assignee',
+        bug,
+        message: `Assignee ${bug.assignee} not in engineer list for bug ${bug.id}`
+      });
+    }
+
+    // Find best engineer (fallback if no lock or unknown assignee)
+    if (!assignment) {
+      assignment = this.findBestEngineer(bug, earliestStart);
+    }
 
     if (!assignment) {
       this.warnings.push({
@@ -292,6 +310,32 @@ export class Scheduler {
    */
   addWorkingDays(startDate, days, engineer = null) {
     return coreAddWorkingDays(startDate, days, engineer);
+  }
+
+  /**
+   * Assign a specific engineer to a bug (hard lock)
+   */
+  assignToEngineer(bug, engineer, earliestStart) {
+    const schedule = this.engineerSchedules.get(engineer.id);
+    if (!schedule) return null;
+
+    const effort = this.calculateEffort(bug, engineer);
+    const startDate = new Date(Math.max(
+      schedule.nextAvailable.getTime(),
+      earliestStart.getTime()
+    ));
+    const endDate = this.addWorkingDays(startDate, effort.days, engineer);
+
+    return { engineer, startDate, effort, endDate };
+  }
+
+  /**
+   * Resolve a bug's assignee to a known engineer, if possible
+   */
+  getAssignedEngineer(bug) {
+    const assigneeEmail = normalizeAssigneeEmail(bug.assignee);
+    if (!assigneeEmail || assigneeEmail === 'nobody@mozilla.org') return null;
+    return this.engineerByEmail.get(assigneeEmail) || null;
   }
 
   /**

@@ -167,9 +167,8 @@ describe('SA Baseline with Static Fixture', () => {
     console.log(`Avg deadlines: ${avgDeadlines}/3`);
     console.log(`Avg convergence: ${avgConvergence}% of iterations`);
 
-    // With current workload, 2/3 is the maximum achievable (Foxfooding infeasible)
-    // Foxfooding requires 60 engineer-days but only 40 available (4 eng × 10 days)
-    expect(best.deadlinesMet).toBe(2);
+    // With hard-locked assignees, only 1/3 deadlines are achievable in this fixture.
+    expect(best.deadlinesMet).toBe(1);
   });
 
   it('should minimize lateness and track daysLate in scoring', async () => {

@@ -1,6 +1,6 @@
 /**
  * SA Parameter Tuning Test
- * Finds optimal parameters for fastest convergence to best result (2/3 deadlines + min makespan)
+ * Finds optimal parameters for fastest convergence to best result (1/3 deadlines + min makespan)
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -68,7 +68,7 @@ describe('SA Parameter Tuning', () => {
     await import('../../js/optimal-scheduler-worker.js');
 
     console.log('\n=== SA PARAMETER TUNING ===\n');
-    console.log('Target: 2/3 deadlines + minimal makespan\n');
+    console.log('Target: 1/3 deadlines + minimal makespan\n');
 
     for (const config of configs) {
       // Dynamically modify the worker's parameters by re-importing with modified globals
@@ -117,7 +117,7 @@ describe('SA Parameter Tuning', () => {
       const elapsed = Date.now() - startTime;
 
       // Analyze results
-      const successes = configResults.filter(r => r.deadlines === 2).length;
+      const successes = configResults.filter(r => r.deadlines === 1).length;
       const avgMakespan = configResults.length > 0
         ? (configResults.reduce((s, r) => s + r.makespan, 0) / configResults.length).toFixed(1)
         : 'N/A';
@@ -172,7 +172,7 @@ describe('SA Parameter Tuning', () => {
       });
     }
 
-    // At least one config should work
-    expect(results.some(r => parseInt(r.reliabilityPct) >= 75)).toBe(true);
+    // With hard-locked assignees, 1/3 deadlines should be reliably achievable.
+    expect(results.some(r => parseInt(r.reliabilityPct, 10) >= 75)).toBe(true);
   });
 });

@@ -13,24 +13,28 @@ const testEngineers = [
   {
     id: 'janika',
     name: 'Janika Neuberger',
+    email: 'janika@example.com',
     availability: 1.0,
     unavailability: []
   },
   {
     id: 'alissy',
     name: 'Alexandre Lissy',
+    email: 'alissy@example.com',
     availability: 1.0,
     unavailability: []
   },
   {
     id: 'gcp',
     name: 'Gian-Carlo Pascutto',
+    email: 'gcp@example.com',
     availability: 1.0,
     unavailability: []
   },
   {
     id: 'jonathan',
     name: 'Jonathan Mendez',
+    email: 'jonathan@example.com',
     availability: 1.0,
     unavailability: []
   }
@@ -202,6 +206,126 @@ describe('Scheduler', () => {
           }
         }
       }
+    });
+
+    it('should honor assigned engineer when assignee matches', () => {
+      const engineers = [
+        {
+          id: 'fast',
+          name: 'Fast Engineer',
+          email: 'fast@example.com',
+          availability: 1.0,
+          unavailability: []
+        },
+        {
+          id: 'slow',
+          name: 'Slow Engineer',
+          email: 'slow@example.com',
+          availability: 0.2,
+          unavailability: []
+        }
+      ];
+
+      const localScheduler = new Scheduler(engineers, testMilestones);
+      const bug = {
+        id: 4242,
+        summary: 'Assigned bug',
+        status: 'NEW',
+        assignee: 'slow@example.com',
+        dependsOn: [],
+        size: 2
+      };
+
+      const bugMap = new Map();
+      bugMap.set(String(bug.id), bug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks([bug], graph);
+      expect(schedule[0].engineer.id).toBe('slow');
+    });
+
+    it('should fall back to best engineer when assignee is unknown', () => {
+      const engineers = [
+        {
+          id: 'fast',
+          name: 'Fast Engineer',
+          email: 'fast@example.com',
+          availability: 1.0,
+          unavailability: []
+        },
+        {
+          id: 'slow',
+          name: 'Slow Engineer',
+          email: 'slow@example.com',
+          availability: 0.2,
+          unavailability: []
+        }
+      ];
+
+      const localScheduler = new Scheduler(engineers, testMilestones);
+      const bug = {
+        id: 4243,
+        summary: 'Unknown assignee bug',
+        status: 'NEW',
+        assignee: 'unknown@example.com',
+        dependsOn: [],
+        size: 2
+      };
+
+      const bugMap = new Map();
+      bugMap.set(String(bug.id), bug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks([bug], graph);
+      expect(schedule[0].engineer.id).toBe('fast');
+    });
+
+    it('should respect hard lock even with engineer unavailability', () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(today);
+      start.setDate(start.getDate() + 1);
+      const end = new Date(today);
+      end.setDate(end.getDate() + 7);
+
+      const format = (d) => d.toISOString().split('T')[0];
+
+      const engineers = [
+        {
+          id: 'locked',
+          name: 'Locked Engineer',
+          email: 'locked@example.com',
+          availability: 1.0,
+          unavailability: [
+            { start: format(start), end: format(end), reason: 'PTO' }
+          ]
+        },
+        {
+          id: 'free',
+          name: 'Free Engineer',
+          email: 'free@example.com',
+          availability: 1.0,
+          unavailability: []
+        }
+      ];
+
+      const localScheduler = new Scheduler(engineers, testMilestones);
+      const bug = {
+        id: 4244,
+        summary: 'Locked with PTO',
+        status: 'NEW',
+        assignee: 'locked@example.com',
+        dependsOn: [],
+        size: 1
+      };
+
+      const bugMap = new Map();
+      bugMap.set(String(bug.id), bug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks([bug], graph);
+      expect(schedule[0].engineer.id).toBe('locked');
+      expect(schedule[0].endDate.getTime()).toBeGreaterThan(end.getTime());
     });
 
     it('should mark completed bugs as completed', () => {
