@@ -183,12 +183,16 @@ function contrastRatio(colorA, colorB) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function getReadableTextColor(backgroundColor, preferredColor) {
+function hasSufficientContrast(backgroundColor, textColor, minRatio = 3) {
   const bg = parseColorToRgb(backgroundColor);
-  const pref = parseColorToRgb(preferredColor);
-  if (!bg || !pref) return preferredColor;
-  const prefContrast = contrastRatio(bg, pref);
-  if (prefContrast >= 3) return preferredColor;
+  const fg = parseColorToRgb(textColor);
+  if (!bg || !fg) return false;
+  return contrastRatio(bg, fg) >= minRatio;
+}
+
+function getReadableStrokeColor(backgroundColor) {
+  const bg = parseColorToRgb(backgroundColor);
+  if (!bg) return '#000';
   const white = { r: 255, g: 255, b: 255 };
   const black = { r: 0, g: 0, b: 0 };
   return contrastRatio(bg, white) >= contrastRatio(bg, black) ? '#fff' : '#000';
@@ -714,11 +718,17 @@ export class GanttRenderer {
         const initialsSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         let engineerColor = task._engineerColor;
         const barRect = barWrapper.querySelector('rect.bar') || barWrapper.querySelector('rect');
+        let barFill = null;
         if (barRect) {
-          const barFill = window.getComputedStyle(barRect).fill;
-          engineerColor = getReadableTextColor(barFill, task._engineerColor);
+          barFill = window.getComputedStyle(barRect).fill;
         }
-        initialsSpan.setAttribute('fill', engineerColor);
+        initialsSpan.style.setProperty('fill', engineerColor, 'important');
+        if (barFill && !hasSufficientContrast(barFill, engineerColor, 3)) {
+          initialsSpan.style.setProperty('stroke', getReadableStrokeColor(barFill), 'important');
+          initialsSpan.style.setProperty('stroke-width', '2', 'important');
+          initialsSpan.style.setProperty('paint-order', 'stroke', 'important');
+          initialsSpan.style.setProperty('stroke-linejoin', 'round', 'important');
+        }
 
         if (isSchedulerAssigned) {
           // Scheduler-assigned: italic, with arrow indicator
