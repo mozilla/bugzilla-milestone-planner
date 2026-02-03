@@ -557,7 +557,8 @@ export class UIController {
       markdown += 'Bugs where Bugzilla milestone differs from dependency milestone:\n\n';
       for (const m of errors.milestoneMismatches.slice(0, 50)) {
         const depMs = m.dependencyMilestone || '(not connected)';
-        markdown += `- Bug ${m.bug.id}: Bugzilla says "${m.targetMilestone}", dependencies say "${depMs}"\n`;
+        markdown += `- Bug ${m.bug.id}: ${m.bug.summary}\n`;
+        markdown += `  Bugzilla says "${m.targetMilestone}", dependencies say "${depMs}"\n`;
       }
       if (errors.milestoneMismatches.length > 50) {
         markdown += `\n...and ${errors.milestoneMismatches.length - 50} more\n`;
