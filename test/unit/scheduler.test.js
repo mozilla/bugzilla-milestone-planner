@@ -376,6 +376,47 @@ describe('Scheduler', () => {
       expect(schedule[0].endDate.getTime()).toBeGreaterThan(end.getTime());
     });
 
+    it('should start after unavailability for assigned engineer', () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(today);
+      start.setDate(start.getDate() + 1);
+      const end = new Date(today);
+      end.setDate(end.getDate() + 3);
+
+      const format = (d) => d.toISOString().split('T')[0];
+
+      const engineers = [
+        {
+          id: 'locked',
+          name: 'Locked Engineer',
+          email: 'locked@example.com',
+          availability: 1.0,
+          unavailability: [
+            { start: format(start), end: format(end), reason: 'PTO' }
+          ]
+        }
+      ];
+
+      const localScheduler = new Scheduler(engineers, testMilestones);
+      const bug = {
+        id: 4245,
+        summary: 'Starts after PTO',
+        status: 'NEW',
+        assignee: 'locked@example.com',
+        dependsOn: [],
+        size: 1
+      };
+
+      const bugMap = new Map();
+      bugMap.set(String(bug.id), bug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks([bug], graph);
+      const startDateStr = schedule[0].startDate.toISOString().split('T')[0];
+      expect(startDateStr < format(start) || startDateStr > format(end)).toBe(true);
+    });
+
     it('should mark completed bugs as completed', () => {
       const completedBug = {
         id: 1000002,

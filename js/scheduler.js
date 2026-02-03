@@ -7,7 +7,8 @@ import {
   calculateEffort as coreCalculateEffort,
   addWorkingDays as coreAddWorkingDays,
   isResolved,
-  normalizeAssigneeEmail
+  normalizeAssigneeEmail,
+  normalizeStartDate
 } from './scheduler-core.js';
 
 export class Scheduler {
@@ -320,10 +321,11 @@ export class Scheduler {
     if (!schedule) return null;
 
     const effort = this.calculateEffort(bug, engineer);
-    const startDate = new Date(Math.max(
+    let startDate = new Date(Math.max(
       schedule.nextAvailable.getTime(),
       earliestStart.getTime()
     ));
+    startDate = normalizeStartDate(startDate, engineer);
     const endDate = this.addWorkingDays(startDate, effort.days, engineer);
 
     return { engineer, startDate, effort, endDate };
