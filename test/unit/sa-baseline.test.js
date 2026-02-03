@@ -344,6 +344,84 @@ describe('SA Baseline with Static Fixture', () => {
     const worseRuns = results.filter(r => r.anyWorse);
     expect(worseRuns.length).toBe(0);
   });
+
+  it('should have schedule completion dates match worker reported dates', async () => {
+    // This test verifies there's no discrepancy between what the worker reports
+    // and what we'd calculate from the returned schedule (like main.js does)
+    workerMessages.length = 0;
+
+    globalThis.self.onmessage({
+      data: {
+        type: 'start',
+        data: {
+          bugs: filteredBugs,
+          engineers: engineersData.engineers,
+          graph: graphData,
+          milestones: MILESTONES.map(m => ({
+            name: m.name,
+            bugId: m.bugId,
+            deadline: m.deadline.toISOString(),
+            freezeDate: m.freezeDate.toISOString()
+          })),
+          iterations: 8000,
+          id: 0
+        }
+      }
+    });
+
+    const completeMsg = workerMessages.find(m => m.type === 'complete');
+    const improvedMsgs = workerMessages.filter(m => m.type === 'improved');
+    const lastImproved = improvedMsgs[improvedMsgs.length - 1];
+
+    expect(completeMsg).toBeDefined();
+    expect(completeMsg.schedule).toBeDefined();
+    expect(lastImproved).toBeDefined();
+    expect(lastImproved.deadlineDetails).toBeDefined();
+
+    // Convert schedule dates (they're serialized as ISO strings)
+    const schedule = completeMsg.schedule.map(task => ({
+      ...task,
+      startDate: task.startDate ? new Date(task.startDate) : null,
+      endDate: task.endDate ? new Date(task.endDate) : null
+    }));
+
+    // Calculate milestone completions from schedule (same as main.js)
+    const scheduleCompletions = {};
+    for (const milestone of MILESTONES) {
+      const bugId = String(milestone.bugId);
+      const deps = getAllDependencies(bugId, graph);
+      deps.add(bugId);
+
+      let maxEnd = null;
+      for (const task of schedule) {
+        if (deps.has(String(task.bug.id)) && task.endDate) {
+          if (!maxEnd || task.endDate > maxEnd) maxEnd = task.endDate;
+        }
+      }
+      scheduleCompletions[milestone.name] = maxEnd;
+    }
+
+    console.log('\\n=== SCHEDULE VS REPORTED DATES ===');
+    for (const milestone of MILESTONES) {
+      const reported = lastImproved.deadlineDetails.find(d => d.name === milestone.name);
+      const fromSchedule = scheduleCompletions[milestone.name];
+
+      const reportedDate = reported?.endDate ? new Date(reported.endDate).toISOString().split('T')[0] : 'N/A';
+      const scheduleDate = fromSchedule ? fromSchedule.toISOString().split('T')[0] : 'N/A';
+
+      console.log(`${milestone.name}:`);
+      console.log(`  Worker reported: ${reportedDate}`);
+      console.log(`  From schedule:   ${scheduleDate}`);
+
+      // They should match!
+      if (reported?.endDate && fromSchedule) {
+        const reportedMs = new Date(reported.endDate).getTime();
+        const scheduleMs = fromSchedule.getTime();
+        const diffDays = Math.abs(reportedMs - scheduleMs) / (1000 * 60 * 60 * 24);
+        expect(diffDays).toBeLessThan(1); // Should be identical or very close
+      }
+    }
+  });
 });
 
 function getAllDependencies(bugId, graph) {

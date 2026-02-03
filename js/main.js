@@ -730,6 +730,7 @@ class EnterprisePlanner {
                   workerId,
                   schedule: data.schedule,
                   deadlinesMet: data.deadlinesMet,
+                  totalLateness: data.totalLateness || 0,
                   makespan: data.makespan,
                   bestFoundAtIteration: data.bestFoundAtIteration || 0,
                   totalIterations: data.iterations || this.iterationsPerWorker
@@ -788,9 +789,13 @@ class EnterprisePlanner {
       return;
     }
 
-    // Sort by deadlines met (desc), then makespan (asc)
+    // Sort by deadlines met (desc), then lateness (asc), then makespan (asc)
+    // This matches the worker's scoring: deadlines >> lateness >> makespan
     this.workerResults.sort((a, b) => {
       if (b.deadlinesMet !== a.deadlinesMet) return b.deadlinesMet - a.deadlinesMet;
+      const aLateness = a.totalLateness || 0;
+      const bLateness = b.totalLateness || 0;
+      if (aLateness !== bLateness) return aLateness - bLateness;
       return a.makespan - b.makespan;
     });
 

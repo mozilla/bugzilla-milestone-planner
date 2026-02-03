@@ -428,6 +428,7 @@ function finishOptimization(tasks, engineers, dependencyMap, iterations, bestFou
       workerId,
       schedule,
       deadlinesMet: bestScore.deadlinesMet,
+      totalLateness: bestScore.totalLateness,
       makespan: bestScore.makespan,
       improved: true,
       iterations,
