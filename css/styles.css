@@ -538,6 +538,43 @@ header p {
   font-weight: 600;
 }
 
+.table-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.table-card-header h3 {
+  margin: 0;
+}
+
+.table-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.table-action:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.table-action.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .table-card table {
   width: 100%;
   border-collapse: collapse;

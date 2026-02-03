@@ -35,8 +35,11 @@ export class UIController {
       errorsContainer: document.getElementById('errors-container'),
       estimatedTable: document.getElementById('estimated-table'),
       risksTable: document.getElementById('risks-table'),
+      missingSizesLink: document.getElementById('missing-sizes-bugzilla'),
+      deadlineRisksLink: document.getElementById('deadline-risks-bugzilla'),
       milestoneMismatchesCard: document.getElementById('milestone-mismatches-card'),
       milestoneMismatchesTable: document.getElementById('milestone-mismatches-table'),
+      milestoneMismatchesLink: document.getElementById('milestone-mismatches-bugzilla'),
       untriagedCard: document.getElementById('untriaged-card'),
       untriagedTable: document.getElementById('untriaged-table'),
       errorsMarkdown: document.getElementById('errors-markdown'),
@@ -252,11 +255,9 @@ export class UIController {
     if (!this.elements.statsContainer) return;
 
     // Build Bugzilla URLs for bug lists
-    const bugzillaListUrl = (bugs) => {
-      if (!bugs || bugs.length === 0) return null;
-      const ids = bugs.map(b => b.id).join(',');
-      return `https://bugzilla.mozilla.org/buglist.cgi?bug_id=${ids}`;
-    };
+    const bugzillaListUrl = (bugs) => this.buildBugzillaListUrl(
+      (bugs || []).map(b => b?.id).filter(Boolean)
+    );
 
     const totalUrl = bugzillaListUrl(stats.totalBugs);
     const completedUrl = bugzillaListUrl(stats.completedBugs);
@@ -298,12 +299,39 @@ export class UIController {
     this.elements.statsContainer.innerHTML = html;
   }
 
+  buildBugzillaListUrl(bugIds) {
+    if (!bugIds || bugIds.length === 0) return null;
+    return `https://bugzilla.mozilla.org/buglist.cgi?bug_id=${bugIds.join(',')}`;
+  }
+
+  setBugzillaLink(linkEl, bugIds) {
+    if (!linkEl) return;
+    const url = this.buildBugzillaListUrl(bugIds);
+    if (!url) {
+      linkEl.removeAttribute('href');
+      linkEl.classList.add('is-disabled');
+      linkEl.setAttribute('aria-disabled', 'true');
+      linkEl.setAttribute('tabindex', '-1');
+      return;
+    }
+
+    linkEl.href = url;
+    linkEl.classList.remove('is-disabled');
+    linkEl.removeAttribute('aria-disabled');
+    linkEl.removeAttribute('tabindex');
+  }
+
   /**
    * Render estimated sizes table
    * @param {Array<Object>} bugs - Bugs with estimated sizes
    */
   renderEstimatedTable(bugs) {
     if (!this.elements.estimatedTable) return;
+
+    this.setBugzillaLink(
+      this.elements.missingSizesLink,
+      (bugs || []).map(b => b?.id).filter(Boolean)
+    );
 
     if (bugs.length === 0) {
       this.elements.estimatedTable.innerHTML = '<p>No estimated sizes</p>';
@@ -345,6 +373,11 @@ export class UIController {
    */
   renderRisksTable(risks) {
     if (!this.elements.risksTable) return;
+
+    this.setBugzillaLink(
+      this.elements.deadlineRisksLink,
+      (risks || []).map(risk => risk?.task?.bug?.id).filter(Boolean)
+    );
 
     if (risks.length === 0) {
       this.elements.risksTable.innerHTML = '<p>No deadline risks detected</p>';
@@ -392,10 +425,15 @@ export class UIController {
     // Hide the card if no mismatches
     if (!mismatches || mismatches.length === 0) {
       this.elements.milestoneMismatchesCard.style.display = 'none';
+      this.setBugzillaLink(this.elements.milestoneMismatchesLink, []);
       return;
     }
 
     this.elements.milestoneMismatchesCard.style.display = 'block';
+    this.setBugzillaLink(
+      this.elements.milestoneMismatchesLink,
+      mismatches.map(mismatch => mismatch?.bug?.id).filter(Boolean)
+    );
 
     let html = `
       <table>
