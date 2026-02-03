@@ -221,11 +221,63 @@ Early termination reduces runtime but hurts reliability. Not recommended when pa
 1. **Parallel SA**: Run multiple SA instances with different random seeds — *Tested: 5×20k parallel (limited by CPU cores) achieves 100% reliability in ~3.6s (5x speedup). Recommended.*
 2. ~~**Early termination**: Stop SA if no improvement for N iterations~~ — *Tested: Hurts reliability (80% at 10k threshold). Not recommended when parallelism available.*
 3. ~~**Better initial solution**: Use greedy result as SA starting point~~ — *Tested: Actually harmful—greedy is a local optimum trap*
+4. ~~**Hybrid SA+B&B**: Use SA for bulk, B&B for critical tail~~ — *Tested: No benefit. See details below.*
+
+### Hybrid SA+B&B (Failed Experiment)
+
+**Hypothesis**: Run SA for 70% of iterations, then use B&B to optimally schedule the last k tasks (the "tail").
+
+**Implementation**: SA assigns all tasks, then B&B explores all engineer assignments for the final 5 tasks in milestone order, using incremental end-time computation for efficiency.
+
+**Results** (5 runs, 28 tasks, 5 engineers):
+
+| Metric | Hybrid (14k SA + 5-task B&B) | Pure SA (8×10k parallel) |
+|--------|------------------------------|--------------------------|
+| Reliability | 100% | 100% |
+| Makespan | 40 days | 40 days |
+| Wall-clock | ~7s | ~3.6s |
+
+**Why it didn't help**: The tail tasks (last in milestone order) belong to MVP, which has the **latest deadline** and most slack. SA already finds near-optimal assignments for these tasks—B&B just confirms what SA found. A hybrid would only help if B&B ran on the **head** (Foxfooding tasks with tightest constraints), but that's architecturally harder since head assignments affect tail availability.
+
+**Conclusion**: Pure parallel SA remains the best approach for this problem size.
 
 ### Medium-term
-1. **Implement Tabu Search**: Often better than SA for scheduling
+1. ~~**Implement Tabu Search**~~ — *Implemented as Tabu-Enhanced SA. See results below.*
 2. **Add constraint propagation**: Reduce search space before optimization
 3. **Learn from history**: Use past schedules to warm-start optimization
+
+## Tabu-Enhanced SA (Implemented)
+
+Based on literature review ([Springer](https://link.springer.com/chapter/10.1007/978-3-031-19945-5_8), [ScienceDirect](https://www.sciencedirect.com/science/article/pii/S1877050925005113)).
+
+### Implementation Approach
+
+Classic Tabu Search evaluates ALL neighbors each iteration (O(n×m) evaluations), which is too expensive for our use case. Instead, we implemented **Tabu-Enhanced SA**:
+
+- Same single random move per iteration as SA
+- Same temperature-based acceptance logic
+- **Added**: Tabu list prevents cycling back to recent states
+- **Added**: Aspiration criteria allows tabu moves that beat global best
+
+**Parameters**:
+- Tabu tenure: sqrt(n) iterations
+- SA cooling rate: 0.9999
+
+### Experimental Results
+
+| Metric | Pure SA | Tabu-Enhanced SA |
+|--------|---------|------------------|
+| Reliability | 100% | 100% |
+| Avg time | ~7.5s | **~6.9s** |
+| Makespan | 40 days | 40 days |
+
+**Result**: ~8% speedup with same reliability. The tabu list helps avoid revisiting recent states, slightly accelerating convergence.
+
+### Failed Approaches
+
+1. **Classic Tabu Search** (evaluate all neighbors): Too slow—~7 minutes per run
+2. **Sampled Tabu Search** (evaluate 20 random neighbors): Still 3x slower than SA
+3. **Greedy Tabu Search** (no temperature): Less reliable than SA
 
 ### Long-term
 1. **LP relaxation bounds**: Compute lower bounds to measure solution quality
