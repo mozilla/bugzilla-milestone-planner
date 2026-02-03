@@ -3,16 +3,16 @@
  * Color coding, milestone markers, and dependency visualization
  */
 
-// Distinct colors for engineers (colorblind-friendly palette)
+// Distinct colors for engineers (intentionally dark to keep inverted text readable on dark bars).
 const ENGINEER_COLORS = [
-  '#2563eb', // blue
-  '#16a34a', // green
-  '#9333ea', // purple
-  '#ea580c', // orange
-  '#0891b2', // cyan
-  '#be185d', // pink
-  '#4f46e5', // indigo
-  '#ca8a04', // yellow
+  '#1e40af', // blue
+  '#166534', // green
+  '#6b21a8', // purple
+  '#9a3412', // orange
+  '#0e7490', // cyan
+  '#9d174d', // pink
+  '#3730a3', // indigo
+  '#854d0e', // yellow
 ];
 
 // Milestones from SPEC.md
