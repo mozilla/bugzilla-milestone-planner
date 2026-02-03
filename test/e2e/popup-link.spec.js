@@ -44,18 +44,22 @@ test.describe('Popup Link', () => {
       const href = await link.getAttribute('href');
       expect(href).toContain('bugzilla.mozilla.org');
 
-      // Click the link - use page.evaluate to simulate a user click
-      // (Playwright's click can race with chart re-renders)
-      const [newPage] = await Promise.all([
-        context.waitForEvent('page', { timeout: 5000 }),
-        page.evaluate(() => {
-          const link = document.querySelector('.popup-wrapper a');
-          if (link) link.click();
-        })
-      ]);
+      // Capture console logs
+      const logs = [];
+      page.on('console', msg => logs.push(msg.text()));
 
-      expect(newPage.url()).toContain('bugzilla.mozilla.org');
-      await newPage.close();
+      // Click the link with actual mouse click
+      try {
+        const [newPage] = await Promise.all([
+          context.waitForEvent('page', { timeout: 5000 }),
+          link.click({ force: true })
+        ]);
+        expect(newPage.url()).toContain('bugzilla.mozilla.org');
+        await newPage.close();
+      } catch (e) {
+        console.log('Console logs during click:', logs);
+        throw e;
+      }
     } else {
       throw new Error('No link found in popup');
     }
