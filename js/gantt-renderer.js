@@ -200,6 +200,29 @@ function invertRgbColor(color) {
   return `rgb(${inv.r}, ${inv.g}, ${inv.b})`;
 }
 
+function getBarFillColor(barRect) {
+  if (!barRect) return null;
+  const attrFill = barRect.getAttribute('fill');
+  if (attrFill) return attrFill;
+  return window.getComputedStyle(barRect).fill;
+}
+
+function isElementOverlapping(a, b) {
+  if (!a || !b || !a.isConnected || !b.isConnected) return false;
+  try {
+    const aBox = a.getBBox();
+    const bBox = b.getBBox();
+    return !(
+      aBox.x + aBox.width < bBox.x ||
+      aBox.x > bBox.x + bBox.width ||
+      aBox.y + aBox.height < bBox.y ||
+      aBox.y > bBox.y + bBox.height
+    );
+  } catch {
+    return false;
+  }
+}
+
 export class GanttRenderer {
   constructor(containerId) {
     this.containerId = containerId;
@@ -720,10 +743,7 @@ export class GanttRenderer {
         const initialsSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         let engineerColor = task._engineerColor;
         const barRect = barWrapper.querySelector('rect.bar') || barWrapper.querySelector('rect');
-        let barFill = null;
-        if (barRect) {
-          barFill = window.getComputedStyle(barRect).fill;
-        }
+        const barFill = getBarFillColor(barRect);
         initialsSpan.style.setProperty('fill', engineerColor, 'important');
 
         const existingBg = barWrapper.querySelector('.bar-label-bg');
@@ -741,12 +761,15 @@ export class GanttRenderer {
           initialsSpan.setAttribute('font-weight', 'bold');
         }
 
-        if (barFill && isDarkColor(barFill)) {
+        let initialsColor = engineerColor;
+        const labelOverBar = isElementOverlapping(label, barRect);
+        if (labelOverBar && barFill && isDarkColor(barFill)) {
           const inverted = invertRgbColor(engineerColor);
           if (inverted) {
-            initialsSpan.style.setProperty('fill', inverted, 'important');
+            initialsColor = inverted;
           }
         }
+        initialsSpan.style.setProperty('fill', initialsColor, 'important');
 
         label.appendChild(mainSpan);
         label.appendChild(initialsSpan);
