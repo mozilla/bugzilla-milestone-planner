@@ -183,23 +183,21 @@ function contrastRatio(colorA, colorB) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function hasSufficientContrast(backgroundColor, textColor, minRatio = 3) {
-  const bg = parseColorToRgb(backgroundColor);
-  const fg = parseColorToRgb(textColor);
-  if (!bg || !fg) return false;
-  return contrastRatio(bg, fg) >= minRatio;
+function isDarkColor(color) {
+  const rgb = parseColorToRgb(color);
+  if (!rgb) return false;
+  return relativeLuminance(rgb) < 0.5;
 }
 
-function getReadableStrokeColor(backgroundColor) {
-  const bg = parseColorToRgb(backgroundColor);
-  if (!bg) return '#000';
-  const white = { r: 255, g: 255, b: 255 };
-  const black = { r: 0, g: 0, b: 0 };
-  return contrastRatio(bg, white) >= contrastRatio(bg, black) ? '#fff' : '#000';
-}
-
-function getReadableTextColor(backgroundColor) {
-  return getReadableStrokeColor(backgroundColor);
+function invertRgbColor(color) {
+  const rgb = parseColorToRgb(color);
+  if (!rgb) return null;
+  const inv = {
+    r: 255 - rgb.r,
+    g: 255 - rgb.g,
+    b: 255 - rgb.b
+  };
+  return `rgb(${inv.r}, ${inv.g}, ${inv.b})`;
 }
 
 export class GanttRenderer {
@@ -733,16 +731,6 @@ export class GanttRenderer {
           existingBg.remove();
         }
 
-        if (barFill && !hasSufficientContrast(barFill, engineerColor, 3)) {
-          const labelBgColor = engineerColor;
-          const labelTextColor = getReadableTextColor(labelBgColor);
-          initialsSpan.style.setProperty('fill', labelTextColor, 'important');
-          initialsSpan.style.removeProperty('stroke');
-          initialsSpan.style.removeProperty('stroke-width');
-          initialsSpan.style.removeProperty('paint-order');
-          initialsSpan.style.removeProperty('stroke-linejoin');
-        }
-
         if (isSchedulerAssigned) {
           // Scheduler-assigned: italic, with arrow indicator
           initialsSpan.textContent = ' →' + initialsText.trim();
@@ -753,38 +741,15 @@ export class GanttRenderer {
           initialsSpan.setAttribute('font-weight', 'bold');
         }
 
+        if (barFill && isDarkColor(barFill)) {
+          const inverted = invertRgbColor(engineerColor);
+          if (inverted) {
+            initialsSpan.style.setProperty('fill', inverted, 'important');
+          }
+        }
+
         label.appendChild(mainSpan);
         label.appendChild(initialsSpan);
-
-        if (barFill && !hasSufficientContrast(barFill, engineerColor, 3)) {
-          requestAnimationFrame(() => {
-            if (!initialsSpan.isConnected) return;
-            const bbox = initialsSpan.getBBox();
-            const paddingX = 3;
-            const paddingY = 1;
-            const labelBgColor = engineerColor;
-            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            bg.setAttribute('class', 'bar-label-bg');
-            bg.setAttribute('x', (bbox.x - paddingX).toString());
-            bg.setAttribute('y', (bbox.y - paddingY).toString());
-            bg.setAttribute('width', (bbox.width + paddingX * 2).toString());
-            bg.setAttribute('height', (bbox.height + paddingY * 2).toString());
-            bg.setAttribute('rx', '3');
-            bg.setAttribute('ry', '3');
-            bg.setAttribute('fill', labelBgColor);
-            bg.setAttribute('fill-opacity', '0.7');
-            bg.setAttribute('stroke', getReadableStrokeColor(barFill));
-            bg.setAttribute('stroke-width', '1');
-            bg.setAttribute('pointer-events', 'none');
-
-            const parent = label.parentNode;
-            if (parent) {
-              const existing = parent.querySelector('.bar-label-bg');
-              if (existing) existing.remove();
-              parent.insertBefore(bg, label);
-            }
-          });
-        }
       }
     }, 100);
   }
