@@ -39,6 +39,8 @@ const SA_COOLING_RATE = 0.99987; // Adjusted for 8k iterations (ends at ~350°)
 // Best solution tracking
 let bestScore = { deadlinesMet: -1, totalLateness: Infinity, makespan: Infinity };
 let bestAssignment = null;
+let unavailabilityRangesByEngineer = null;
+let optimizationToday = null;
 
 /**
  * Main message handler
@@ -90,6 +92,10 @@ self.onmessage = function(e) {
  * Main optimization entry point
  */
 function optimize(bugs, engineers, graph, iterations, options = {}) {
+  optimizationToday = new Date();
+  optimizationToday.setHours(0, 0, 0, 0);
+  unavailabilityRangesByEngineer = buildUnavailabilityRanges(engineers, optimizationToday);
+
   const tasks = bugs.filter(b => !isResolved(b));
 
   if (tasks.length === 0) {
@@ -228,7 +234,7 @@ function getMilestoneCompletionDays(milestoneBugId, taskEndTimes, dependencyMap)
  * Score prioritizes: 1) deadlines met, 2) minimize lateness, 3) lower makespan
  */
 function evaluateSchedule(taskEndTimes, tasks, dependencyMap) {
-  const today = new Date();
+  const today = optimizationToday || new Date();
   today.setHours(0, 0, 0, 0);
 
   let deadlinesMet = 0;
@@ -313,6 +319,82 @@ function computeDatesWithUnavailability(today, startTimeDays, effortDays, engine
   return { startDate, endDate, startTimeDays: startTimeAdjustedDays, endTimeDays };
 }
 
+function buildUnavailabilityRanges(engineers, today) {
+  const ranges = new Array(engineers.length).fill(null).map(() => []);
+  for (let i = 0; i < engineers.length; i++) {
+    const periods = engineers[i]?.unavailability || [];
+    if (!Array.isArray(periods) || periods.length === 0) continue;
+
+    for (const period of periods) {
+      if (!period?.start || !period?.end) continue;
+      const startDate = new Date(period.start);
+      const endDate = new Date(period.end);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      if (endDate < today) continue;
+
+      const clampedStart = startDate < today ? today : startDate;
+      const startIdx = countWorkingDays(today, clampedStart);
+      const endIdx = countWorkingDays(today, endDate);
+      if (endIdx < startIdx) continue;
+      ranges[i].push({ start: startIdx, end: endIdx });
+    }
+
+    ranges[i].sort((a, b) => a.start - b.start);
+    const merged = [];
+    for (const range of ranges[i]) {
+      const last = merged[merged.length - 1];
+      if (!last || range.start > last.end + 1) {
+        merged.push({ ...range });
+      } else {
+        last.end = Math.max(last.end, range.end);
+      }
+    }
+    ranges[i] = merged;
+  }
+  return ranges;
+}
+
+function adjustStartForUnavailability(start, ranges) {
+  if (!ranges || ranges.length === 0) return start;
+  let current = start;
+  for (const range of ranges) {
+    if (current < range.start) break;
+    if (current >= range.start && current <= range.end) {
+      current = range.end + 1;
+    }
+  }
+  return current;
+}
+
+function countBlockedDaysInInterval(ranges, from, to) {
+  if (!ranges || ranges.length === 0) return 0;
+  if (to < from) return 0;
+  let blocked = 0;
+  for (const range of ranges) {
+    if (range.start > to) break;
+    if (range.end < from) continue;
+    const overlapStart = Math.max(from, range.start);
+    const overlapEnd = Math.min(to, range.end);
+    if (overlapEnd >= overlapStart) {
+      blocked += (overlapEnd - overlapStart + 1);
+    }
+  }
+  return blocked;
+}
+
+function addWorkingDaysSkippingRanges(start, days, ranges) {
+  if (days <= 0) return start;
+  if (!ranges || ranges.length === 0) return start + days;
+
+  let end = start + days;
+  while (true) {
+    const blocked = countBlockedDaysInInterval(ranges, start + 1, end);
+    if (blocked === 0) return end;
+    end += blocked;
+  }
+}
+
 /**
  * Branch and Bound for small problems
  */
@@ -321,9 +403,6 @@ function branchAndBound(tasks, engineers, dependencyMap) {
   const numEngineers = engineers.length;
   let nodesExplored = 0;
   const nonExternalIndices = getNonExternalIndices(engineers);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   function search(taskIndex, assignment, engineerAvailable, taskEndTimes) {
     nodesExplored++;
 
@@ -372,12 +451,13 @@ function branchAndBound(tasks, engineers, dependencyMap) {
       const engineer = engineers[e];
       const effort = calculateEffort(task, engineer);
       let startTime = Math.max(engineerAvailable[e], earliestStart);
-      let endTime = startTime + effort.days;
-      if (!effort.isMeta && engineer && engineer.unavailability && engineer.unavailability.length > 0) {
-        const dates = computeDatesWithUnavailability(today, startTime, effort.days, engineer);
-        startTime = dates.startTimeDays;
-        endTime = dates.endTimeDays;
+      const ranges = unavailabilityRangesByEngineer ? unavailabilityRangesByEngineer[e] : null;
+      if (!effort.isMeta && ranges && ranges.length > 0) {
+        startTime = adjustStartForUnavailability(startTime, ranges);
       }
+      let endTime = effort.isMeta
+        ? earliestStart
+        : addWorkingDaysSkippingRanges(startTime, effort.days, ranges);
       if (effort.isMeta) {
         startTime = earliestStart;
         endTime = earliestStart;
@@ -581,8 +661,6 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
   const processed = new Set();
   let remaining = n;
   let maxIterations = n * n;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   // Assign tasks to milestones and create processing order
   const bugToMilestone = assignBugsToMilestones(tasks, dependencyMap);
@@ -650,12 +728,11 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
         endTime = earliestStart;
       } else {
         startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
-        if (engineer && engineer.unavailability && engineer.unavailability.length > 0) {
-          const dates = computeDatesWithUnavailability(today, startTime, effort.days, engineer);
-          endTime = dates.endTimeDays;
-        } else {
-          endTime = startTime + effort.days;
+        const ranges = unavailabilityRangesByEngineer ? unavailabilityRangesByEngineer[engineerIdx] : null;
+        if (ranges && ranges.length > 0) {
+          startTime = adjustStartForUnavailability(startTime, ranges);
         }
+        endTime = addWorkingDaysSkippingRanges(startTime, effort.days, ranges);
         engineerAvailable[engineerIdx] = endTime;
       }
       taskEndTimes[taskId] = endTime;

@@ -810,19 +810,22 @@ class EnterprisePlanner {
 
               if (isNewGlobalBest && beatsGreedy) {
                 const isNewDeadline = candidateScore.deadlinesMet > previousBest.deadlinesMet;
-                const logType = isNewDeadline ? 'deadline' : 'improvement';
+                const isMakespanBetter = candidateScore.makespan < previousBest.makespan;
 
-                let message;
-                if (isNewDeadline) {
-                  const metNames = data.deadlineDetails
-                    ?.filter(d => d.met)
-                    .map(d => d.name)
-                    .join(', ') || '';
-                  message = `NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNames}). Makespan: ${data.makespan.toFixed(0)} days`;
-                } else {
-                  message = `Improved schedule: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
+                if (isNewDeadline || isMakespanBetter) {
+                  const logType = isNewDeadline ? 'deadline' : 'improvement';
+                  let message;
+                  if (isNewDeadline) {
+                    const metNames = data.deadlineDetails
+                      ?.filter(d => d.met)
+                      .map(d => d.name)
+                      .join(', ') || '';
+                    message = `NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNames}). Makespan: ${data.makespan.toFixed(0)} days`;
+                  } else {
+                    message = `Improved schedule: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
+                  }
+                  this.ui.addOptimizationLogEntry(message, logType);
                 }
-                this.ui.addOptimizationLogEntry(message, logType);
 
                 // Update milestone cards with current best estimates
                 if (data.deadlineDetails) {
