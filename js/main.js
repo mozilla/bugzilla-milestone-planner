@@ -815,7 +815,19 @@ class EnterprisePlanner {
       `Best of ${this.numWorkers}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan.toFixed(0)} days`);
     this.ui.enableScheduleToggle(true);
 
-    // Auto-switch to optimal schedule
+    // Auto-switch to optimal schedule (but not if user is interacting with popup)
+    this.switchToOptimalSchedule();
+  }
+
+  /**
+   * Switch to optimal schedule, deferring if popup is active
+   */
+  switchToOptimalSchedule() {
+    if (this.gantt.isPopupActive()) {
+      // Defer switch until popup interaction is done
+      setTimeout(() => this.switchToOptimalSchedule(), 500);
+      return;
+    }
     this.onScheduleTypeChange('optimal');
   }
 

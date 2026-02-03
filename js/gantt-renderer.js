@@ -48,7 +48,16 @@ export class GanttRenderer {
     this.zoomTimeout = null;
     this.earliestTaskDate = null;
     this.engineerColorMap = new Map(); // Maps engineer name to color
+    this.popupInteractionActive = false; // Track if user is interacting with popup
     this.setupZoomHandler();
+  }
+
+  /**
+   * Check if popup is currently being interacted with
+   * Used to prevent re-renders that would destroy the popup during clicks
+   */
+  isPopupActive() {
+    return this.popupInteractionActive;
   }
 
   /**
@@ -362,24 +371,24 @@ export class GanttRenderer {
         popup._hoverHandlersAttached = true;
         popup.addEventListener('mouseenter', () => {
           isOverPopup = true;
+          this.popupInteractionActive = true;
           cancelHide();
         });
         popup.addEventListener('mouseleave', () => {
           isOverPopup = false;
+          this.popupInteractionActive = false;
           maybeHidePopup();
         });
+        // Prevent click events on the popup from bubbling up to chart handlers
+        // This ensures link clicks register before any chart event handlers can hide the popup
+        popup.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+        }, true);
+        popup.addEventListener('click', (e) => {
+          e.stopPropagation();
+        }, true);
       }
     };
-
-    // Global click handler for popup links (works even if popup is recreated)
-    document.addEventListener('click', (e) => {
-      const link = e.target.closest('.popup-wrapper a');
-      if (link && link.href) {
-        e.preventDefault();
-        e.stopPropagation();
-        window.open(link.href, '_blank');
-      }
-    }, true); // Use capture phase to handle before other handlers
 
     bars.forEach(bar => {
       const onEnter = (e) => {
@@ -633,7 +642,7 @@ export class GanttRenderer {
           <p><strong>End:</strong> ${task.end}</p>
         </div>
         <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${task.id}"
-           target="_blank" class="popup-link">View in Bugzilla</a>
+           target="_blank" rel="noopener" class="popup-link">View in Bugzilla</a>
       </div>
     `;
   }
