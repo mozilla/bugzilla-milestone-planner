@@ -244,7 +244,7 @@ describe('Scheduler', () => {
       expect(schedule[0].engineer.id).toBe('slow');
     });
 
-    it('should fall back to best engineer when assignee is unknown', () => {
+    it('should assign external placeholder when assignee is unknown', () => {
       const engineers = [
         {
           id: 'fast',
@@ -277,7 +277,55 @@ describe('Scheduler', () => {
       graph.buildFromBugs(bugMap);
 
       const schedule = localScheduler.scheduleTasks([bug], graph);
-      expect(schedule[0].engineer.id).toBe('fast');
+      expect(schedule[0].engineer.name).toBe('External');
+      expect(schedule[0].engineer.isExternal).toBe(true);
+      expect(schedule[0].engineer.id).toContain('external:');
+    });
+
+    it('should not assign external placeholder to unassigned bugs', () => {
+      const engineers = [
+        {
+          id: 'fast',
+          name: 'Fast Engineer',
+          email: 'fast@example.com',
+          availability: 1.0,
+          unavailability: []
+        }
+      ];
+
+      const localScheduler = new Scheduler(engineers, testMilestones);
+      const bugs = [
+        {
+          id: 4243,
+          summary: 'Unknown assignee bug',
+          status: 'NEW',
+          assignee: 'unknown@example.com',
+          dependsOn: [],
+          size: 2
+        },
+        {
+          id: 4244,
+          summary: 'Unassigned bug',
+          status: 'NEW',
+          assignee: null,
+          dependsOn: [],
+          size: 2
+        }
+      ];
+
+      const bugMap = new Map();
+      for (const bug of bugs) {
+        bugMap.set(String(bug.id), bug);
+      }
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks(bugs, graph);
+      const unknownTask = schedule.find(t => t.bug.id === 4243);
+      const unassignedTask = schedule.find(t => t.bug.id === 4244);
+
+      expect(unknownTask.engineer.isExternal).toBe(true);
+      expect(unassignedTask.engineer.isExternal).toBeUndefined();
+      expect(unassignedTask.engineer.id).toBe('fast');
     });
 
     it('should respect hard lock even with engineer unavailability', () => {

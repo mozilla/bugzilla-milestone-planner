@@ -111,7 +111,7 @@ export function getAssigneeDisplay(assignee, engineerHandleMap) {
   if (mappedName) {
     return { name: mappedName, initials: getInitialsFromName(mappedName) };
   }
-  return { name: normalized, initials: deriveInitialsFromHandle(normalized) };
+  return { name: 'External', initials: 'EX' };
 }
 
 export function resolveEngineerDisplay({ originalAssignee, scheduledEngineerName, engineerHandleMap }) {

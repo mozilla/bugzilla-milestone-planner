@@ -279,6 +279,16 @@ function isBetter(newScore, oldScore) {
   return newScore.makespan < oldScore.makespan;
 }
 
+function getNonExternalIndices(engineers) {
+  const indices = [];
+  for (let i = 0; i < engineers.length; i++) {
+    if (!engineers[i]?.isExternal) {
+      indices.push(i);
+    }
+  }
+  return indices;
+}
+
 /**
  * Branch and Bound for small problems
  */
@@ -286,6 +296,7 @@ function branchAndBound(tasks, engineers, dependencyMap) {
   const n = tasks.length;
   const numEngineers = engineers.length;
   let nodesExplored = 0;
+  const nonExternalIndices = getNonExternalIndices(engineers);
 
   function search(taskIndex, assignment, engineerAvailable, taskEndTimes) {
     nodesExplored++;
@@ -329,7 +340,7 @@ function branchAndBound(tasks, engineers, dependencyMap) {
     const lockedEngineerIndex = task.lockedEngineerIndex;
     const engineerChoices = lockedEngineerIndex !== null && lockedEngineerIndex !== undefined
       ? [lockedEngineerIndex]
-      : [...Array(numEngineers).keys()];
+      : nonExternalIndices;
 
     for (const e of engineerChoices) {
       const engineer = engineers[e];
@@ -373,6 +384,7 @@ function branchAndBound(tasks, engineers, dependencyMap) {
 function simulatedAnnealing(tasks, engineers, dependencyMap, iterations, options = {}) {
   const n = tasks.length;
   const numEngineers = engineers.length;
+  const nonExternalIndices = getNonExternalIndices(engineers);
   const unlockedTasks = [];
   for (let i = 0; i < n; i++) {
     if (tasks[i].lockedEngineerIndex === null || tasks[i].lockedEngineerIndex === undefined) {
@@ -386,9 +398,10 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations, options
     currentAssignment = options.startAssignment.slice();
     if (options.reheat && unlockedTasks.length > 0) {
       const tweakCount = Math.max(1, Math.floor(n * 0.05));
+      const pool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(numEngineers).keys()];
       for (let i = 0; i < tweakCount; i++) {
         const idx = unlockedTasks[Math.floor(Math.random() * unlockedTasks.length)];
-        currentAssignment[idx] = Math.floor(Math.random() * numEngineers);
+        currentAssignment[idx] = pool[Math.floor(Math.random() * pool.length)];
       }
     }
   }
@@ -412,7 +425,8 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations, options
     if (unlockedTasks.length === 0) break;
     const neighbor = [...currentAssignment];
     const taskIdx = unlockedTasks[Math.floor(Math.random() * unlockedTasks.length)];
-    const newEngineer = Math.floor(Math.random() * numEngineers);
+    const pool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(numEngineers).keys()];
+    const newEngineer = pool[Math.floor(Math.random() * pool.length)];
     neighbor[taskIdx] = newEngineer;
 
     const neighborEndTimes = computeEndTimes(neighbor, tasks, engineers, dependencyMap);
@@ -506,13 +520,15 @@ function finishOptimization(tasks, engineers, dependencyMap, iterations, bestFou
  */
 function generateInitialAssignment(tasks, engineers) {
   const assignment = [];
+  const nonExternalIndices = getNonExternalIndices(engineers);
 
   for (const task of tasks) {
     if (task.lockedEngineerIndex !== null && task.lockedEngineerIndex !== undefined) {
       assignment.push(task.lockedEngineerIndex);
     } else {
       // Random assignment to any engineer
-      assignment.push(Math.floor(Math.random() * engineers.length));
+      const pool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(engineers.length).keys()];
+      assignment.push(pool[Math.floor(Math.random() * pool.length)]);
     }
   }
 

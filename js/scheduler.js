@@ -53,6 +53,7 @@ export class Scheduler {
 
     for (const [engineerId, schedule] of this.engineerSchedules) {
       const engineer = schedule.engineer;
+      if (engineer.isExternal) continue;
 
       const assignment = this.assignToEngineer(bug, engineer, earliestStart);
       if (!assignment) continue;
@@ -88,6 +89,7 @@ export class Scheduler {
     // Reset engineer availability to today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    this.currentStartDate = new Date(today);
 
     for (const schedule of this.engineerSchedules.values()) {
       schedule.nextAvailable = new Date(today);
@@ -256,9 +258,11 @@ export class Scheduler {
         bug,
         message: `Assignee ${bug.assignee} not in engineer list for bug ${bug.id}`
       });
+      const externalEngineer = this.getOrCreateExternalEngineer(bug.assignee);
+      assignment = this.assignToEngineer(bug, externalEngineer, earliestStart);
     }
 
-    // Find best engineer (fallback if no lock or unknown assignee)
+    // Find best engineer (fallback for unassigned bugs)
     if (!assignment) {
       assignment = this.findBestEngineer(bug, earliestStart);
     }
@@ -332,6 +336,31 @@ export class Scheduler {
     const assigneeEmail = normalizeAssigneeEmail(bug.assignee);
     if (!assigneeEmail || assigneeEmail === 'nobody@mozilla.org') return null;
     return this.engineerByEmail.get(assigneeEmail) || null;
+  }
+
+  /**
+   * Create or reuse a placeholder engineer for unknown assignees
+   */
+  getOrCreateExternalEngineer(assignee) {
+    const assigneeEmail = normalizeAssigneeEmail(assignee) || assignee;
+    const id = `external:${assigneeEmail}`;
+    if (!this.engineerSchedules.has(id)) {
+      const startDate = this.currentStartDate ? new Date(this.currentStartDate) : new Date();
+      const engineer = {
+        id,
+        name: 'External',
+        email: assigneeEmail,
+        availability: 1.0,
+        unavailability: [],
+        isExternal: true
+      };
+      this.engineerSchedules.set(id, {
+        engineer,
+        tasks: [],
+        nextAvailable: startDate
+      });
+    }
+    return this.engineerSchedules.get(id).engineer;
   }
 
   /**

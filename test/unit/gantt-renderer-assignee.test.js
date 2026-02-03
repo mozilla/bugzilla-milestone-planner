@@ -28,6 +28,13 @@ describe('gantt renderer assignee display helpers', () => {
     expect(assignee.initials).toBe('AL');
   });
 
+  it('maps unknown assignees to External placeholder', () => {
+    const handleMap = buildEngineerHandleMap(engineersData.engineers);
+    const assignee = getAssigneeDisplay('mozilla@mozilla.com', handleMap);
+    expect(assignee.name).toBe('External');
+    expect(assignee.initials).toBe('EX');
+  });
+
   it('prefers original assignee for display when available', () => {
     const handleMap = buildEngineerHandleMap(engineersData.engineers);
     const resolved = resolveEngineerDisplay({

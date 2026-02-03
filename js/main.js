@@ -568,6 +568,37 @@ class EnterprisePlanner {
   }
 
   /**
+   * Build optimizer engineer list, including external placeholders for unknown assignees.
+   */
+  buildOptimizerEngineers(bugs) {
+    const baseEngineers = this.engineers.map(e => ({ ...e, isExternal: false }));
+    const knownEmails = new Set(
+      baseEngineers
+        .map(e => e.email && e.email.toLowerCase())
+        .filter(Boolean)
+    );
+
+    const externals = new Map();
+    for (const bug of bugs || []) {
+      if (!bug.assignee || bug.assignee === 'nobody@mozilla.org') continue;
+      const email = bug.assignee.toLowerCase();
+      if (knownEmails.has(email)) continue;
+      if (!externals.has(email)) {
+        externals.set(email, {
+          id: `external:${email}`,
+          name: 'External',
+          email,
+          availability: 1.0,
+          unavailability: [],
+          isExternal: true
+        });
+      }
+    }
+
+    return [...baseEngineers, ...externals.values()];
+  }
+
+  /**
    * Re-schedule with current severity filter (recomputes schedule)
    */
   rescheduleWithFilter() {
@@ -716,9 +747,10 @@ class EnterprisePlanner {
       graphEdges[bugId] = bug.dependsOn || [];
     }
 
+    const workerEngineers = this.buildOptimizerEngineers(sortedBugs);
     const workerData = {
       bugs: sortedBugs,
-      engineers: this.engineers,
+      engineers: workerEngineers,
       graph: graphEdges,
       iterations: this.iterationsPerWorker,
       milestones: milestones.map(m => ({
