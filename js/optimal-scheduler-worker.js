@@ -8,7 +8,8 @@ import {
   calculateEffort,
   addWorkingDays,
   isResolved,
-  normalizeAssigneeEmail
+  normalizeAssigneeEmail,
+  normalizeStartDate
 } from './scheduler-core.js';
 
 function buildEngineerEmailIndex(engineers) {
@@ -289,6 +290,29 @@ function getNonExternalIndices(engineers) {
   return indices;
 }
 
+function countWorkingDays(startDate, endDate) {
+  if (!startDate || !endDate || endDate <= startDate) return 0;
+  const current = new Date(startDate);
+  let days = 0;
+  while (current < endDate) {
+    current.setDate(current.getDate() + 1);
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) {
+      days += 1;
+    }
+  }
+  return days;
+}
+
+function computeDatesWithUnavailability(today, startTimeDays, effortDays, engineer) {
+  let startDate = addWorkingDays(today, startTimeDays);
+  startDate = normalizeStartDate(startDate, engineer);
+  const startTimeAdjustedDays = countWorkingDays(today, startDate);
+  const endDate = addWorkingDays(startDate, effortDays, engineer);
+  const endTimeDays = countWorkingDays(today, endDate);
+  return { startDate, endDate, startTimeDays: startTimeAdjustedDays, endTimeDays };
+}
+
 /**
  * Branch and Bound for small problems
  */
@@ -297,6 +321,8 @@ function branchAndBound(tasks, engineers, dependencyMap) {
   const numEngineers = engineers.length;
   let nodesExplored = 0;
   const nonExternalIndices = getNonExternalIndices(engineers);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   function search(taskIndex, assignment, engineerAvailable, taskEndTimes) {
     nodesExplored++;
@@ -345,8 +371,17 @@ function branchAndBound(tasks, engineers, dependencyMap) {
     for (const e of engineerChoices) {
       const engineer = engineers[e];
       const effort = calculateEffort(task, engineer);
-      const startTime = Math.max(engineerAvailable[e], earliestStart);
-      const endTime = startTime + effort.days;
+      let startTime = Math.max(engineerAvailable[e], earliestStart);
+      let endTime = startTime + effort.days;
+      if (!effort.isMeta && engineer && engineer.unavailability && engineer.unavailability.length > 0) {
+        const dates = computeDatesWithUnavailability(today, startTime, effort.days, engineer);
+        startTime = dates.startTimeDays;
+        endTime = dates.endTimeDays;
+      }
+      if (effort.isMeta) {
+        startTime = earliestStart;
+        endTime = earliestStart;
+      }
       candidates.push({ e, startTime, endTime, effort });
     }
 
@@ -546,6 +581,8 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
   const processed = new Set();
   let remaining = n;
   let maxIterations = n * n;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   // Assign tasks to milestones and create processing order
   const bugToMilestone = assignBugsToMilestones(tasks, dependencyMap);
@@ -613,7 +650,12 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
         endTime = earliestStart;
       } else {
         startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
-        endTime = startTime + effort.days;
+        if (engineer && engineer.unavailability && engineer.unavailability.length > 0) {
+          const dates = computeDatesWithUnavailability(today, startTime, effort.days, engineer);
+          endTime = dates.endTimeDays;
+        } else {
+          endTime = startTime + effort.days;
+        }
         engineerAvailable[engineerIdx] = endTime;
       }
       taskEndTimes[taskId] = endTime;
@@ -708,21 +750,31 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
       // Meta bugs don't need an engineer and complete when dependencies complete
       let startTime, endTime;
       let assignedEngineer = engineer;
+      let dates = null;
       if (effort.isMeta) {
         startTime = earliestStart;
         endTime = earliestStart;
         assignedEngineer = null; // Meta bugs don't need an assigned engineer
       } else {
         startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
-        endTime = startTime + effort.days;
+        if (engineer && engineer.unavailability && engineer.unavailability.length > 0) {
+          dates = computeDatesWithUnavailability(today, startTime, effort.days, engineer);
+          endTime = dates.endTimeDays;
+        } else {
+          endTime = startTime + effort.days;
+        }
         engineerAvailable[engineerIdx] = endTime;
       }
       taskEndTimes[taskId] = endTime;
 
       schedule.push({
         bug: task,
-        startDate: addWorkingDays(today, startTime),
-        endDate: addWorkingDays(today, endTime),
+        startDate: effort.isMeta
+          ? addWorkingDays(today, startTime)
+          : (dates ? dates.startDate : addWorkingDays(today, startTime)),
+        endDate: effort.isMeta
+          ? addWorkingDays(today, endTime)
+          : (dates ? dates.endDate : addWorkingDays(today, endTime)),
         engineer: assignedEngineer,
         effort,
         completed: false
