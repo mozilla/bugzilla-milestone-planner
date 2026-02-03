@@ -800,6 +800,7 @@ class EnterprisePlanner {
                 makespan: data.makespan
               };
 
+              const previousBest = { ...globalBest };
               const isNewGlobalBest = isBetterScore(candidateScore, globalBest);
               if (isNewGlobalBest) {
                 globalBest = candidateScore;
@@ -808,7 +809,7 @@ class EnterprisePlanner {
               const beatsGreedy = this.greedyScore && isBetterScore(candidateScore, this.greedyScore);
 
               if (isNewGlobalBest && beatsGreedy) {
-                const isNewDeadline = data.deadlinesMet > (this.greedyScore?.deadlinesMet ?? -1);
+                const isNewDeadline = candidateScore.deadlinesMet > previousBest.deadlinesMet;
                 const logType = isNewDeadline ? 'deadline' : 'improvement';
 
                 let message;
@@ -819,7 +820,7 @@ class EnterprisePlanner {
                     .join(', ') || '';
                   message = `NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNames}). Makespan: ${data.makespan.toFixed(0)} days`;
                 } else {
-                  message = `Improved makespan: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
+                  message = `Improved schedule: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
                 }
                 this.ui.addOptimizationLogEntry(message, logType);
 
@@ -1112,7 +1113,7 @@ class EnterprisePlanner {
       this.exhaustiveBestSchedule = null;
       this.exhaustiveWorkerStates = new Map();
       this.exhaustiveStartTime = Date.now();
-      this.startOptimalScheduler(filteredBugs, MILESTONES, { mode: 'exhaustive' });
+      this.startOptimalScheduler(filteredBugs, MILESTONES, { mode: 'exhaustive', preserveExhaustive: true });
     }
 
     const fullSchedule = (type === 'optimal' || type === 'exhaustive') && this.optimalSchedule
