@@ -274,7 +274,7 @@ class EnterprisePlanner {
    */
   renderResults(schedule, errors, risks, activeMilestones = MILESTONES) {
     // Render Gantt chart
-    this.gantt.render(schedule, this.graph);
+    this.gantt.render(schedule, this.graph, this.engineers);
 
     // Render milestone cards with estimated completions (only active milestones)
     const milestoneCompletions = this.calculateMilestoneCompletions(schedule);
@@ -882,7 +882,7 @@ class EnterprisePlanner {
     if (fullSchedule) {
       // Apply milestone filter to view
       const schedule = this.filterScheduleByMilestone(fullSchedule);
-      this.gantt.render(schedule, this.graph);
+      this.gantt.render(schedule, this.graph, this.engineers);
 
       // Update milestone cards with new completion dates (respecting filter)
       const milestoneCompletions = this.calculateMilestoneCompletions(fullSchedule);

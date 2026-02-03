@@ -3,30 +3,35 @@
     {
       "id": "janika",
       "name": "Janika Neuberger",
+      "email": "jneuberger@mozilla.com",
       "availability": 1.0,
       "unavailability": []
     },
     {
       "id": "alissy",
       "name": "Alexandre Lissy",
+      "email": "lissyx+mozillians@lissyx.dyndns.org",
       "availability": 1.0,
       "unavailability": []
     },
     {
       "id": "gcp",
       "name": "Gian-Carlo Pascutto",
+      "email": "gpascutto@mozilla.com",
       "availability": 1.0,
       "unavailability": []
     },
     {
       "id": "jonathan",
       "name": "Jonathan Mendez",
+      "email": "jmendez@mozilla.com",
       "availability": 1.0,
       "unavailability": []
     },
     {
       "id": "dave",
       "name": "Dave Townsend",
+      "email": "dtownsend@mozilla.com",
       "availability": 0.2,
       "unavailability": []
     }

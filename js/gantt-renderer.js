@@ -37,6 +37,108 @@ const MILESTONES = [
   }
 ];
 
+export function normalizeAssigneeHandle(assignee) {
+  if (!assignee) return null;
+  const localPart = assignee.includes('@') ? assignee.split('@')[0] : assignee;
+  const withoutTag = localPart.split('+')[0];
+  const normalized = withoutTag.toLowerCase().replace(/[^a-z]/g, '');
+  return normalized || null;
+}
+
+export function normalizeAssigneeEmail(assignee) {
+  if (!assignee || !assignee.includes('@')) return null;
+  return assignee.trim().toLowerCase();
+}
+
+export function deriveHandleFromName(name) {
+  if (!name) return null;
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return null;
+  const firstInitial = parts[0].charAt(0).toLowerCase();
+  const lastName = parts[parts.length - 1].toLowerCase().replace(/[^a-z]/g, '');
+  const handle = `${firstInitial}${lastName}`.replace(/[^a-z]/g, '');
+  return handle || null;
+}
+
+export function deriveInitialsFromHandle(handle) {
+  if (!handle) return '?';
+  const parts = handle.split(/[^a-zA-Z]+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
+  }
+  if (parts.length === 1) {
+    const token = parts[0];
+    if (token.length >= 2) {
+      return `${token.charAt(0)}${token.charAt(1)}`.toUpperCase();
+    }
+    return token.charAt(0).toUpperCase();
+  }
+  return '?';
+}
+
+export function buildEngineerHandleMap(engineers) {
+  const map = new Map();
+  const emailMap = new Map();
+  for (const engineer of engineers || []) {
+    if (!engineer || !engineer.name) continue;
+    const handles = new Set();
+    const nameHandle = deriveHandleFromName(engineer.name);
+    if (nameHandle) handles.add(nameHandle);
+    const idHandle = normalizeAssigneeHandle(engineer.id);
+    if (idHandle) handles.add(idHandle);
+    for (const handle of handles) {
+      map.set(handle, engineer.name);
+    }
+    const email = normalizeAssigneeEmail(engineer.email);
+    if (email) {
+      emailMap.set(email, engineer.name);
+    }
+  }
+  return { handleMap: map, emailMap };
+}
+
+export function getAssigneeDisplay(assignee, engineerHandleMap) {
+  const normalizedEmail = normalizeAssigneeEmail(assignee);
+  if (normalizedEmail && engineerHandleMap?.emailMap?.has(normalizedEmail)) {
+    const mappedName = engineerHandleMap.emailMap.get(normalizedEmail);
+    return { name: mappedName, initials: getInitialsFromName(mappedName) };
+  }
+  const normalized = normalizeAssigneeHandle(assignee);
+  if (!normalized) {
+    return { name: null, initials: '?' };
+  }
+  const mappedName = engineerHandleMap?.handleMap?.get(normalized);
+  if (mappedName) {
+    return { name: mappedName, initials: getInitialsFromName(mappedName) };
+  }
+  return { name: normalized, initials: deriveInitialsFromHandle(normalized) };
+}
+
+export function resolveEngineerDisplay({ originalAssignee, scheduledEngineerName, engineerHandleMap }) {
+  const isSchedulerAssigned = !originalAssignee || originalAssignee === 'nobody@mozilla.org';
+  if (isSchedulerAssigned) {
+    return {
+      displayName: scheduledEngineerName,
+      initials: scheduledEngineerName ? getInitialsFromName(scheduledEngineerName) : '?',
+      isSchedulerAssigned
+    };
+  }
+  const assigneeDisplay = getAssigneeDisplay(originalAssignee, engineerHandleMap);
+  return {
+    displayName: assigneeDisplay.name,
+    initials: assigneeDisplay.initials,
+    isSchedulerAssigned
+  };
+}
+
+export function getInitialsFromName(name) {
+  if (!name) return '?';
+  return name.split(' ')
+    .map(part => part.charAt(0).toUpperCase())
+    .join('')
+    .substring(0, 2);
+}
+
 export class GanttRenderer {
   constructor(containerId) {
     this.containerId = containerId;
@@ -144,7 +246,8 @@ export class GanttRenderer {
    * @param {DependencyGraph} graph - Dependency graph for relationships
    * @returns {Array<Object>} Frappe Gantt task format
    */
-  convertToGanttTasks(scheduledTasks, graph) {
+  convertToGanttTasks(scheduledTasks, graph, engineers = []) {
+    const engineerHandleMap = buildEngineerHandleMap(engineers);
     this.tasks = [];
 
     for (const task of scheduledTasks) {
@@ -184,7 +287,11 @@ export class GanttRenderer {
       // Determine if scheduler assigned engineer (vs original Bugzilla assignee)
       const originalAssignee = task.bug.assignee;
       const scheduledEngineer = task.engineer ? task.engineer.name : null;
-      const isSchedulerAssigned = !originalAssignee || originalAssignee === 'nobody@mozilla.org';
+      const { displayName, initials, isSchedulerAssigned } = resolveEngineerDisplay({
+        originalAssignee,
+        scheduledEngineerName: scheduledEngineer,
+        engineerHandleMap
+      });
 
       // Add scheduler-assigned class for visual distinction
       if (isSchedulerAssigned && !atRisk) {
@@ -201,7 +308,7 @@ export class GanttRenderer {
       const isMeta = task.bug.isMeta || (task.effort && task.effort.isMeta);
       let engineerSuffix = '';
       if (!isMeta) {
-        const engineerInitials = scheduledEngineer ? this.getInitials(scheduledEngineer) : '?';
+        const engineerInitials = initials || '?';
         engineerSuffix = isSchedulerAssigned ? ` [${engineerInitials}]` : ` (${engineerInitials})`;
       }
 
@@ -214,7 +321,7 @@ export class GanttRenderer {
         custom_class: customClass,
         dependencies: validDeps.join(', '),
         // Store extra data for tooltips
-        _engineer: scheduledEngineer || 'Unassigned',
+        _engineer: displayName || 'Unassigned',
         _originalAssignee: originalAssignee,
         _isSchedulerAssigned: isSchedulerAssigned,
         _effort: task.effort ? task.effort.days : 0,
@@ -222,7 +329,7 @@ export class GanttRenderer {
         _sizeEstimated: task.effort ? task.effort.sizeEstimated : false,
         _isMeta: isMeta,
         _milestone: task.milestone ? task.milestone.name : null,
-        _engineerColor: this.getEngineerColor(scheduledEngineer)
+        _engineerColor: this.getEngineerColor(displayName)
       });
     }
 
@@ -249,9 +356,10 @@ export class GanttRenderer {
    * Render the Gantt chart
    * @param {Array<Object>} scheduledTasks - Tasks from scheduler
    * @param {DependencyGraph} graph - Dependency graph
+   * @param {Array<Object>} engineers - Engineer roster (for assignee display mapping)
    */
-  render(scheduledTasks, graph) {
-    const ganttTasks = this.convertToGanttTasks(scheduledTasks, graph);
+  render(scheduledTasks, graph, engineers = []) {
+    const ganttTasks = this.convertToGanttTasks(scheduledTasks, graph, engineers);
 
     // Clean up previous render to avoid nested containers
     if (this._interactionCleanup) {
@@ -722,17 +830,6 @@ export class GanttRenderer {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  }
-
-  /**
-   * Get initials from a name
-   */
-  getInitials(name) {
-    if (!name) return '?';
-    return name.split(' ')
-      .map(part => part.charAt(0).toUpperCase())
-      .join('')
-      .substring(0, 2);
   }
 
   /**
