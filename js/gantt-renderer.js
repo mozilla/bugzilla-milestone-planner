@@ -734,7 +734,9 @@ export class GanttRenderer {
         }
 
         if (barFill && !hasSufficientContrast(barFill, engineerColor, 3)) {
-          initialsSpan.style.setProperty('fill', getReadableTextColor(engineerColor), 'important');
+          const labelBgColor = engineerColor;
+          const labelTextColor = getReadableTextColor(labelBgColor);
+          initialsSpan.style.setProperty('fill', labelTextColor, 'important');
           initialsSpan.style.removeProperty('stroke');
           initialsSpan.style.removeProperty('stroke-width');
           initialsSpan.style.removeProperty('paint-order');
@@ -760,6 +762,7 @@ export class GanttRenderer {
             const bbox = initialsSpan.getBBox();
             const paddingX = 3;
             const paddingY = 1;
+            const labelBgColor = engineerColor;
             const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             bg.setAttribute('class', 'bar-label-bg');
             bg.setAttribute('x', (bbox.x - paddingX).toString());
@@ -768,8 +771,10 @@ export class GanttRenderer {
             bg.setAttribute('height', (bbox.height + paddingY * 2).toString());
             bg.setAttribute('rx', '3');
             bg.setAttribute('ry', '3');
-            bg.setAttribute('fill', engineerColor);
-            bg.setAttribute('fill-opacity', '0.35');
+            bg.setAttribute('fill', labelBgColor);
+            bg.setAttribute('fill-opacity', '0.7');
+            bg.setAttribute('stroke', getReadableStrokeColor(barFill));
+            bg.setAttribute('stroke-width', '1');
             bg.setAttribute('pointer-events', 'none');
 
             const parent = label.parentNode;
