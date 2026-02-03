@@ -368,12 +368,18 @@ export class GanttRenderer {
           isOverPopup = false;
           maybeHidePopup();
         });
-        // Prevent clicks inside popup from bubbling up and hiding the popup
-        popup.addEventListener('click', (e) => {
-          e.stopPropagation();
-        });
       }
     };
+
+    // Global click handler for popup links (works even if popup is recreated)
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('.popup-wrapper a');
+      if (link && link.href) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(link.href, '_blank');
+      }
+    }, true); // Use capture phase to handle before other handlers
 
     bars.forEach(bar => {
       const onEnter = (e) => {
