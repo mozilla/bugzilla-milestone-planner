@@ -198,6 +198,10 @@ function getReadableStrokeColor(backgroundColor) {
   return contrastRatio(bg, white) >= contrastRatio(bg, black) ? '#fff' : '#000';
 }
 
+function getReadableTextColor(backgroundColor) {
+  return getReadableStrokeColor(backgroundColor);
+}
+
 export class GanttRenderer {
   constructor(containerId) {
     this.containerId = containerId;
@@ -723,11 +727,18 @@ export class GanttRenderer {
           barFill = window.getComputedStyle(barRect).fill;
         }
         initialsSpan.style.setProperty('fill', engineerColor, 'important');
+
+        const existingBg = barWrapper.querySelector('.bar-label-bg');
+        if (existingBg) {
+          existingBg.remove();
+        }
+
         if (barFill && !hasSufficientContrast(barFill, engineerColor, 3)) {
-          initialsSpan.style.setProperty('stroke', getReadableStrokeColor(barFill), 'important');
-          initialsSpan.style.setProperty('stroke-width', '2', 'important');
-          initialsSpan.style.setProperty('paint-order', 'stroke', 'important');
-          initialsSpan.style.setProperty('stroke-linejoin', 'round', 'important');
+          initialsSpan.style.setProperty('fill', getReadableTextColor(engineerColor), 'important');
+          initialsSpan.style.removeProperty('stroke');
+          initialsSpan.style.removeProperty('stroke-width');
+          initialsSpan.style.removeProperty('paint-order');
+          initialsSpan.style.removeProperty('stroke-linejoin');
         }
 
         if (isSchedulerAssigned) {
@@ -742,6 +753,33 @@ export class GanttRenderer {
 
         label.appendChild(mainSpan);
         label.appendChild(initialsSpan);
+
+        if (barFill && !hasSufficientContrast(barFill, engineerColor, 3)) {
+          requestAnimationFrame(() => {
+            if (!initialsSpan.isConnected) return;
+            const bbox = initialsSpan.getBBox();
+            const paddingX = 3;
+            const paddingY = 1;
+            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('class', 'bar-label-bg');
+            bg.setAttribute('x', (bbox.x - paddingX).toString());
+            bg.setAttribute('y', (bbox.y - paddingY).toString());
+            bg.setAttribute('width', (bbox.width + paddingX * 2).toString());
+            bg.setAttribute('height', (bbox.height + paddingY * 2).toString());
+            bg.setAttribute('rx', '3');
+            bg.setAttribute('ry', '3');
+            bg.setAttribute('fill', engineerColor);
+            bg.setAttribute('fill-opacity', '0.35');
+            bg.setAttribute('pointer-events', 'none');
+
+            const parent = label.parentNode;
+            if (parent) {
+              const existing = parent.querySelector('.bar-label-bg');
+              if (existing) existing.remove();
+              parent.insertBefore(bg, label);
+            }
+          });
+        }
       }
     }, 100);
   }
