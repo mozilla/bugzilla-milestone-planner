@@ -139,6 +139,61 @@ export function getInitialsFromName(name) {
     .substring(0, 2);
 }
 
+function parseColorToRgb(color) {
+  if (!color) return null;
+  const hex = color.trim();
+  if (hex.startsWith('#')) {
+    const value = hex.slice(1);
+    if (value.length === 3) {
+      const r = parseInt(value[0] + value[0], 16);
+      const g = parseInt(value[1] + value[1], 16);
+      const b = parseInt(value[2] + value[2], 16);
+      return { r, g, b };
+    }
+    if (value.length === 6) {
+      const r = parseInt(value.slice(0, 2), 16);
+      const g = parseInt(value.slice(2, 4), 16);
+      const b = parseInt(value.slice(4, 6), 16);
+      return { r, g, b };
+    }
+  }
+  const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (match) {
+    return { r: Number(match[1]), g: Number(match[2]), b: Number(match[3]) };
+  }
+  return null;
+}
+
+function relativeLuminance({ r, g, b }) {
+  const toLinear = (v) => {
+    const srgb = v / 255;
+    return srgb <= 0.03928 ? srgb / 12.92 : Math.pow((srgb + 0.055) / 1.055, 2.4);
+  };
+  const R = toLinear(r);
+  const G = toLinear(g);
+  const B = toLinear(b);
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
+
+function contrastRatio(colorA, colorB) {
+  const lumA = relativeLuminance(colorA);
+  const lumB = relativeLuminance(colorB);
+  const lighter = Math.max(lumA, lumB);
+  const darker = Math.min(lumA, lumB);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function getReadableTextColor(backgroundColor, preferredColor) {
+  const bg = parseColorToRgb(backgroundColor);
+  const pref = parseColorToRgb(preferredColor);
+  if (!bg || !pref) return preferredColor;
+  const prefContrast = contrastRatio(bg, pref);
+  if (prefContrast >= 3) return preferredColor;
+  const white = { r: 255, g: 255, b: 255 };
+  const black = { r: 0, g: 0, b: 0 };
+  return contrastRatio(bg, white) >= contrastRatio(bg, black) ? '#fff' : '#000';
+}
+
 export class GanttRenderer {
   constructor(containerId) {
     this.containerId = containerId;
@@ -657,7 +712,13 @@ export class GanttRenderer {
         mainSpan.textContent = mainText;
 
         const initialsSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-        initialsSpan.setAttribute('fill', task._engineerColor);
+        let engineerColor = task._engineerColor;
+        const barRect = barWrapper.querySelector('rect.bar') || barWrapper.querySelector('rect');
+        if (barRect) {
+          const barFill = window.getComputedStyle(barRect).fill;
+          engineerColor = getReadableTextColor(barFill, task._engineerColor);
+        }
+        initialsSpan.setAttribute('fill', engineerColor);
 
         if (isSchedulerAssigned) {
           // Scheduler-assigned: italic, with arrow indicator
