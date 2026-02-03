@@ -75,7 +75,7 @@ function optimize(bugs, engineers, graph, iterations) {
   }
 
   // Reset best tracking
-  bestScore = { deadlinesMet: -1, makespan: Infinity };
+  bestScore = { deadlinesMet: -1, totalLateness: Infinity, makespan: Infinity };
   bestAssignment = null;
 
   // Choose algorithm based on problem size

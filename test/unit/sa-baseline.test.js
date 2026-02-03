@@ -238,21 +238,111 @@ describe('SA Baseline with Static Fixture', () => {
       expect(missed.daysLate).toBeGreaterThan(0);
     }
 
-    // Key assertion: SA's Foxfooding should not be more than 7 days worse than greedy
-    const greedyFoxfooding = greedyCompletions['Foxfooding'];
-    const saFoxfooding = lastImproved.deadlineDetails.find(d => d.name === 'Foxfooding');
+    // Key assertion: SA should not be worse than greedy for ANY milestone
+    for (const milestone of MILESTONES) {
+      const greedyCompletion = greedyCompletions[milestone.name];
+      const saDetail = lastImproved.deadlineDetails.find(d => d.name === milestone.name);
 
-    if (greedyFoxfooding && saFoxfooding) {
-      const greedyDaysLate = Math.ceil((greedyFoxfooding - MILESTONES[0].freezeDate) / (1000 * 60 * 60 * 24));
-      const saDaysLate = saFoxfooding.daysLate || 0;
+      if (greedyCompletion && saDetail) {
+        const greedyDaysLate = greedyCompletion > milestone.freezeDate
+          ? Math.ceil((greedyCompletion - milestone.freezeDate) / (1000 * 60 * 60 * 24))
+          : 0;
+        const saDaysLate = saDetail.daysLate || 0;
 
-      console.log(`\nFoxfooding lateness comparison:`);
-      console.log(`  Greedy: ${greedyDaysLate} days late`);
-      console.log(`  SA: ${saDaysLate} days late`);
+        console.log(`\n${milestone.name} lateness comparison:`);
+        console.log(`  Greedy: ${greedyDaysLate} days late`);
+        console.log(`  SA: ${saDaysLate} days late`);
 
-      // SA should not be significantly worse than greedy (allow 7 days tolerance)
-      expect(saDaysLate).toBeLessThanOrEqual(greedyDaysLate + 7);
+        // SA should NEVER be more than 3 days worse than greedy for any milestone
+        // If it is, the lateness penalty isn't working correctly
+        expect(saDaysLate).toBeLessThanOrEqual(greedyDaysLate + 3);
+      }
     }
+  });
+
+  it('should consistently produce results at least as good as greedy across multiple runs', async () => {
+    const RUNS = 5;
+    const results = [];
+
+    // First, calculate greedy's milestone completion dates
+    const greedyCompletions = {};
+    for (const milestone of MILESTONES) {
+      const deps = getAllDependencies(String(milestone.bugId), graph);
+      let maxEnd = null;
+      for (const task of schedule) {
+        if (deps.has(String(task.bug.id)) && task.endDate) {
+          if (!maxEnd || task.endDate > maxEnd) maxEnd = task.endDate;
+        }
+      }
+      greedyCompletions[milestone.name] = maxEnd;
+    }
+
+    console.log('\\n=== SA CONSISTENCY TEST ===');
+
+    for (let run = 0; run < RUNS; run++) {
+      workerMessages.length = 0;
+
+      globalThis.self.onmessage({
+        data: {
+          type: 'start',
+          data: {
+            bugs: filteredBugs,
+            engineers: engineersData.engineers,
+            graph: graphData,
+            milestones: MILESTONES.map(m => ({
+              name: m.name,
+              bugId: m.bugId,
+              deadline: m.deadline.toISOString(),
+              freezeDate: m.freezeDate.toISOString()
+            })),
+            iterations: 8000,
+            id: run
+          }
+        }
+      });
+
+      const improvedMsgs = workerMessages.filter(m => m.type === 'improved');
+      const lastImproved = improvedMsgs[improvedMsgs.length - 1];
+
+      if (lastImproved && lastImproved.deadlineDetails) {
+        const runResult = { run };
+        let anyWorse = false;
+
+        for (const milestone of MILESTONES) {
+          const greedyCompletion = greedyCompletions[milestone.name];
+          const saDetail = lastImproved.deadlineDetails.find(d => d.name === milestone.name);
+
+          if (greedyCompletion && saDetail) {
+            const greedyDaysLate = greedyCompletion > milestone.freezeDate
+              ? Math.ceil((greedyCompletion - milestone.freezeDate) / (1000 * 60 * 60 * 24))
+              : 0;
+            const saDaysLate = saDetail.daysLate || 0;
+
+            runResult[milestone.name] = { greedy: greedyDaysLate, sa: saDaysLate };
+            if (saDaysLate > greedyDaysLate + 3) {
+              anyWorse = true;
+            }
+          }
+        }
+
+        runResult.anyWorse = anyWorse;
+        results.push(runResult);
+      }
+    }
+
+    // Log results
+    for (const r of results) {
+      const status = r.anyWorse ? 'WORSE' : 'OK';
+      const details = MILESTONES.map(m => {
+        const data = r[m.name];
+        return data ? `${m.name}: G=${data.greedy} SA=${data.sa}` : '';
+      }).filter(Boolean).join(', ');
+      console.log(`Run ${r.run + 1}: ${status} - ${details}`);
+    }
+
+    // All runs should be at least as good as greedy (with small tolerance)
+    const worseRuns = results.filter(r => r.anyWorse);
+    expect(worseRuns.length).toBe(0);
   });
 });
 
