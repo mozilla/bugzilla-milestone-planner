@@ -413,7 +413,10 @@ export class GanttRenderer {
         _sizeEstimated: task.effort ? task.effort.sizeEstimated : false,
         _isMeta: isMeta,
         _milestone: task.milestone ? task.milestone.name : null,
-        _engineerColor: this.getEngineerColor(displayName)
+        _engineerColor: this.getEngineerColor(displayName),
+        _availability: task.engineer && Number.isFinite(task.engineer.availability)
+          ? task.engineer.availability
+          : 1.0
       });
     }
 
@@ -843,11 +846,15 @@ export class GanttRenderer {
     const isMeta = task._isMeta;
     const isSchedulerAssigned = task._isSchedulerAssigned;
     const assignmentNote = isSchedulerAssigned ? ' (scheduler assigned)' : '';
+    const availability = Number.isFinite(task._availability) ? task._availability : 1.0;
+    const availabilityPct = Math.round(availability * 100);
 
     // For meta bugs, don't show size/effort
     const sizeEffortLine = isMeta
       ? '<p><em>Meta/tracking bug</em></p>'
-      : `<p><strong>Size/Effort:</strong> ${size}${sizeNote} (${effort} days)</p>`;
+      : availability < 1
+        ? `<p><strong>Size/Effort:</strong> ${size}${sizeNote} @ ${availabilityPct}% (${effort} days)</p>`
+        : `<p><strong>Size/Effort:</strong> ${size}${sizeNote} (${effort} days)</p>`;
 
     return `
       <div class="gantt-popup">
