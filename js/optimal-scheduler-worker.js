@@ -44,6 +44,11 @@ let bestAssignment = null;
 let unavailabilityRangesByEngineer = null;
 let optimizationToday = null;
 
+// Precomputed caches (reset at optimization start)
+let cachedBugToMilestone = null;
+let cachedTaskIdIndex = null;
+let cachedMilestoneDeps = null;
+
 /**
  * Main message handler
  */
@@ -122,6 +127,10 @@ function optimize(bugs, engineers, graph, iterations, options = {}) {
     dependencyMap.set(String(bugId), deps.map(d => String(d)));
   }
 
+  // Precompute static data structures (milestone assignments, task order, etc.)
+  // These don't change between iterations, so computing once saves significant time
+  precomputeCaches(tasks, dependencyMap);
+
   // Reset best tracking
   bestScore = { deadlinesMet: -1, totalLateness: Infinity, makespan: Infinity };
   bestAssignment = null;
@@ -135,11 +144,52 @@ function optimize(bugs, engineers, graph, iterations, options = {}) {
 }
 
 /**
+ * Precompute all static data structures at optimization start.
+ * These don't change between iterations since they only depend on the dependency graph.
+ */
+function precomputeCaches(tasks, dependencyMap) {
+  const sortedMilestones = [...activeMilestones].sort((a, b) =>
+    a.deadline.getTime() - b.deadline.getTime()
+  );
+
+  // Precompute transitive dependencies for each milestone
+  cachedMilestoneDeps = new Map();
+  for (const m of sortedMilestones) {
+    cachedMilestoneDeps.set(String(m.bugId), getAllDependencies(m.bugId, dependencyMap));
+  }
+
+  // Assign bugs to milestones using precomputed deps (O(1) lookups)
+  cachedBugToMilestone = new Map();
+  for (const task of tasks) {
+    const bugId = String(task.id);
+    for (const milestone of sortedMilestones) {
+      const milestoneId = String(milestone.bugId);
+      if (bugId === milestoneId || cachedMilestoneDeps.get(milestoneId).has(bugId)) {
+        cachedBugToMilestone.set(bugId, milestone);
+        break;
+      }
+    }
+  }
+
+  // Precompute task ID to index mapping for O(1) lookups
+  cachedTaskIdIndex = new Map();
+  for (let i = 0; i < tasks.length; i++) {
+    cachedTaskIdIndex.set(String(tasks[i].id), i);
+  }
+}
+
+/**
  * Assign bugs to milestones based on dependency relationships
  * A bug belongs to the earliest milestone that depends on it (directly or transitively)
  * This mirrors the logic in scheduler.js
+ * @deprecated Use precomputeCaches() instead - this is kept for compatibility
  */
 function assignBugsToMilestones(tasks, dependencyMap) {
+  // If caches are available, use them
+  if (cachedBugToMilestone) {
+    return cachedBugToMilestone;
+  }
+
   const bugToMilestone = new Map();
 
   // Sort milestones by deadline (earliest first)
@@ -217,9 +267,11 @@ function getAllDependencies(bugId, dependencyMap) {
 /**
  * Calculate milestone completion date by finding max end time of ALL transitive dependencies
  * This matches the UI's calculateMilestoneCompletions logic
+ * Uses cached milestone dependencies when available
  */
 function getMilestoneCompletionDays(milestoneBugId, taskEndTimes, dependencyMap) {
-  const deps = getAllDependencies(milestoneBugId, dependencyMap);
+  // Use cached deps if available, otherwise compute
+  const deps = cachedMilestoneDeps?.get(String(milestoneBugId)) || getAllDependencies(milestoneBugId, dependencyMap);
   let maxEndDays = taskEndTimes[String(milestoneBugId)] || 0;
 
   for (const depId of deps) {
@@ -661,6 +713,7 @@ function generateInitialAssignment(tasks, engineers) {
 /**
  * Compute end times for an assignment
  * Tasks are processed in milestone order (earliest deadline first) to match greedy scheduler
+ * Uses precomputed caches for bug-to-milestone mapping and ID lookups
  */
 function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
   const n = tasks.length;
@@ -670,15 +723,11 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
   let remaining = n;
   let maxIterations = n * n;
 
-  // Assign tasks to milestones and create processing order
-  const bugToMilestone = assignBugsToMilestones(tasks, dependencyMap);
-
-  // Sort milestones by deadline
+  // Build task order using cached bug-to-milestone mapping
+  const bugToMilestone = cachedBugToMilestone || assignBugsToMilestones(tasks, dependencyMap);
   const sortedMilestones = [...activeMilestones].sort((a, b) =>
     a.deadline.getTime() - b.deadline.getTime()
   );
-
-  // Create ordered index list: earlier milestones first, then unassigned
   const taskOrder = [];
   for (const milestone of sortedMilestones) {
     for (let i = 0; i < n; i++) {
@@ -688,7 +737,6 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
       }
     }
   }
-  // Add any tasks not assigned to a milestone
   for (let i = 0; i < n; i++) {
     if (!taskOrder.includes(i)) {
       taskOrder.push(i);
@@ -710,8 +758,9 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
       let earliestStart = 0;
 
       for (const depId of deps) {
-        const depIdx = tasks.findIndex(t => String(t.id) === String(depId));
-        if (depIdx !== -1 && !processed.has(depIdx)) {
+        // Use cached index lookup (O(1)) instead of findIndex (O(n))
+        const depIdx = cachedTaskIdIndex ? cachedTaskIdIndex.get(String(depId)) : tasks.findIndex(t => String(t.id) === String(depId));
+        if (depIdx !== undefined && depIdx !== -1 && !processed.has(depIdx)) {
           canProcess = false;
           break;
         }
@@ -760,6 +809,7 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
 /**
  * Build schedule from assignment array
  * Tasks are processed in milestone order (earliest deadline first) to match greedy scheduler
+ * Uses precomputed caches for bug-to-milestone mapping and ID lookups
  */
 function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap) {
   const n = tasks.length;
@@ -772,15 +822,11 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
   const processed = new Set();
   let remaining = n;
 
-  // Assign tasks to milestones and create processing order
-  const bugToMilestone = assignBugsToMilestones(tasks, dependencyMap);
-
-  // Sort milestones by deadline
+  // Build task order using cached bug-to-milestone mapping
+  const bugToMilestone = cachedBugToMilestone || assignBugsToMilestones(tasks, dependencyMap);
   const sortedMilestones = [...activeMilestones].sort((a, b) =>
     a.deadline.getTime() - b.deadline.getTime()
   );
-
-  // Create ordered index list: earlier milestones first, then unassigned
   const taskOrder = [];
   for (const milestone of sortedMilestones) {
     for (let i = 0; i < n; i++) {
@@ -790,7 +836,6 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
       }
     }
   }
-  // Add any tasks not assigned to a milestone
   for (let i = 0; i < n; i++) {
     if (!taskOrder.includes(i)) {
       taskOrder.push(i);
@@ -810,8 +855,9 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
       let earliestStart = 0;
 
       for (const depId of deps) {
-        const depIdx = tasks.findIndex(t => String(t.id) === String(depId));
-        if (depIdx !== -1 && !processed.has(depIdx)) {
+        // Use cached index lookup (O(1)) instead of findIndex (O(n))
+        const depIdx = cachedTaskIdIndex ? cachedTaskIdIndex.get(String(depId)) : tasks.findIndex(t => String(t.id) === String(depId));
+        if (depIdx !== undefined && depIdx !== -1 && !processed.has(depIdx)) {
           canProcess = false;
           break;
         }
