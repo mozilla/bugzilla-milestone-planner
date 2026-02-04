@@ -162,6 +162,157 @@ describe('optimal scheduler integration (main)', () => {
     expect(app.ui.addOptimizationLogEntry.mock.calls.length).toBe(initialLogCount);
   });
 
+  it('logs lateness improvements even if makespan regresses', async () => {
+    const { default: EnterprisePlanner } = await import('../../js/main.js');
+    const app = new EnterprisePlanner();
+
+    globalThis.Worker = class {
+      constructor() {
+        this.onmessage = null;
+        this.onerror = null;
+      }
+      postMessage() {}
+      terminate() {}
+    };
+
+    app.numWorkers = 1;
+    app.iterationsPerWorker = 1;
+    app.engineers = [{ id: 'a', name: 'A', email: 'a@example.com', availability: 1.0 }];
+    app.bugs = new Map([[1, { dependsOn: [] }]]);
+    app.greedyScore = { deadlinesMet: 1, totalLateness: 10, makespan: 60 };
+
+    const bugs = [
+      { id: 1, summary: 'Bug', status: 'NEW', size: 1, assignee: null, dependsOn: [] }
+    ];
+
+    app.startOptimalScheduler(bugs);
+
+    const worker = app.optimalWorkers[0];
+    worker.onmessage?.({
+      data: {
+        type: 'improved',
+        workerId: 0,
+        deadlinesMet: 1,
+        makespan: 50,
+        deadlineDetails: [{ name: 'M1', met: true, daysLate: 5 }]
+      }
+    });
+
+    worker.onmessage?.({
+      data: {
+        type: 'improved',
+        workerId: 0,
+        deadlinesMet: 1,
+        makespan: 70,
+        deadlineDetails: [{ name: 'M1', met: true, daysLate: 2 }]
+      }
+    });
+
+    const lastCall = app.ui.addOptimizationLogEntry.mock.calls.at(-1);
+    expect(lastCall[0]).toContain('Improved lateness');
+  });
+
+  it('logs lateness improvements distinctly when makespan regresses', async () => {
+    const { default: EnterprisePlanner } = await import('../../js/main.js');
+    const app = new EnterprisePlanner();
+
+    globalThis.Worker = class {
+      constructor() {
+        this.onmessage = null;
+        this.onerror = null;
+      }
+      postMessage() {}
+      terminate() {}
+    };
+
+    app.numWorkers = 1;
+    app.iterationsPerWorker = 1;
+    app.engineers = [{ id: 'a', name: 'A', email: 'a@example.com', availability: 1.0 }];
+    app.bugs = new Map([[1, { dependsOn: [] }]]);
+    app.greedyScore = { deadlinesMet: 1, totalLateness: 20, makespan: 60 };
+
+    const bugs = [
+      { id: 1, summary: 'Bug', status: 'NEW', size: 1, assignee: null, dependsOn: [] }
+    ];
+
+    app.startOptimalScheduler(bugs);
+    const worker = app.optimalWorkers[0];
+
+    worker.onmessage?.({
+      data: {
+        type: 'improved',
+        workerId: 0,
+        deadlinesMet: 1,
+        makespan: 50,
+        deadlineDetails: [{ name: 'M1', met: true, daysLate: 10 }]
+      }
+    });
+
+    worker.onmessage?.({
+      data: {
+        type: 'improved',
+        workerId: 0,
+        deadlinesMet: 1,
+        makespan: 70,
+        deadlineDetails: [{ name: 'M1', met: true, daysLate: 5 }]
+      }
+    });
+
+    const lastCall = app.ui.addOptimizationLogEntry.mock.calls.at(-1);
+    expect(lastCall[0]).toContain('Improved lateness');
+  });
+
+  it('does not log makespan improvements when lateness is worse', async () => {
+    const { default: EnterprisePlanner } = await import('../../js/main.js');
+    const app = new EnterprisePlanner();
+
+    globalThis.Worker = class {
+      constructor() {
+        this.onmessage = null;
+        this.onerror = null;
+      }
+      postMessage() {}
+      terminate() {}
+    };
+
+    app.numWorkers = 1;
+    app.iterationsPerWorker = 1;
+    app.engineers = [{ id: 'a', name: 'A', email: 'a@example.com', availability: 1.0 }];
+    app.bugs = new Map([[1, { dependsOn: [] }]]);
+    app.greedyScore = { deadlinesMet: 1, totalLateness: 10, makespan: 60 };
+
+    const bugs = [
+      { id: 1, summary: 'Bug', status: 'NEW', size: 1, assignee: null, dependsOn: [] }
+    ];
+
+    app.startOptimalScheduler(bugs);
+    const worker = app.optimalWorkers[0];
+
+    worker.onmessage?.({
+      data: {
+        type: 'improved',
+        workerId: 0,
+        deadlinesMet: 1,
+        makespan: 50,
+        deadlineDetails: [{ name: 'M1', met: true, daysLate: 5 }]
+      }
+    });
+
+    const logCountAfterFirst = app.ui.addOptimizationLogEntry.mock.calls.length;
+
+    worker.onmessage?.({
+      data: {
+        type: 'improved',
+        workerId: 0,
+        deadlinesMet: 1,
+        makespan: 40,
+        deadlineDetails: [{ name: 'M1', met: true, daysLate: 9 }]
+      }
+    });
+
+    expect(app.ui.addOptimizationLogEntry.mock.calls.length).toBe(logCountAfterFirst);
+  });
+
   it('wires exhaustive schedule selection to optimizer start', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();

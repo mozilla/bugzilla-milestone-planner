@@ -732,14 +732,19 @@ class EnterprisePlanner {
       ? Math.max(1, Math.round(this.numWorkers * 0.75))
       : 0;
 
-    this.ui.updateOptimizationStatus('running', `Starting ${this.numWorkers} parallel workers...`);
-    this.ui.clearOptimizationLog();
-    this.ui.addOptimizationLogEntry(
-      `Using ${this.numWorkers} CPU cores, ${this.iterationsPerWorker.toLocaleString()} iterations each (${totalIterations.toLocaleString()} total)`,
-      'status'
-    );
+    const isExhaustiveResume = mode === 'exhaustive' && options.preserveExhaustive && this.exhaustiveStartTime;
+    if (!isExhaustiveResume) {
+      this.ui.updateOptimizationStatus('running', `Starting ${this.numWorkers} parallel workers...`);
+      this.ui.clearOptimizationLog();
+      this.ui.addOptimizationLogEntry(
+        `Using ${this.numWorkers} CPU cores, ${this.iterationsPerWorker.toLocaleString()} iterations each (${totalIterations.toLocaleString()} total)`,
+        'status'
+      );
+    }
 
     this.optimizationStartTime = performance.now();
+    this.bestLoggedScore = null;
+    this.lastProgressUpdate = 0;
 
     // Build graph edges for workers
     const graphEdges = {};
@@ -785,9 +790,19 @@ class EnterprisePlanner {
               break;
 
             case 'progress':
-              // Show aggregate progress
-              this.ui.updateOptimizationStatus('running',
-                `${completedWorkers}/${this.numWorkers} done | Best: ${globalBest.deadlinesMet}/${numMilestones} deadlines, ${globalBest.makespan === Infinity ? '?' : globalBest.makespan.toFixed(0)} days`);
+              {
+                const now = performance.now();
+                if (now - this.lastProgressUpdate >= 10000) {
+                  const elapsedSec = (now - this.optimizationStartTime) / 1000;
+                  const totalIterationsNow = this.numWorkers * this.iterationsPerWorker;
+                  const itersPerSec = Math.round(totalIterationsNow / Math.max(elapsedSec, 0.1));
+                  this.ui.updateOptimizationStatus(
+                    'running',
+                    `${completedWorkers}/${this.numWorkers} done | ${itersPerSec.toLocaleString()} iter/sec`
+                  );
+                  this.lastProgressUpdate = now;
+                }
+              }
               break;
 
             case 'improved': {
@@ -807,12 +822,25 @@ class EnterprisePlanner {
               }
 
               const beatsGreedy = this.greedyScore && isBetterScore(candidateScore, this.greedyScore);
+              const allowLogging = beatsGreedy;
 
-              if (isNewGlobalBest && beatsGreedy) {
-                const isNewDeadline = candidateScore.deadlinesMet > previousBest.deadlinesMet;
-                const isMakespanBetter = candidateScore.makespan < previousBest.makespan;
+              if (isNewGlobalBest && allowLogging) {
+                const loggedBest = this.bestLoggedScore;
+                const isNewDeadline = candidateScore.deadlinesMet > (loggedBest?.deadlinesMet ?? -1);
+                const sameDeadlines = loggedBest
+                  ? candidateScore.deadlinesMet === loggedBest.deadlinesMet
+                  : true;
+                const isLatenessBetter = loggedBest
+                  ? candidateScore.totalLateness < loggedBest.totalLateness
+                  : true;
+                const isLatenessSame = loggedBest
+                  ? candidateScore.totalLateness === loggedBest.totalLateness
+                  : true;
+                const isMakespanBetter = loggedBest
+                  ? candidateScore.makespan < loggedBest.makespan
+                  : true;
 
-                if (isNewDeadline || isMakespanBetter) {
+                if (isNewDeadline || (sameDeadlines && (isLatenessBetter || (isLatenessSame && isMakespanBetter)))) {
                   const logType = isNewDeadline ? 'deadline' : 'improvement';
                   let message;
                   if (isNewDeadline) {
@@ -821,10 +849,16 @@ class EnterprisePlanner {
                       .map(d => d.name)
                       .join(', ') || '';
                     message = `NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNames}). Makespan: ${data.makespan.toFixed(0)} days`;
+                  } else if (isLatenessBetter && !isMakespanBetter) {
+                    const previousLateness = Number.isFinite(loggedBest?.totalLateness)
+                      ? loggedBest.totalLateness.toFixed(0)
+                      : '?';
+                    message = `Improved lateness: ${candidateScore.totalLateness.toFixed(0)} days late (was ${previousLateness}). Makespan: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
                   } else {
                     message = `Improved schedule: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
                   }
                   this.ui.addOptimizationLogEntry(message, logType);
+                  this.bestLoggedScore = candidateScore;
                 }
 
                 // Update milestone cards with current best estimates
