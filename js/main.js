@@ -14,10 +14,11 @@ import {
   isBetterScore
 } from './optimizer-utils.js';
 
-// GA configuration (tuned: 40×100 is 2.5x faster than 50×200)
-const GA_POPULATION_SIZE = 40;
-const GA_GENERATIONS = 100;
-const GA_EXHAUSTIVE_GENERATIONS = 150; // Longer for exhaustive mode
+// GA configuration
+const GA_POPULATION_SIZE = 40;          // Optimal: fast
+const GA_GENERATIONS = 100;             // Optimal: 40×100 ≈ 700ms-1.7s
+const GA_EXHAUSTIVE_POPULATION = 100;   // Exhaustive: more diversity
+const GA_EXHAUSTIVE_GENERATIONS = 200;  // Exhaustive: deeper search
 
 
 class EnterprisePlanner {
@@ -775,9 +776,10 @@ class EnterprisePlanner {
     const mode = options.mode || 'optimal';
     this.optimizerMode = mode;
 
-    // GA settings: more generations for exhaustive mode
+    // GA settings: larger population and more generations for exhaustive mode
+    const populationSize = mode === 'exhaustive' ? GA_EXHAUSTIVE_POPULATION : GA_POPULATION_SIZE;
     const generations = mode === 'exhaustive' ? GA_EXHAUSTIVE_GENERATIONS : GA_GENERATIONS;
-    const totalEvaluations = this.numWorkers * GA_POPULATION_SIZE * generations;
+    const totalEvaluations = this.numWorkers * populationSize * generations;
 
     // In exhaustive mode, seed 75% of workers with best assignments
     const seededWorkerCount = mode === 'exhaustive'
@@ -789,7 +791,7 @@ class EnterprisePlanner {
       this.ui.updateOptimizationStatus('running', `Starting ${this.numWorkers} parallel workers...`);
       this.ui.clearOptimizationLog();
       this.ui.addOptimizationLogEntry(
-        `Using ${this.numWorkers} CPU cores, GA ${GA_POPULATION_SIZE}×${generations} (${totalEvaluations.toLocaleString()} evaluations)`,
+        `Using ${this.numWorkers} CPU cores, GA ${populationSize}×${generations} (${totalEvaluations.toLocaleString()} evaluations)`,
         'status'
       );
     }
@@ -831,7 +833,7 @@ class EnterprisePlanner {
       engineers: workerEngineers,
       graph: graphEdges,
       generations,
-      populationSize: GA_POPULATION_SIZE,
+      populationSize,
       milestones: milestones.map(m => ({
         name: m.name,
         bugId: m.bugId,
