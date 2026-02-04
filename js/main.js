@@ -19,6 +19,7 @@ const GA_POPULATION_SIZE = 40;
 const GA_GENERATIONS = 100;
 const GA_EXHAUSTIVE_GENERATIONS = 150; // Longer for exhaustive mode
 
+
 class EnterprisePlanner {
   constructor() {
     this.api = new BugzillaAPI();
@@ -62,6 +63,9 @@ class EnterprisePlanner {
    */
   async init() {
     console.log('Initializing Enterprise Project Planner...');
+
+    // Display version info (fetch Last-Modified from main.js)
+    this.displayVersionInfo();
 
     // Initialize UI
     this.ui.init();
@@ -386,6 +390,26 @@ class EnterprisePlanner {
 
     visited.delete(bugId); // Don't include the bug itself
     return visited;
+  }
+
+  /**
+   * Display version info from file's Last-Modified header
+   */
+  async displayVersionInfo() {
+    const versionEl = document.getElementById('version-info');
+    if (!versionEl) return;
+
+    try {
+      const response = await fetch('./js/main.js', { method: 'HEAD' });
+      const lastModified = response.headers.get('Last-Modified');
+      if (lastModified) {
+        const date = new Date(lastModified);
+        const formatted = date.toISOString().split('T')[0];
+        versionEl.textContent = formatted;
+      }
+    } catch {
+      // Silently ignore - version display is non-critical
+    }
   }
 
   /**

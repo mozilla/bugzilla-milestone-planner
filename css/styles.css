@@ -47,6 +47,7 @@ body {
 
 /* Header */
 header {
+  position: relative;
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   padding: 16px 20px;
@@ -63,6 +64,16 @@ header p {
   margin: 4px 0 0;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+.version-info {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  font-family: monospace;
 }
 
 /* Loading Phase */
