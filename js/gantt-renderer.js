@@ -883,6 +883,32 @@ export class GanttRenderer {
    */
   onViewChange(mode) {
     this.viewMode = mode;
+    // Frappe re-renders SVG on view changes; reapply decorations/handlers when ready.
+    this.waitForGanttRender(() => {
+      this.applyEngineerColors();
+      this.setupInteractions();
+    });
+  }
+
+  waitForGanttRender(onReady) {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+    const maxFrames = 30;
+    let frames = 0;
+
+    const tick = () => {
+      const bar = container.querySelector('.bar-wrapper');
+      if (bar) {
+        onReady();
+        return;
+      }
+      frames += 1;
+      if (frames < maxFrames) {
+        requestAnimationFrame(tick);
+      }
+    };
+
+    requestAnimationFrame(tick);
   }
 
   /**
