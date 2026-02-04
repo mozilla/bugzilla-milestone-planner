@@ -14,7 +14,10 @@ import {
   isBetterScore
 } from './optimizer-utils.js';
 
-const EXHAUSTIVE_CONTINUOUS_COOLING_RATE = 0.999987;
+// GA configuration (tuned: 40×100 is 2.5x faster than 50×200)
+const GA_POPULATION_SIZE = 40;
+const GA_GENERATIONS = 100;
+const GA_EXHAUSTIVE_GENERATIONS = 150; // Longer for exhaustive mode
 
 class EnterprisePlanner {
   constructor() {
@@ -41,11 +44,11 @@ class EnterprisePlanner {
     this.exhaustiveBestSchedule = null;
     this.exhaustiveWorkerStates = new Map();
     this.exhaustiveStartTime = null;
+    this.exhaustiveBestAssignments = []; // Top assignments for seeding
 
-    // Parallel SA configuration
+    // Parallel GA configuration
     const availableCores = navigator.hardwareConcurrency || 4;
     this.numWorkers = Math.min(Math.max(availableCores - 1, 1), 12);
-    this.iterationsPerWorker = 10000; // Max iterations per worker
 
     // Filters
     this.severityFilter = 'S2';
@@ -745,11 +748,15 @@ class EnterprisePlanner {
     });
 
     const numMilestones = milestones.length;
-    const totalIterations = this.numWorkers * this.iterationsPerWorker;
     const mode = options.mode || 'optimal';
     this.optimizerMode = mode;
 
-    const exhaustiveSplit = mode === 'exhaustive'
+    // GA settings: more generations for exhaustive mode
+    const generations = mode === 'exhaustive' ? GA_EXHAUSTIVE_GENERATIONS : GA_GENERATIONS;
+    const totalEvaluations = this.numWorkers * GA_POPULATION_SIZE * generations;
+
+    // In exhaustive mode, seed 75% of workers with best assignments
+    const seededWorkerCount = mode === 'exhaustive'
       ? Math.max(1, Math.round(this.numWorkers * 0.75))
       : 0;
 
@@ -758,7 +765,7 @@ class EnterprisePlanner {
       this.ui.updateOptimizationStatus('running', `Starting ${this.numWorkers} parallel workers...`);
       this.ui.clearOptimizationLog();
       this.ui.addOptimizationLogEntry(
-        `Using ${this.numWorkers} CPU cores, ${this.iterationsPerWorker.toLocaleString()} iterations each (${totalIterations.toLocaleString()} total)`,
+        `Using ${this.numWorkers} CPU cores, GA ${GA_POPULATION_SIZE}×${generations} (${totalEvaluations.toLocaleString()} evaluations)`,
         'status'
       );
     }
@@ -799,7 +806,8 @@ class EnterprisePlanner {
       bugs: sortedBugs,
       engineers: workerEngineers,
       graph: graphEdges,
-      iterations: this.iterationsPerWorker,
+      generations,
+      populationSize: GA_POPULATION_SIZE,
       milestones: milestones.map(m => ({
         name: m.name,
         bugId: m.bugId,
@@ -820,10 +828,11 @@ class EnterprisePlanner {
 
     try {
       for (let i = 0; i < this.numWorkers; i++) {
-        const worker = new Worker('./js/optimal-scheduler-worker.js', { type: 'module' });
+        const worker = new Worker('./js/ga-scheduler-worker.js', { type: 'module' });
+        // Track worker state for exhaustive mode (seeded vs fresh)
         if (mode === 'exhaustive' && !this.exhaustiveWorkerStates.has(i)) {
-          const strategy = i < exhaustiveSplit ? 'continuous' : 'reheat';
-          this.exhaustiveWorkerStates.set(i, { strategy, lastAssignment: null, lastTemperature: null });
+          const isSeeded = i < seededWorkerCount;
+          this.exhaustiveWorkerStates.set(i, { isSeeded, lastAssignment: null });
         }
 
         worker.onmessage = (e) => {
@@ -840,9 +849,6 @@ class EnterprisePlanner {
                 const now = performance.now();
                 if (now - this.lastProgressUpdate >= 10000) {
                   const elapsedSec = (now - this.optimizationStartTime) / 1000;
-                  const totalIterationsNow = this.numWorkers * this.iterationsPerWorker;
-                  const itersPerSec = Math.round(totalIterationsNow / Math.max(elapsedSec, 0.1));
-                  const itersPerSecText = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(itersPerSec);
 
                   if (this.optimizerMode === 'exhaustive') {
                     const wallNow = Date.now();
@@ -854,12 +860,12 @@ class EnterprisePlanner {
                       : `${elapsedSec.toFixed(0)}s elapsed`;
                     this.ui.updateOptimizationStatus(
                       'running',
-                      `${remainingText} | ${this.numWorkers} workers | ${itersPerSecText} iter/sec`
+                      `${remainingText} | ${this.numWorkers} workers`
                     );
                   } else {
                     this.ui.updateOptimizationStatus(
                       'running',
-                      `${completedWorkers}/${this.numWorkers} done | ${itersPerSecText} iter/sec`
+                      `${completedWorkers}/${this.numWorkers} workers done`
                     );
                   }
 
@@ -914,7 +920,7 @@ class EnterprisePlanner {
                   const workerLabel = (() => {
                     if (mode !== 'exhaustive') return `Worker ${workerId}`;
                     const state = this.exhaustiveWorkerStates.get(workerId);
-                    const strategy = state?.strategy === 'reheat' ? 'reheat' : 'continuous';
+                    const strategy = state?.isSeeded ? 'seeded' : 'fresh';
                     return `Worker ${workerId} (${strategy})`;
                   })();
                   let message;
@@ -969,16 +975,17 @@ class EnterprisePlanner {
                   deadlinesMet: data.deadlinesMet,
                   totalLateness,
                   makespan: data.makespan,
-                  bestFoundAtIteration: data.bestFoundAtIteration || 0,
-                  totalIterations: data.iterations || this.iterationsPerWorker
+                  bestFoundAtGeneration: data.bestFoundAtGeneration || 0,
+                  totalGenerations: data.generations || generations,
+                  bestAssignment: data.bestAssignment
                 });
               }
 
+              // In exhaustive mode, track best assignment for seeding next round
               if (mode === 'exhaustive') {
                 const state = this.exhaustiveWorkerStates.get(workerId);
-                if (state) {
-                  state.lastAssignment = Array.isArray(data.bestAssignment) ? data.bestAssignment : state.lastAssignment;
-                  state.lastTemperature = Number.isFinite(data.finalTemperature) ? data.finalTemperature : state.lastTemperature;
+                if (state && Array.isArray(data.bestAssignment)) {
+                  state.lastAssignment = data.bestAssignment;
                 }
               }
 
@@ -1005,20 +1012,15 @@ class EnterprisePlanner {
 
         // Start worker with its ID
         const startData = { ...workerData, id: i };
+
+        // In exhaustive mode, seed some workers with best assignments
         if (mode === 'exhaustive') {
           const state = this.exhaustiveWorkerStates.get(i);
-          if (state?.lastAssignment) {
-            startData.startAssignment = state.lastAssignment;
+          if (state?.isSeeded && this.exhaustiveBestAssignments.length > 0) {
+            // Seeded workers get previous best assignments
+            startData.seedPopulation = this.exhaustiveBestAssignments;
           }
-          if (state?.strategy === 'continuous' && Number.isFinite(state?.lastTemperature)) {
-            startData.startTemperature = state.lastTemperature;
-          }
-          if (state?.strategy === 'reheat') {
-            startData.reheat = true;
-          }
-          if (state?.strategy === 'continuous') {
-            startData.coolingRate = EXHAUSTIVE_CONTINUOUS_COOLING_RATE;
-          }
+          // Fresh workers (not seeded) start with random population
         }
 
         worker.postMessage({
@@ -1039,13 +1041,11 @@ class EnterprisePlanner {
   finalizeOptimalSchedule(numMilestones) {
     const elapsedMs = performance.now() - this.optimizationStartTime;
     const elapsedSec = elapsedMs / 1000;
-    const totalIterations = this.numWorkers * this.iterationsPerWorker;
-    const itersPerSec = Math.round(totalIterations / elapsedSec);
 
     if (this.workerResults.length === 0) {
       this.ui.updateOptimizationStatus('complete', 'Greedy schedule is optimal');
       this.ui.addOptimizationLogEntry(
-        `Completed in ${elapsedSec.toFixed(1)}s (${itersPerSec.toLocaleString()} iter/sec)`,
+        `Completed in ${elapsedSec.toFixed(1)}s`,
         'status'
       );
       return;
@@ -1061,6 +1061,12 @@ class EnterprisePlanner {
       return a.makespan - b.makespan;
     });
 
+    // Collect best assignments for seeding next exhaustive round (top 5)
+    this.exhaustiveBestAssignments = this.workerResults
+      .slice(0, 5)
+      .map(r => r.bestAssignment)
+      .filter(a => Array.isArray(a));
+
     const best = this.workerResults[0];
     const bestScore = {
       deadlinesMet: best.deadlinesMet,
@@ -1068,10 +1074,10 @@ class EnterprisePlanner {
       makespan: best.makespan
     };
     const beatsGreedy = this.greedyScore && isBetterScore(bestScore, this.greedyScore);
-    const convergencePct = best.totalIterations > 0
-      ? ((best.bestFoundAtIteration / best.totalIterations) * 100).toFixed(0)
+    const convergencePct = best.totalGenerations > 0
+      ? ((best.bestFoundAtGeneration / best.totalGenerations) * 100).toFixed(0)
       : 0;
-    console.log(`Best result from worker ${best.workerId}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan} days (found at iteration ${best.bestFoundAtIteration}/${best.totalIterations}, ${convergencePct}%)`);
+    console.log(`Best result from worker ${best.workerId}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan} days (found at gen ${best.bestFoundAtGeneration}/${best.totalGenerations}, ${convergencePct}%)`);
 
     const existingOptimalScore = this.optimalSchedule
       ? this.computeScheduleScore(this.optimalSchedule, MILESTONES)
