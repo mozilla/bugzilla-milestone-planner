@@ -565,9 +565,10 @@ class EnterprisePlanner {
   computeStats() {
     const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
 
-    // Get all bugs with component and severity filters (but NOT resolved filter)
+    // Get all bugs with component, severity, and milestone filters (but NOT resolved filter)
     let allBugs = this.filterBugsByComponent(this.sortedBugs);
     allBugs = this.filterBugsBySeverity(allBugs);
+    allBugs = this.filterBugsByMilestone(allBugs);
 
     // Exclude milestone bugs from stats (they're tracking bugs, not work)
     const milestoneBugIds = new Set(MILESTONES.map(m => String(m.bugId)));
@@ -577,10 +578,11 @@ class EnterprisePlanner {
     const completedBugs = allBugs.filter(bug => resolvedStatuses.includes(bug.status));
     const openBugs = allBugs.filter(bug => !resolvedStatuses.includes(bug.status));
 
-    // Get estimated size bugs from the current schedule
-    const schedule = (this.currentScheduleType === 'optimal' || this.currentScheduleType === 'exhaustive') && this.optimalSchedule
+    // Get estimated size bugs from the current schedule (filtered by milestone)
+    let schedule = (this.currentScheduleType === 'optimal' || this.currentScheduleType === 'exhaustive') && this.optimalSchedule
       ? this.optimalSchedule
       : this.greedySchedule;
+    schedule = this.filterScheduleByMilestone(schedule);
     const estimatedBugs = schedule
       ? schedule.filter(t => t.effort && t.effort.sizeEstimated).map(t => t.bug)
       : [];
