@@ -14,6 +14,8 @@ import {
   isBetterScore
 } from './optimizer-utils.js';
 
+const EXHAUSTIVE_CONTINUOUS_COOLING_RATE = 0.999987;
+
 class EnterprisePlanner {
   constructor() {
     this.api = new BugzillaAPI();
@@ -1013,6 +1015,9 @@ class EnterprisePlanner {
           }
           if (state?.strategy === 'reheat') {
             startData.reheat = true;
+          }
+          if (state?.strategy === 'continuous') {
+            startData.coolingRate = EXHAUSTIVE_CONTINUOUS_COOLING_RATE;
           }
         }
 

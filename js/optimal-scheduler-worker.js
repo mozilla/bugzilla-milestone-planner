@@ -35,6 +35,8 @@ const BRANCH_BOUND_THRESHOLD = 10;
 const SA_ITERATIONS_DEFAULT = 8000; // Tuned: 8k gives 100% reliability + optimal makespan
 const SA_INITIAL_TEMP = 1000;
 const SA_COOLING_RATE = 0.99987; // Adjusted for 8k iterations (ends at ~350°)
+const DEADLINE_WEIGHT = 5000;
+const LATENESS_WEIGHT = 100;
 
 // Best solution tracking
 let bestScore = { deadlinesMet: -1, totalLateness: Infinity, makespan: Infinity };
@@ -533,6 +535,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations, options
   reportImprovement({ deadlinesMet: -1, makespan: Infinity }, currentScore, 0);
 
   let temperature = Number.isFinite(options.startTemperature) ? options.startTemperature : SA_INITIAL_TEMP;
+  const coolingRate = Number.isFinite(options.coolingRate) ? options.coolingRate : SA_COOLING_RATE;
   const progressInterval = Math.max(1000, Math.floor(iterations / 10));
 
   for (let i = 0; i < iterations; i++) {
@@ -551,8 +554,12 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations, options
 
     // Calculate acceptance (higher is better)
     // Priorities: deadlines met >> minimize lateness >> minimize makespan
-    const currentValue = currentScore.deadlinesMet * 100000 - currentScore.totalLateness * 100 - currentScore.makespan;
-    const neighborValue = neighborScore.deadlinesMet * 100000 - neighborScore.totalLateness * 100 - neighborScore.makespan;
+    const currentValue = currentScore.deadlinesMet * DEADLINE_WEIGHT
+      - currentScore.totalLateness * LATENESS_WEIGHT
+      - currentScore.makespan;
+    const neighborValue = neighborScore.deadlinesMet * DEADLINE_WEIGHT
+      - neighborScore.totalLateness * LATENESS_WEIGHT
+      - neighborScore.makespan;
     const delta = neighborValue - currentValue;
 
     if (delta > 0 || Math.random() < Math.exp(delta / temperature)) {
@@ -570,7 +577,7 @@ function simulatedAnnealing(tasks, engineers, dependencyMap, iterations, options
       }
     }
 
-    temperature *= SA_COOLING_RATE;
+    temperature *= coolingRate;
 
     // Progress report at intervals
     if (i > 0 && i % progressInterval === 0) {
