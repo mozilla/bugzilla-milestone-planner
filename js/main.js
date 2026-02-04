@@ -1206,8 +1206,11 @@ class EnterprisePlanner {
       this.gantt.render(schedule, this.graph, this.engineers);
 
       // Update milestone cards with new completion dates (respecting filter)
-      const milestoneCompletions = this.calculateMilestoneCompletions(fullSchedule);
-      this.ui.renderMilestoneCards(this.getActiveMilestones(), milestoneCompletions);
+      // When switching to exhaustive, keep the current optimal card values to avoid regression flicker.
+      if (!(type === 'exhaustive' && this.optimalSchedule && this.optimalSchedule.length > 0)) {
+        const milestoneCompletions = this.calculateMilestoneCompletions(fullSchedule);
+        this.ui.renderMilestoneCards(this.getActiveMilestones(), milestoneCompletions);
+      }
 
       console.log(`Switched to ${type} schedule`);
     }
