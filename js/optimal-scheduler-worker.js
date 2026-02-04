@@ -827,31 +827,25 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
       // Meta bugs don't need an engineer and complete when dependencies complete
       let startTime, endTime;
       let assignedEngineer = engineer;
-      let dates = null;
       if (effort.isMeta) {
         startTime = earliestStart;
         endTime = earliestStart;
         assignedEngineer = null; // Meta bugs don't need an assigned engineer
       } else {
         startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
-        if (engineer && engineer.unavailability && engineer.unavailability.length > 0) {
-          dates = computeDatesWithUnavailability(today, startTime, effort.days, engineer);
-          endTime = dates.endTimeDays;
-        } else {
-          endTime = startTime + effort.days;
+        const ranges = unavailabilityRangesByEngineer ? unavailabilityRangesByEngineer[engineerIdx] : null;
+        if (ranges && ranges.length > 0) {
+          startTime = adjustStartForUnavailability(startTime, ranges);
         }
+        endTime = addWorkingDaysSkippingRanges(startTime, effort.days, ranges);
         engineerAvailable[engineerIdx] = endTime;
       }
       taskEndTimes[taskId] = endTime;
 
       schedule.push({
         bug: task,
-        startDate: effort.isMeta
-          ? addWorkingDays(today, startTime)
-          : (dates ? dates.startDate : addWorkingDays(today, startTime)),
-        endDate: effort.isMeta
-          ? addWorkingDays(today, endTime)
-          : (dates ? dates.endDate : addWorkingDays(today, endTime)),
+        startDate: addWorkingDays(today, startTime),
+        endDate: addWorkingDays(today, endTime),
         engineer: assignedEngineer,
         effort,
         completed: false
