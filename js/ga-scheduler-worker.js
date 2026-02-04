@@ -27,6 +27,9 @@ const CROSSOVER_RATE = 0.8;      // Probability of crossover
 const MUTATION_RATE = 0.1;       // Probability of mutation per gene
 const GENERATIONS_DEFAULT = 100;
 
+// Memetic parameters (local search on elite individuals)
+const LOCAL_SEARCH_SWAPS = 10;   // Random swaps to try per elite individual
+
 // Scoring weights (same as SA)
 const DEADLINE_WEIGHT = 5000;
 const LATENESS_WEIGHT = 100;
@@ -51,6 +54,7 @@ function buildEngineerEmailIndex(engineers) {
 
 // Runtime parameters (can be overridden per call)
 let mutationRate = MUTATION_RATE;
+let localSearchSwaps = LOCAL_SEARCH_SWAPS;
 
 self.onmessage = function(e) {
   const { type, data } = e.data;
@@ -69,6 +73,7 @@ self.onmessage = function(e) {
 
     workerId = id || 0;
     mutationRate = data.mutationRate || MUTATION_RATE;
+    localSearchSwaps = data.localSearchSwaps !== undefined ? data.localSearchSwaps : LOCAL_SEARCH_SWAPS;
 
     if (milestones && milestones.length > 0) {
       activeMilestones = milestones.map(m => ({
@@ -189,14 +194,23 @@ function geneticAlgorithm(tasks, engineers, dependencyMap, generations, populati
     // Create new population
     const newPopulation = [];
 
-    // Elitism: keep top individuals
+    // Elitism: keep top individuals, apply local search only to the best one
     const ranked = population
       .map((ind, i) => ({ ind, score: fitnessScores[i] }))
       .filter(x => x.score !== null)
       .sort((a, b) => compareFitness(b.score, a.score));
 
     for (let i = 0; i < Math.min(ELITE_COUNT, ranked.length); i++) {
-      newPopulation.push([...ranked[i].ind]);
+      if (i === 0 && localSearchSwaps > 0) {
+        // Apply local search only to the best individual (preserve diversity)
+        const { individual: improved } = localSearch(
+          ranked[i].ind, tasks, engineers, dependencyMap,
+          nonExternalIndices, unlockedTasks, ranked[i].score
+        );
+        newPopulation.push(improved);
+      } else {
+        newPopulation.push([...ranked[i].ind]);
+      }
     }
 
     // Generate rest through selection, crossover, mutation
@@ -330,6 +344,44 @@ function mutate(individual, tasks, nonExternalIndices, unlockedTasks) {
       individual[taskIdx] = pool[Math.floor(Math.random() * pool.length)];
     }
   }
+}
+
+/**
+ * Memetic local search: try random swaps on an individual and keep improvements.
+ * Returns the improved individual and its score.
+ */
+function localSearch(individual, tasks, engineers, dependencyMap, nonExternalIndices, unlockedTasks, currentScore) {
+  if (localSearchSwaps <= 0 || unlockedTasks.length === 0) {
+    return { individual, score: currentScore };
+  }
+
+  const pool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(engineers.length).keys()];
+  let best = [...individual];
+  let bestScore = currentScore;
+
+  for (let i = 0; i < localSearchSwaps; i++) {
+    // Pick a random unlocked task and try a different engineer
+    const taskIdx = unlockedTasks[Math.floor(Math.random() * unlockedTasks.length)];
+    const oldEngineer = best[taskIdx];
+    const newEngineer = pool[Math.floor(Math.random() * pool.length)];
+
+    if (newEngineer === oldEngineer) continue;
+
+    // Try the swap
+    const candidate = [...best];
+    candidate[taskIdx] = newEngineer;
+
+    const endTimes = computeEndTimes(candidate, tasks, engineers, dependencyMap);
+    if (!endTimes) continue;
+
+    const score = evaluateSchedule(endTimes, tasks, dependencyMap);
+    if (isBetter(score, bestScore)) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+
+  return { individual: best, score: bestScore };
 }
 
 function compareFitness(a, b) {
