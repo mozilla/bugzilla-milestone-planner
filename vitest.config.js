@@ -29,8 +29,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       reportsDirectory: 'test-results/coverage',
-      include: ['js/**/*.js'],
-      exclude: ['js/optimal-scheduler-worker.js'] // Worker uses different module system
+      include: ['js/**/*.js']
     },
 
     // Global setup/teardown
