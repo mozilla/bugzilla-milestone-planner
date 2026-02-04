@@ -743,7 +743,10 @@ class EnterprisePlanner {
     }
 
     this.optimizationStartTime = performance.now();
-    this.bestLoggedScore = null;
+    if (!isExhaustiveResume) {
+      this.bestLoggedScore = null;
+      this.bestLoggedMilestones = new Set();
+    }
     this.lastProgressUpdate = 0;
 
     // Build graph edges for workers
@@ -858,7 +861,13 @@ class EnterprisePlanner {
                   : true;
 
                 if (isNewDeadline || (sameDeadlines && (isLatenessBetter || (isLatenessSame && isMakespanBetter)))) {
-                  const logType = isNewDeadline ? 'deadline' : 'improvement';
+                  const metNames = data.deadlineDetails
+                    ?.filter(d => d.met)
+                    .map(d => d.name)
+                    .filter(Boolean) || [];
+                  const hasNewMilestone = metNames.some(name => !this.bestLoggedMilestones.has(name));
+                  const isDeadlineAnnouncement = isNewDeadline && hasNewMilestone;
+                  const logType = isDeadlineAnnouncement ? 'deadline' : 'improvement';
                   const workerLabel = (() => {
                     if (mode !== 'exhaustive') return `Worker ${workerId}`;
                     const state = this.exhaustiveWorkerStates.get(workerId);
@@ -866,12 +875,9 @@ class EnterprisePlanner {
                     return `Worker ${workerId} (${strategy})`;
                   })();
                   let message;
-                  if (isNewDeadline) {
-                    const metNames = data.deadlineDetails
-                      ?.filter(d => d.met)
-                      .map(d => d.name)
-                      .join(', ') || '';
-                    message = `${workerLabel}: NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNames}). Makespan: ${data.makespan.toFixed(0)} days`;
+                  if (isDeadlineAnnouncement) {
+                    const metNamesText = metNames.join(', ');
+                    message = `${workerLabel}: NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNamesText}). Makespan: ${data.makespan.toFixed(0)} days`;
                   } else if (isLatenessBetter && !isMakespanBetter) {
                     const previousLateness = Number.isFinite(loggedBest?.totalLateness)
                       ? loggedBest.totalLateness.toFixed(0)
@@ -882,6 +888,11 @@ class EnterprisePlanner {
                   }
                   this.ui.addOptimizationLogEntry(message, logType);
                   this.bestLoggedScore = candidateScore;
+                  if (isNewDeadline) {
+                    for (const name of metNames) {
+                      this.bestLoggedMilestones.add(name);
+                    }
+                  }
                 }
 
                 // Update milestone cards with current best estimates
