@@ -30,7 +30,6 @@ class EnterprisePlanner {
     this.workerResults = [];
     this.greedySchedule = null;
     this.optimalSchedule = null;
-    this.displaySchedule = null;
     this.currentScheduleType = 'greedy';
     this.fullScheduleErrors = [];
     this.fullScheduleRisks = [];
@@ -614,9 +613,6 @@ class EnterprisePlanner {
     this.scheduler = new Scheduler(this.engineers, MILESTONES);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
     this.greedySchedule = schedule;
-    if (this.currentScheduleType === 'greedy' || !this.displaySchedule) {
-      this.displaySchedule = this.greedySchedule;
-    }
     this.greedyScore = this.computeScheduleScore(schedule, MILESTONES);
     const unknownAssignees = this.collectUnknownAssignees();
     this.fullScheduleErrors = { ...this.detectErrors(), unknownAssignees };
@@ -701,6 +697,22 @@ class EnterprisePlanner {
   }
 
   /**
+   * Get milestone names that are met (end date on/before freeze date).
+   */
+  getMetMilestoneNames(schedule, milestones = MILESTONES) {
+    if (!schedule || schedule.length === 0) return new Set();
+    const completions = this.calculateMilestoneCompletions(schedule);
+    const met = new Set();
+    for (const milestone of milestones) {
+      const endDate = completions.get(String(milestone.bugId));
+      if (endDate && endDate <= milestone.freezeDate) {
+        met.add(milestone.name);
+      }
+    }
+    return met;
+  }
+
+  /**
    * Refresh data from Bugzilla
    */
   async refresh() {
@@ -750,9 +762,27 @@ class EnterprisePlanner {
     }
 
     this.optimizationStartTime = performance.now();
+    let baselineSchedule = null;
+    let baselineScore = null;
+    if (mode === 'exhaustive') {
+      if (this.exhaustiveBestSchedule && this.exhaustiveBestScore) {
+        baselineSchedule = this.exhaustiveBestSchedule;
+        baselineScore = { ...this.exhaustiveBestScore };
+      }
+      if (this.optimalSchedule) {
+        const optimalScore = this.computeScheduleScore(this.optimalSchedule, milestones);
+        if (!baselineScore || isBetterScore(optimalScore, baselineScore)) {
+          baselineSchedule = this.optimalSchedule;
+          baselineScore = optimalScore;
+        }
+      }
+    }
+
     if (!isExhaustiveResume) {
-      this.bestLoggedScore = null;
-      this.bestLoggedMilestones = new Set();
+      this.bestLoggedScore = baselineScore ? { ...baselineScore } : null;
+      this.bestLoggedMilestones = baselineSchedule
+        ? this.getMetMilestoneNames(baselineSchedule, milestones)
+        : new Set();
     }
     this.lastProgressUpdate = 0;
 
@@ -778,9 +808,13 @@ class EnterprisePlanner {
 
     this.workerResults = [];
     let completedWorkers = 0;
-    let globalBest = mode === 'exhaustive' && this.exhaustiveBestScore
-      ? { ...this.exhaustiveBestScore }
-      : { deadlinesMet: -1, totalLateness: Infinity, makespan: Infinity };
+    let globalBest = { deadlinesMet: -1, totalLateness: Infinity, makespan: Infinity };
+    if (mode === 'exhaustive' && this.exhaustiveBestScore) {
+      globalBest = { ...this.exhaustiveBestScore };
+    }
+    if (baselineScore && isBetterScore(baselineScore, globalBest)) {
+      globalBest = { ...baselineScore };
+    }
 
     try {
       for (let i = 0; i < this.numWorkers; i++) {
@@ -1034,6 +1068,10 @@ class EnterprisePlanner {
       : 0;
     console.log(`Best result from worker ${best.workerId}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan} days (found at iteration ${best.bestFoundAtIteration}/${best.totalIterations}, ${convergencePct}%)`);
 
+    const existingOptimalScore = this.optimalSchedule
+      ? this.computeScheduleScore(this.optimalSchedule, MILESTONES)
+      : null;
+
     if (this.optimizerMode === 'exhaustive') {
       if (!this.exhaustiveBestScore || isBetterScore(bestScore, this.exhaustiveBestScore)) {
         this.exhaustiveBestScore = bestScore;
@@ -1055,6 +1093,16 @@ class EnterprisePlanner {
       }
 
       if (!beatsGreedy) {
+        if (existingOptimalScore && isBetterScore(existingOptimalScore, this.greedyScore)) {
+          this.ui.addOptimizationLogEntry(
+            'Exhaustive search did not beat optimized schedule. Keeping optimized schedule.',
+            'status'
+          );
+          this.ui.updateOptimizationStatus('complete', 'Optimized schedule retained');
+          this.ui.enableScheduleToggle(true);
+          return;
+        }
+
         this.optimalSchedule = null;
         this.ui.addOptimizationLogEntry(
           'Exhaustive search did not beat greedy. Keeping greedy schedule.',
@@ -1072,10 +1120,6 @@ class EnterprisePlanner {
         startDate: task.startDate ? new Date(task.startDate) : null,
         endDate: task.endDate ? new Date(task.endDate) : null
       }));
-      if (this.currentScheduleType === 'optimal' || this.currentScheduleType === 'exhaustive') {
-        this.displaySchedule = this.optimalSchedule;
-      }
-
       const exhaustiveElapsedSec = this.exhaustiveStartTime
         ? (Date.now() - this.exhaustiveStartTime) / 1000
         : elapsedSec;
@@ -1112,10 +1156,6 @@ class EnterprisePlanner {
       startDate: task.startDate ? new Date(task.startDate) : null,
       endDate: task.endDate ? new Date(task.endDate) : null
     }));
-    if (this.currentScheduleType === 'optimal' || this.currentScheduleType === 'exhaustive') {
-      this.displaySchedule = this.optimalSchedule;
-    }
-
     this.ui.addOptimizationLogEntry(
       `Completed in ${elapsedSec.toFixed(1)}s. Best found at ${convergencePct}% of iterations.`,
       'status'
@@ -1192,15 +1232,10 @@ class EnterprisePlanner {
     let fullSchedule;
     if (type === 'greedy') {
       fullSchedule = this.greedySchedule;
-      if (fullSchedule) this.displaySchedule = fullSchedule;
     } else if (this.optimalSchedule) {
       fullSchedule = this.optimalSchedule;
-      this.displaySchedule = fullSchedule;
-    } else if (this.displaySchedule) {
-      fullSchedule = this.displaySchedule;
     } else {
       fullSchedule = this.greedySchedule;
-      if (fullSchedule) this.displaySchedule = fullSchedule;
     }
 
     if (fullSchedule) {
@@ -1221,8 +1256,17 @@ class EnterprisePlanner {
         : this.filterBugsBySeverity(this.filterBugsByComponent(this.filterResolvedBugs(this.sortedBugs)));
 
       this.exhaustiveEndTime = Date.now() + 60 * 1000;
-      this.exhaustiveBestScore = this.greedyScore;
-      this.exhaustiveBestSchedule = null;
+      let baselineScore = this.greedyScore;
+      let baselineSchedule = null;
+      if (this.optimalSchedule) {
+        const optimalScore = this.computeScheduleScore(this.optimalSchedule, MILESTONES);
+        if (isBetterScore(optimalScore, baselineScore)) {
+          baselineScore = optimalScore;
+          baselineSchedule = this.optimalSchedule;
+        }
+      }
+      this.exhaustiveBestScore = baselineScore;
+      this.exhaustiveBestSchedule = baselineSchedule;
       this.exhaustiveWorkerStates = new Map();
       this.exhaustiveStartTime = Date.now();
       this.startOptimalScheduler(filteredBugs, MILESTONES, {
