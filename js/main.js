@@ -30,6 +30,7 @@ class EnterprisePlanner {
     this.workerResults = [];
     this.greedySchedule = null;
     this.optimalSchedule = null;
+    this.displaySchedule = null;
     this.currentScheduleType = 'greedy';
     this.fullScheduleErrors = [];
     this.fullScheduleRisks = [];
@@ -613,6 +614,9 @@ class EnterprisePlanner {
     this.scheduler = new Scheduler(this.engineers, MILESTONES);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
     this.greedySchedule = schedule;
+    if (this.currentScheduleType === 'greedy' || !this.displaySchedule) {
+      this.displaySchedule = this.greedySchedule;
+    }
     this.greedyScore = this.computeScheduleScore(schedule, MILESTONES);
     const unknownAssignees = this.collectUnknownAssignees();
     this.fullScheduleErrors = { ...this.detectErrors(), unknownAssignees };
@@ -1068,6 +1072,9 @@ class EnterprisePlanner {
         startDate: task.startDate ? new Date(task.startDate) : null,
         endDate: task.endDate ? new Date(task.endDate) : null
       }));
+      if (this.currentScheduleType === 'optimal' || this.currentScheduleType === 'exhaustive') {
+        this.displaySchedule = this.optimalSchedule;
+      }
 
       const exhaustiveElapsedSec = this.exhaustiveStartTime
         ? (Date.now() - this.exhaustiveStartTime) / 1000
@@ -1105,6 +1112,9 @@ class EnterprisePlanner {
       startDate: task.startDate ? new Date(task.startDate) : null,
       endDate: task.endDate ? new Date(task.endDate) : null
     }));
+    if (this.currentScheduleType === 'optimal' || this.currentScheduleType === 'exhaustive') {
+      this.displaySchedule = this.optimalSchedule;
+    }
 
     this.ui.addOptimizationLogEntry(
       `Completed in ${elapsedSec.toFixed(1)}s. Best found at ${convergencePct}% of iterations.`,
@@ -1179,6 +1189,32 @@ class EnterprisePlanner {
     this.currentScheduleType = type;
     this.ui.setScheduleType(type);
 
+    let fullSchedule;
+    if (type === 'greedy') {
+      fullSchedule = this.greedySchedule;
+      if (fullSchedule) this.displaySchedule = fullSchedule;
+    } else if (this.optimalSchedule) {
+      fullSchedule = this.optimalSchedule;
+      this.displaySchedule = fullSchedule;
+    } else if (this.displaySchedule) {
+      fullSchedule = this.displaySchedule;
+    } else {
+      fullSchedule = this.greedySchedule;
+      if (fullSchedule) this.displaySchedule = fullSchedule;
+    }
+
+    if (fullSchedule) {
+      // Apply milestone filter to view
+      const schedule = this.filterScheduleByMilestone(fullSchedule);
+      this.gantt.render(schedule, this.graph, this.engineers);
+
+      // Update milestone cards with new completion dates (respecting filter)
+      const milestoneCompletions = this.calculateMilestoneCompletions(fullSchedule);
+      this.ui.renderMilestoneCards(this.getActiveMilestones(), milestoneCompletions);
+
+      console.log(`Switched to ${type} schedule`);
+    }
+
     if (type === 'exhaustive') {
       const filteredBugs = this.lastFilteredBugs.length > 0
         ? this.lastFilteredBugs
@@ -1194,22 +1230,6 @@ class EnterprisePlanner {
         preserveExhaustive: true,
         preserveOptimal: true
       });
-    }
-
-    const fullSchedule = (type === 'optimal' || type === 'exhaustive') && this.optimalSchedule
-      ? this.optimalSchedule
-      : this.greedySchedule;
-
-    if (fullSchedule) {
-      // Apply milestone filter to view
-      const schedule = this.filterScheduleByMilestone(fullSchedule);
-      this.gantt.render(schedule, this.graph, this.engineers);
-
-      // Update milestone cards with new completion dates (respecting filter)
-      const milestoneCompletions = this.calculateMilestoneCompletions(fullSchedule);
-      this.ui.renderMilestoneCards(this.getActiveMilestones(), milestoneCompletions);
-
-      console.log(`Switched to ${type} schedule`);
     }
   }
 }
