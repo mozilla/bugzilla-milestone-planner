@@ -796,6 +796,7 @@ class EnterprisePlanner {
                   const elapsedSec = (now - this.optimizationStartTime) / 1000;
                   const totalIterationsNow = this.numWorkers * this.iterationsPerWorker;
                   const itersPerSec = Math.round(totalIterationsNow / Math.max(elapsedSec, 0.1));
+                  const itersPerSecText = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(itersPerSec);
 
                   if (this.optimizerMode === 'exhaustive') {
                     const wallNow = Date.now();
@@ -807,12 +808,12 @@ class EnterprisePlanner {
                       : `${elapsedSec.toFixed(0)}s elapsed`;
                     this.ui.updateOptimizationStatus(
                       'running',
-                      `${remainingText} | ${this.numWorkers} workers | ${itersPerSec.toLocaleString()} iter/sec`
+                      `${remainingText} | ${this.numWorkers} workers | ${itersPerSecText} iter/sec`
                     );
                   } else {
                     this.ui.updateOptimizationStatus(
                       'running',
-                      `${completedWorkers}/${this.numWorkers} done | ${itersPerSec.toLocaleString()} iter/sec`
+                      `${completedWorkers}/${this.numWorkers} done | ${itersPerSecText} iter/sec`
                     );
                   }
 
@@ -858,20 +859,26 @@ class EnterprisePlanner {
 
                 if (isNewDeadline || (sameDeadlines && (isLatenessBetter || (isLatenessSame && isMakespanBetter)))) {
                   const logType = isNewDeadline ? 'deadline' : 'improvement';
+                  const workerLabel = (() => {
+                    if (mode !== 'exhaustive') return `Worker ${workerId}`;
+                    const state = this.exhaustiveWorkerStates.get(workerId);
+                    const strategy = state?.strategy === 'reheat' ? 'reheat' : 'continuous';
+                    return `Worker ${workerId} (${strategy})`;
+                  })();
                   let message;
                   if (isNewDeadline) {
                     const metNames = data.deadlineDetails
                       ?.filter(d => d.met)
                       .map(d => d.name)
                       .join(', ') || '';
-                    message = `NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNames}). Makespan: ${data.makespan.toFixed(0)} days`;
+                    message = `${workerLabel}: NEW DEADLINE MET! Now ${data.deadlinesMet}/${numMilestones} (${metNames}). Makespan: ${data.makespan.toFixed(0)} days`;
                   } else if (isLatenessBetter && !isMakespanBetter) {
                     const previousLateness = Number.isFinite(loggedBest?.totalLateness)
                       ? loggedBest.totalLateness.toFixed(0)
                       : '?';
-                    message = `Improved lateness: ${candidateScore.totalLateness.toFixed(0)} days late (was ${previousLateness}). Makespan: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
+                    message = `${workerLabel}: Improved lateness: ${candidateScore.totalLateness.toFixed(0)} days late (was ${previousLateness}). Makespan: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
                   } else {
-                    message = `Improved makespan: ${data.makespan.toFixed(0)} days (lateness ${candidateScore.totalLateness.toFixed(0)}). Deadlines: ${data.deadlinesMet}/${numMilestones}`;
+                    message = `${workerLabel}: Improved makespan: ${data.makespan.toFixed(0)} days (lateness ${candidateScore.totalLateness.toFixed(0)}). Deadlines: ${data.deadlinesMet}/${numMilestones}`;
                   }
                   this.ui.addOptimizationLogEntry(message, logType);
                   this.bestLoggedScore = candidateScore;
