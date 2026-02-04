@@ -796,10 +796,26 @@ class EnterprisePlanner {
                   const elapsedSec = (now - this.optimizationStartTime) / 1000;
                   const totalIterationsNow = this.numWorkers * this.iterationsPerWorker;
                   const itersPerSec = Math.round(totalIterationsNow / Math.max(elapsedSec, 0.1));
-                  this.ui.updateOptimizationStatus(
-                    'running',
-                    `${completedWorkers}/${this.numWorkers} done | ${itersPerSec.toLocaleString()} iter/sec`
-                  );
+
+                  if (this.optimizerMode === 'exhaustive') {
+                    const wallNow = Date.now();
+                    const remainingSec = this.exhaustiveEndTime
+                      ? Math.max(0, Math.ceil((this.exhaustiveEndTime - wallNow) / 1000))
+                      : null;
+                    const remainingText = remainingSec !== null
+                      ? `${remainingSec}s remaining`
+                      : `${elapsedSec.toFixed(0)}s elapsed`;
+                    this.ui.updateOptimizationStatus(
+                      'running',
+                      `${remainingText} | ${this.numWorkers} workers | ${itersPerSec.toLocaleString()} iter/sec`
+                    );
+                  } else {
+                    this.ui.updateOptimizationStatus(
+                      'running',
+                      `${completedWorkers}/${this.numWorkers} done | ${itersPerSec.toLocaleString()} iter/sec`
+                    );
+                  }
+
                   this.lastProgressUpdate = now;
                 }
               }
@@ -855,7 +871,7 @@ class EnterprisePlanner {
                       : '?';
                     message = `Improved lateness: ${candidateScore.totalLateness.toFixed(0)} days late (was ${previousLateness}). Makespan: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
                   } else {
-                    message = `Improved schedule: ${data.makespan.toFixed(0)} days. Deadlines: ${data.deadlinesMet}/${numMilestones}`;
+                    message = `Improved makespan: ${data.makespan.toFixed(0)} days (lateness ${candidateScore.totalLateness.toFixed(0)}). Deadlines: ${data.deadlinesMet}/${numMilestones}`;
                   }
                   this.ui.addOptimizationLogEntry(message, logType);
                   this.bestLoggedScore = candidateScore;
