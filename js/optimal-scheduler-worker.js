@@ -63,7 +63,8 @@ self.onmessage = function(e) {
       id,
       startAssignment,
       startTemperature,
-      reheat
+      reheat,
+      coolingRate
     } = data;
 
     workerId = id || 0;
@@ -83,7 +84,7 @@ self.onmessage = function(e) {
       engineers,
       graph,
       iterations || SA_ITERATIONS_DEFAULT,
-      { startAssignment, startTemperature, reheat: !!reheat }
+      { startAssignment, startTemperature, reheat: !!reheat, coolingRate }
     );
   } else if (type === 'stop') {
     self.close();

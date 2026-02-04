@@ -116,8 +116,8 @@ describe('SA Parameter Tuning', () => {
 
       const elapsed = Date.now() - startTime;
 
-      // Analyze results
-      const successes = configResults.filter(r => r.deadlines === 1).length;
+      // Analyze results - with current snapshot 2/3 deadlines is achievable
+      const successes = configResults.filter(r => r.deadlines >= 2).length;
       const avgMakespan = configResults.length > 0
         ? (configResults.reduce((s, r) => s + r.makespan, 0) / configResults.length).toFixed(1)
         : 'N/A';
@@ -172,7 +172,7 @@ describe('SA Parameter Tuning', () => {
       });
     }
 
-    // With hard-locked assignees, 1/3 deadlines should be reliably achievable.
+    // With current snapshot, 2/3 deadlines should be reliably achievable.
     expect(results.some(r => parseInt(r.reliabilityPct, 10) >= 75)).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-02-02T15:21:36.870Z",
+  "capturedAt": "2026-02-04T10:59:22.372Z",
   "milestones": [
     {
       "name": "Foxfooding",
@@ -15,37 +15,37 @@
     }
   ],
   "stats": {
-    "totalBugs": 158,
-    "resolvedBugs": 49,
-    "unresolvedBugs": 109,
-    "clientBugs": 109,
-    "metaBugs": 16,
-    "bugsWithSize": 32,
-    "bugsWithoutSize": 126,
-    "bugsWithAssignee": 158,
+    "totalBugs": 159,
+    "resolvedBugs": 52,
+    "unresolvedBugs": 107,
+    "clientBugs": 111,
+    "metaBugs": 17,
+    "bugsWithSize": 34,
+    "bugsWithoutSize": 125,
+    "bugsWithAssignee": 159,
     "bugsWithoutAssignee": 0,
     "severityCounts": {
-      "--": 104,
-      "S1": 19,
+      "--": 103,
+      "S1": 20,
       "S3": 24,
-      "S2": 11
+      "S2": 12
     },
     "componentCounts": {
-      "Client": 109,
+      "Client": 111,
       "General": 7,
-      "Console": 26,
-      "Services": 8,
-      "Searchfox": 3,
       "SQLite and Embedded Database Bindings": 1,
-      "Treeherder: Data Ingestion": 1,
-      "Firefox-CI Administration": 3
+      "Console": 27,
+      "Services": 8,
+      "Task Configuration": 1,
+      "Firefox-CI Administration": 3,
+      "Treeherder: Data Ingestion": 1
     },
     "clientUnresolvedBugs": 70,
     "clientSeverityCounts": {
-      "--": 19,
+      "--": 18,
       "S1": 17,
       "S3": 24,
-      "S2": 10
+      "S2": 11
     }
   },
   "bugs": [
@@ -131,6 +131,7 @@
         1980740,
         1980918,
         1989272,
+        1996558,
         2002486,
         2005494,
         2011841,
@@ -395,6 +396,27 @@
       "isMeta": false
     },
     {
+      "id": 1996558,
+      "summary": "Automatically encrypt SQLite databases on disk",
+      "status": "ASSIGNED",
+      "resolution": null,
+      "assignee": "nwipper@mozilla.com",
+      "dependsOn": [],
+      "blocks": [
+        1980739,
+        1996001,
+        2014232
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "SQLite and Embedded Database Bindings",
+      "product": "Core",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
       "id": 1998384,
       "summary": "Firefox Enterprise can be opened without authenticating",
       "status": "NEW",
@@ -653,7 +675,7 @@
       "summary": "Keyboard navigation cannot focus or activate the Mozilla Badge button",
       "status": "NEW",
       "resolution": null,
-      "assignee": "nobody@mozilla.org",
+      "assignee": "jneuberger@mozilla.com",
       "dependsOn": [],
       "blocks": [
         1980342
@@ -1285,6 +1307,7 @@
         2002494,
         2002549,
         2012076,
+        2012084,
         2012258,
         2013303
       ],
@@ -1501,9 +1524,7 @@
       "status": "RESOLVED",
       "resolution": "DUPLICATE",
       "assignee": "lissyx+mozillians@lissyx.dyndns.org",
-      "dependsOn": [
-        2012078
-      ],
+      "dependsOn": [],
       "blocks": [
         1980747
       ],
@@ -1702,6 +1723,7 @@
         2012067,
         2012424,
         2012430,
+        2014397,
         2012387
       ],
       "blocks": [
@@ -1853,6 +1875,25 @@
       "isMeta": true
     },
     {
+      "id": 2012084,
+      "summary": "Custom policies-schema.json for enterprise build",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2013712
+      ],
+      "whiteboard": "[size=1]",
+      "keywords": [],
+      "component": "Client",
+      "product": "Firefox Enterprise",
+      "severity": "S2",
+      "size": 1,
+      "sizeEstimated": false,
+      "isMeta": false
+    },
+    {
       "id": 2012258,
       "summary": "[meta] Green tests on Treeherder",
       "status": "NEW",
@@ -1907,8 +1948,9 @@
       "assignee": "nobody@mozilla.org",
       "dependsOn": [
         2013308,
-        2013557,
-        2013304
+        2014398,
+        2013304,
+        2014159
       ],
       "blocks": [
         2013712
@@ -2023,10 +2065,11 @@
       "status": "NEW",
       "resolution": null,
       "assignee": "lissyx+mozillians@lissyx.dyndns.org",
-      "dependsOn": [],
+      "dependsOn": [
+        2014173
+      ],
       "blocks": [
-        2012076,
-        1998760
+        2012076
       ],
       "whiteboard": "[size=3]",
       "keywords": [],
@@ -2044,7 +2087,6 @@
       "resolution": null,
       "assignee": "nobody@mozilla.org",
       "dependsOn": [
-        1996558,
         2013811
       ],
       "blocks": [
@@ -2126,11 +2168,11 @@
       "assignee": "nobody@mozilla.org",
       "dependsOn": [
         2012262,
-        2012267,
         2012494,
         2012263,
         2012264,
-        2012266
+        2012266,
+        2012267
       ],
       "blocks": [
         2012258
@@ -2387,12 +2429,12 @@
       "blocks": [
         2012076
       ],
-      "whiteboard": "[size=4]",
+      "whiteboard": "[size=3]",
       "keywords": [],
       "component": "Client",
       "product": "Firefox Enterprise",
       "severity": "S1",
-      "size": 4,
+      "size": 3,
       "sizeEstimated": false,
       "isMeta": false
     },
@@ -2425,13 +2467,13 @@
       "blocks": [
         2012076
       ],
-      "whiteboard": "",
+      "whiteboard": "[size=2]",
       "keywords": [],
       "component": "Client",
       "product": "Firefox Enterprise",
-      "severity": "--",
-      "size": null,
-      "sizeEstimated": true,
+      "severity": "S1",
+      "size": 2,
+      "sizeEstimated": false,
       "isMeta": false
     },
     {
@@ -2612,41 +2654,59 @@
       "isMeta": true
     },
     {
-      "id": 2013557,
-      "summary": "Add Firefox Enterprise enterprise-release branch to searchfox",
-      "status": "NEW",
-      "resolution": null,
-      "assignee": "nobody@mozilla.org",
-      "dependsOn": [
-        2010040
-      ],
+      "id": 2014159,
+      "summary": "Unable to build on enterprise CI",
+      "status": "RESOLVED",
+      "resolution": "FIXED",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
+      "dependsOn": [],
       "blocks": [
         2013303
       ],
       "whiteboard": "",
-      "keywords": [],
-      "component": "Searchfox",
-      "product": "Webtools",
+      "keywords": [
+        "regression"
+      ],
+      "component": "Task Configuration",
+      "product": "Firefox Build System",
       "severity": "--",
       "size": null,
       "sizeEstimated": true,
       "isMeta": false
     },
     {
-      "id": 1996558,
-      "summary": "Automatically encrypt SQLite databases on disk",
-      "status": "ASSIGNED",
+      "id": 2014397,
+      "summary": "Console passes load test",
+      "status": "NEW",
       "resolution": null,
-      "assignee": "nwipper@mozilla.com",
+      "assignee": "nobody@mozilla.org",
       "dependsOn": [],
       "blocks": [
-        1996001,
-        2012079
+        2012056
       ],
       "whiteboard": "",
       "keywords": [],
-      "component": "SQLite and Embedded Database Bindings",
-      "product": "Core",
+      "component": "Console",
+      "product": "Firefox Enterprise",
+      "severity": "--",
+      "size": null,
+      "sizeEstimated": true,
+      "isMeta": false
+    },
+    {
+      "id": 2014398,
+      "summary": "Actions broken on enterprise-firefox and enterprise-firefox-pr",
+      "status": "NEW",
+      "resolution": null,
+      "assignee": "nobody@mozilla.org",
+      "dependsOn": [],
+      "blocks": [
+        2013303
+      ],
+      "whiteboard": "",
+      "keywords": [],
+      "component": "Firefox-CI Administration",
+      "product": "Release Engineering",
       "severity": "--",
       "size": null,
       "sizeEstimated": true,
@@ -2666,27 +2726,6 @@
       "keywords": [],
       "component": "Treeherder: Data Ingestion",
       "product": "Tree Management",
-      "severity": "--",
-      "size": null,
-      "sizeEstimated": true,
-      "isMeta": false
-    },
-    {
-      "id": 2010040,
-      "summary": "Add Firefox Enterprise enterprise-main branch to searchfox",
-      "status": "ASSIGNED",
-      "resolution": null,
-      "assignee": "arai.unmht@gmail.com",
-      "dependsOn": [
-        2010300
-      ],
-      "blocks": [
-        2013557
-      ],
-      "whiteboard": "",
-      "keywords": [],
-      "component": "Searchfox",
-      "product": "Webtools",
       "severity": "--",
       "size": null,
       "sizeEstimated": true,
@@ -2790,8 +2829,8 @@
     {
       "id": 2012267,
       "summary": "browser/components/tests/marionette/test_no_errors_clean_profile.py failures on Enterprise",
-      "status": "NEW",
-      "resolution": null,
+      "status": "RESOLVED",
+      "resolution": "FIXED",
       "assignee": "lissyx+mozillians@lissyx.dyndns.org",
       "dependsOn": [],
       "blocks": [
@@ -2982,7 +3021,7 @@
       "summary": "Console management UI handles multi device users",
       "status": "NEW",
       "resolution": null,
-      "assignee": "jwajsberg@mozilla.com",
+      "assignee": "felash@gmail.com",
       "dependsOn": [],
       "blocks": [
         2012424
@@ -3001,7 +3040,7 @@
       "summary": "Console management UI allows deleting a user",
       "status": "NEW",
       "resolution": null,
-      "assignee": "jwajsberg@mozilla.com",
+      "assignee": "felash@gmail.com",
       "dependsOn": [],
       "blocks": [
         2012424
@@ -3020,7 +3059,7 @@
       "summary": "Genertic events are hidden in the console",
       "status": "NEW",
       "resolution": null,
-      "assignee": "jwajsberg@mozilla.com",
+      "assignee": "felash@gmail.com",
       "dependsOn": [],
       "blocks": [
         2012424
@@ -3039,7 +3078,7 @@
       "summary": "Console management UI has localized policy descriptions",
       "status": "NEW",
       "resolution": null,
-      "assignee": "jwajsberg@mozilla.com",
+      "assignee": "felash@gmail.com",
       "dependsOn": [],
       "blocks": [
         2012424
@@ -3058,7 +3097,7 @@
       "summary": "Console management UI reports user friendly OS versions",
       "status": "NEW",
       "resolution": null,
-      "assignee": "jwajsberg@mozilla.com",
+      "assignee": "felash@gmail.com",
       "dependsOn": [],
       "blocks": [
         2012424
@@ -3077,7 +3116,7 @@
       "summary": "Hide elements related to inviting users on the console UI",
       "status": "NEW",
       "resolution": null,
-      "assignee": "jwajsberg@mozilla.com",
+      "assignee": "felash@gmail.com",
       "dependsOn": [],
       "blocks": [
         2012424
@@ -3192,8 +3231,8 @@
     {
       "id": 2013811,
       "summary": "Add installers and complete MAR for Enterprise repacks",
-      "status": "NEW",
-      "resolution": null,
+      "status": "RESOLVED",
+      "resolution": "FIXED",
       "assignee": "lissyx+mozillians@lissyx.dyndns.org",
       "dependsOn": [],
       "blocks": [
@@ -3247,48 +3286,25 @@
       "isMeta": false
     },
     {
-      "id": 2010300,
-      "summary": "Enable searchfox job on enterprise-firefox",
-      "status": "ASSIGNED",
+      "id": 2014173,
+      "summary": "[meta] Make Firefox Enterprise localizable",
+      "status": "NEW",
       "resolution": null,
-      "assignee": "arai.unmht@gmail.com",
-      "dependsOn": [
-        2010334
-      ],
-      "blocks": [
-        2010040
-      ],
-      "whiteboard": "",
-      "keywords": [],
-      "component": "Searchfox",
-      "product": "Webtools",
-      "severity": "--",
-      "size": null,
-      "sizeEstimated": true,
-      "isMeta": false
-    },
-    {
-      "id": 2010334,
-      "summary": "Enable cron in enterprise-firefox",
-      "status": "REOPENED",
-      "resolution": null,
-      "assignee": "ahal@mozilla.com",
+      "assignee": "lissyx+mozillians@lissyx.dyndns.org",
       "dependsOn": [],
       "blocks": [
-        1986768,
-        2003626,
-        2010300
+        2012078
       ],
       "whiteboard": "",
       "keywords": [
-        "leave-open"
+        "meta"
       ],
-      "component": "Firefox-CI Administration",
-      "product": "Release Engineering",
+      "component": "Client",
+      "product": "Firefox Enterprise",
       "severity": "--",
       "size": null,
       "sizeEstimated": true,
-      "isMeta": false
+      "isMeta": true
     }
   ]
 }

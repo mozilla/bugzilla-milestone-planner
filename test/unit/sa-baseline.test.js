@@ -69,7 +69,7 @@ describe('SA Baseline with Static Fixture', () => {
       ['S1', 'S2'].includes(b.severity)
     );
     console.log(`Unresolved S1-S2 bugs in fixture: ${unresolved.length}`);
-    expect(unresolved.length).toBe(28);
+    expect(unresolved.length).toBe(29);
   });
 
   it('should report greedy schedule baseline', () => {
@@ -167,8 +167,8 @@ describe('SA Baseline with Static Fixture', () => {
     console.log(`Avg deadlines: ${avgDeadlines}/3`);
     console.log(`Avg convergence: ${avgConvergence}% of iterations`);
 
-    // With hard-locked assignees, only 1/3 deadlines are achievable in this fixture.
-    expect(best.deadlinesMet).toBe(1);
+    // With current snapshot, 2/3 deadlines are achievable (Foxfooding misses by 2 days).
+    expect(best.deadlinesMet).toBe(2);
   });
 
   it('should minimize lateness and track daysLate in scoring', async () => {

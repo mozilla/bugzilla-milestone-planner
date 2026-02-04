@@ -122,10 +122,23 @@ export class Scheduler {
         milestoneBugIds.has(String(bug.id))
       );
 
-      console.log(`[Scheduler] Milestone ${milestone.name}: ${milestoneBugs.length} bugs`);
+      // Separate locked (assigned) vs unlocked bugs - schedule locked first
+      // This ensures locked bugs get optimal timing, unlocked bugs work around them
+      const lockedBugs = milestoneBugs.filter(bug => {
+        const assignee = normalizeAssigneeEmail(bug.assignee);
+        return assignee && assignee !== 'nobody@mozilla.org' && this.engineerByEmail.has(assignee);
+      });
+      const unlockedBugs = milestoneBugs.filter(bug => !lockedBugs.includes(bug));
 
-      // Schedule this milestone's bugs
-      for (const bug of milestoneBugs) {
+      console.log(`[Scheduler] Milestone ${milestone.name}: ${milestoneBugs.length} bugs (${lockedBugs.length} locked, ${unlockedBugs.length} unlocked)`);
+
+      // Schedule locked bugs first (in topological order)
+      for (const bug of lockedBugs) {
+        this.scheduleBug(bug, graph, taskEndDates, today, milestone);
+      }
+
+      // Then schedule unlocked bugs (in topological order)
+      for (const bug of unlockedBugs) {
         this.scheduleBug(bug, graph, taskEndDates, today, milestone);
       }
     }
