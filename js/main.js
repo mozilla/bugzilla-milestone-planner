@@ -721,7 +721,10 @@ class EnterprisePlanner {
    */
   startOptimalScheduler(sortedBugs, milestones = MILESTONES, options = {}) {
     // Stop any existing workers
-    this.stopOptimalScheduler({ preserveExhaustive: options.preserveExhaustive });
+    this.stopOptimalScheduler({
+      preserveExhaustive: options.preserveExhaustive,
+      preserveOptimal: options.preserveOptimal
+    });
 
     const numMilestones = milestones.length;
     const totalIterations = this.numWorkers * this.iterationsPerWorker;
@@ -1136,7 +1139,9 @@ class EnterprisePlanner {
     }
     this.optimalWorkers = [];
     this.workerResults = [];
-    this.optimalSchedule = null;
+    if (!options.preserveOptimal) {
+      this.optimalSchedule = null;
+    }
     this.optimizerMode = 'optimal';
     if (!options.preserveExhaustive) {
       this.exhaustiveEndTime = null;
@@ -1184,13 +1189,11 @@ class EnterprisePlanner {
       this.exhaustiveBestSchedule = null;
       this.exhaustiveWorkerStates = new Map();
       this.exhaustiveStartTime = Date.now();
-      this.startOptimalScheduler(filteredBugs, MILESTONES, { mode: 'exhaustive', preserveExhaustive: true });
-
-      // Seed milestone cards with the current optimal schedule (if available)
-      if (this.optimalSchedule && this.optimalSchedule.length > 0) {
-        const optimalCompletions = this.calculateMilestoneCompletions(this.optimalSchedule);
-        this.ui.renderMilestoneCards(this.getActiveMilestones(), optimalCompletions);
-      }
+      this.startOptimalScheduler(filteredBugs, MILESTONES, {
+        mode: 'exhaustive',
+        preserveExhaustive: true,
+        preserveOptimal: true
+      });
     }
 
     const fullSchedule = (type === 'optimal' || type === 'exhaustive') && this.optimalSchedule
