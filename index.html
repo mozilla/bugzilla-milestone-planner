@@ -203,7 +203,17 @@
         </div>
 
         <div class="table-card" id="untriaged-card" style="display: none;">
-          <h3>Untriaged Bugs (no severity set)</h3>
+          <div class="table-card-header">
+            <h3>Untriaged Bugs (no severity set)</h3>
+            <a
+              id="untriaged-bugzilla"
+              class="table-action is-disabled"
+              target="_blank"
+              rel="noopener"
+              aria-disabled="true"
+              tabindex="-1"
+            >Open in Bugzilla</a>
+          </div>
           <div id="untriaged-table">
             <!-- Populated by JavaScript -->
           </div>

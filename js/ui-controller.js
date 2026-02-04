@@ -42,6 +42,7 @@ export class UIController {
       milestoneMismatchesLink: document.getElementById('milestone-mismatches-bugzilla'),
       untriagedCard: document.getElementById('untriaged-card'),
       untriagedTable: document.getElementById('untriaged-table'),
+      untriagedLink: document.getElementById('untriaged-bugzilla'),
       errorsMarkdown: document.getElementById('errors-markdown'),
       legend: document.getElementById('legend'),
       milestoneCards: document.getElementById('milestone-cards')
@@ -478,11 +479,16 @@ export class UIController {
     // Hide the card if no untriaged bugs
     if (!bugs || bugs.length === 0) {
       this.elements.untriagedCard.style.display = 'none';
+      this.setBugzillaLink(this.elements.untriagedLink, []);
       return;
     }
 
     // Show the card
     this.elements.untriagedCard.style.display = '';
+    this.setBugzillaLink(
+      this.elements.untriagedLink,
+      bugs.map(bug => bug?.id).filter(Boolean)
+    );
 
     let html = `
       <table>
