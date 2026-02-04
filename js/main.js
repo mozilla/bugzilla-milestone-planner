@@ -1185,6 +1185,12 @@ class EnterprisePlanner {
       this.exhaustiveWorkerStates = new Map();
       this.exhaustiveStartTime = Date.now();
       this.startOptimalScheduler(filteredBugs, MILESTONES, { mode: 'exhaustive', preserveExhaustive: true });
+
+      // Seed milestone cards with the current optimal schedule (if available)
+      if (this.optimalSchedule && this.optimalSchedule.length > 0) {
+        const optimalCompletions = this.calculateMilestoneCompletions(this.optimalSchedule);
+        this.ui.renderMilestoneCards(this.getActiveMilestones(), optimalCompletions);
+      }
     }
 
     const fullSchedule = (type === 'optimal' || type === 'exhaustive') && this.optimalSchedule
