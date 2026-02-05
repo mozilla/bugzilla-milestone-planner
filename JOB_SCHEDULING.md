@@ -1,301 +1,224 @@
-# Job Scheduling: Problem Analysis and Algorithms
+# Job Scheduling Algorithm
 
-## The Underlying Problem
+This document describes the genetic algorithm (GA) used to optimize project schedules.
 
-The Enterprise Project Planner solves a variant of the **Resource-Constrained Project Scheduling Problem (RCPSP)**, which is a generalization of the classic **Job Shop Scheduling Problem**.
-
-### Problem Definition (Simplified)
+## Problem Definition
 
 Given:
-- A set of **tasks** (bugs) with:
-  - Estimated duration (size 1-5 mapped to days, supports fractional sizes)
-  - Dependency constraints (task A must complete before task B)
-- A set of **resources** (engineers) with:
-  - Availability factor (0.0-1.0, e.g., 0.2 = 20% time)
-  - Unavailability periods (holidays, PTO)
-- **Deadlines** (milestone freeze dates)
-- **Milestones** organized hierarchically (Foxfooding → Customer Pilot → MVP)
+- **Tasks** (bugs) with durations and dependency constraints
+- **Engineers** with availability factors and unavailability periods
+- **Milestones** with freeze date deadlines
 
-Find: An assignment of tasks to engineers and start times that:
-1. Respects all dependency constraints
-2. Respects resource availability (one task per engineer at a time)
-3. **Maximizes deadlines met** (primary objective)
-4. **Minimizes project makespan** (secondary objective)
+Find an assignment of tasks to engineers that:
+1. Maximizes deadlines met (primary)
+2. Minimizes total lateness (secondary)
+3. Minimizes makespan (tertiary)
 
-### Complexity
+This is a variant of the Resource-Constrained Project Scheduling Problem (RCPSP), which is NP-hard.
 
-This problem is **NP-hard**. Specifically:
-- Even the simpler Job Shop Problem (JSP) is NP-hard
-- Adding precedence constraints makes it RCPSP, also NP-hard
-- Multi-objective optimization (deadlines + makespan) compounds difficulty
+## Algorithm Overview
 
-For `n` tasks and `m` engineers, the search space is `O(m^n)` possible assignments, each requiring `O(n²)` time to evaluate due to dependency resolution.
+We use a **Memetic Genetic Algorithm**—a GA enhanced with local search on elite individuals.
 
-## Algorithms Implemented
+### Two-Phase Approach
 
-### 1. Greedy Algorithm (Fast, Approximate)
+1. **Greedy Schedule** (instant): Provides immediate feedback
+2. **GA Optimization** (background): Searches for better solutions using parallel Web Workers
 
-**Time Complexity:** O(n² × m)
+## Greedy Algorithm
 
-**Approach:**
-1. Assign tasks to milestones based on dependency chains
-2. Process milestones in deadline order (Foxfooding first, then Customer Pilot, then MVP)
-3. For each milestone's tasks in topological order:
-   - Find the engineer who can complete it earliest
-   - Assign task to that engineer
-4. Process remaining (unassigned) tasks last
+**Time Complexity:** O(n² × m) where n=tasks, m=engineers
 
-**Milestone-Aware Scheduling:**
-This is a key insight: by processing earlier milestones first, we ensure their tasks get priority for engineer time. Engineer availability then "cascades" to later milestones. This prevents a Customer Pilot task from blocking a Foxfooding task when deadlines are tight.
-
-**Pros:**
-- Very fast, runs in milliseconds
-- Produces reasonable schedules
-- Deterministic
-- Naturally prioritizes earlier deadlines
-
-**Cons:**
-- No global optimization within a milestone
-- May miss solutions that require non-obvious task ordering
-
-### 2. Branch and Bound (Exact, Exponential)
-
-**Time Complexity:** O(m^n) worst case, often much better with pruning
-
-**Approach:**
-1. Process tasks in milestone order (same as greedy)
-2. Recursively try all engineer assignments
-3. Prune branches that cannot improve on best known solution
-4. Prioritize by deadlines met, then makespan
-
-**Pruning strategies:**
-- If current partial solution already exceeds best makespan (when all deadlines met), prune
-- Try engineers in order of expected completion time for better pruning
-
-**Used when:** ≤ 10 unassigned tasks
-
-**Why threshold 10?** With 5 engineers, B&B explores up to 5^n assignments. At n=10, this is ~10 million nodes, taking ~100ms with pruning. At n=15, it's ~30 billion nodes—impractical. The threshold of 10 balances optimality with speed.
-
-**Pros:**
-- Guaranteed optimal solution
-- Pruning makes it practical for small instances
-
-**Cons:**
-- Exponential worst case
-- Not suitable for large task sets
-
-**Note:** With typical workloads of 25-40 tasks after filtering, B&B is rarely used. SA handles essentially all real-world cases.
-
-### 3. Simulated Annealing (Approximate, Probabilistic)
-
-**Time Complexity:** O(iterations × n²)
-
-**Approach:**
-1. Start with random assignment
-2. Process tasks in milestone order when evaluating (critical fix!)
-3. Iteratively make small changes (reassign one task to different engineer)
-4. Accept improvements always
-5. Accept worse solutions with probability `e^(-Δ/T)` where T decreases over time
-6. Track best solution found
-
-**Parameters:**
-- Initial temperature: 1000
-- Cooling rate: 0.99995
-- Iterations: 100,000
-
-**Scoring function:**
 ```
-score = deadlines_met × 10000 - makespan
+for each milestone in deadline order:
+    for each task in topological order:
+        assign to engineer who can complete it earliest
+        (respecting locked Bugzilla assignments)
 ```
-This heavily weights deadline compliance over makespan reduction.
 
-**Critical Implementation Detail:**
-The SA must process tasks in milestone order when computing end times, just like the greedy algorithm. Without this, SA produces worse schedules than greedy because later-milestone tasks can "steal" engineer time from earlier-milestone tasks.
+Key insight: Processing milestones by deadline ensures earlier deadlines get priority for engineer time.
 
-**Pros:**
-- Can escape local optima
-- Works for any problem size
-- Often finds near-optimal solutions
+## Genetic Algorithm
 
-**Cons:**
-- No optimality guarantee
-- Requires parameter tuning
-- Results vary between runs
+### Representation
 
-## Lessons Learned
+Each **individual** is an array of engineer indices, one per task:
+```
+[2, 0, 1, 2, 0, ...]  // task 0 → engineer 2, task 1 → engineer 0, etc.
+```
 
-### 1. Milestone Ordering is Critical
+Locked tasks (with Bugzilla assignees) are fixed and excluded from genetic operations.
 
-The most important scheduling insight: process tasks by milestone deadline order. This ensures:
-- Foxfooding tasks complete before Customer Pilot tasks begin consuming engineer time
-- Natural prioritization without explicit priority scores
-- Both greedy and SA produce comparable results
+### Population
 
-### 2. Meta Bugs Need Special Handling
+- **Size**: 40 per worker (160 total with 2 workers)
+- **Initialization**: Random engineer assignments for unlocked tasks
+- **Exhaustive mode**: 400 per worker for deeper search
 
-Tracking bugs ([meta] in whiteboard/keywords/summary) should:
-- Take 0 days effort
-- Not consume engineer availability
-- Complete exactly when their dependencies complete
-- Not appear in the Gantt chart (they're tracking artifacts, not work)
+### Selection: Tournament
 
-### 3. Date Comparisons Must Be Consistent
+```
+function tournamentSelect(population, k=3):
+    pick k random individuals
+    return the one with best fitness
+```
 
-When checking deadlines:
-- Always compare actual Date objects, not working days vs calendar days
-- The scheduler uses working days internally, but deadline comparison must convert to actual dates
-- Mixing units causes subtle bugs where tasks appear to meet deadlines but actually miss them
+Tournament selection provides good selection pressure while maintaining diversity.
 
-### 4. Dependency Graphs Must Be Complete
+### Crossover: Two-Point
 
-When building the dependency map for the optimizer:
-- Include ALL bugs, not just filtered bugs
-- Dependencies may chain through bugs that don't pass filters
-- Incomplete graphs cause incorrect scheduling
+```
+function crossover(parent1, parent2):
+    pick two random crossover points
+    swap genes between points (unlocked tasks only)
+    return two children
+```
 
-### 5. Availability Scaling is Multiplicative
+- **Rate**: 80%
+- Only operates on unlocked task positions
 
-For an engineer with 20% availability:
-- A 5-day task takes 25 working days (5 / 0.2)
-- This represents actual calendar time until completion
-- Part-time engineers effectively have lower throughput
+### Mutation
 
-## Experimental Results (Feb 2026)
+```
+function mutate(individual):
+    for each unlocked task:
+        with 10% probability:
+            reassign to random engineer
+```
 
-Tested on real Bugzilla snapshot: 30 tasks, 5 engineers, 3 milestones.
+Mutation rate of 10% balances exploration with preservation of good solutions.
 
-**Reliability** = percentage of runs that achieve 3/3 deadlines met.
+### Elitism
 
-### Greedy vs SA Comparison
+The top 4 individuals (10%) survive unchanged to the next generation, preserving the best solutions found.
 
-| Metric | Greedy | SA (100k iter) |
+### Local Search (Memetic)
+
+Applied only to the single best individual each generation:
+
+```
+function localSearch(individual, swaps=10):
+    for i in 1..swaps:
+        pick random unlocked task
+        try random different engineer
+        if better: keep change
+    return improved individual
+```
+
+This intensifies search around promising solutions without excessive computation.
+
+## Fitness Function
+
+### Score Computation
+
+```
+function evaluateSchedule(assignment):
+    compute end times respecting dependencies
+    for each milestone:
+        if completion <= freezeDate:
+            deadlinesMet++
+        else:
+            totalLateness += daysLate
+    makespan = max(all end times)
+    return {deadlinesMet, totalLateness, makespan}
+```
+
+### Score Comparison (Lexicographic)
+
+```
+function isBetter(a, b):
+    if a.deadlinesMet > b.deadlinesMet: return true
+    if a.deadlinesMet < b.deadlinesMet: return false
+    if a.totalLateness < b.totalLateness: return true
+    if a.totalLateness > b.totalLateness: return false
+    return a.makespan < b.makespan
+```
+
+Priority: deadlines >> lateness >> makespan
+
+## Schedule Evaluation
+
+### End Time Computation
+
+For each task in milestone-priority order:
+1. Find earliest start (max of dependency end times)
+2. If engineer is busy, wait until available
+3. Skip unavailability periods
+4. Add working days (skip weekends)
+5. Record end time
+
+**Critical**: Tasks are processed in milestone order so earlier deadlines get scheduling priority.
+
+### Precomputed Caches
+
+To achieve fast evaluation (~1000 schedules/second):
+
+- **Bug-to-milestone map**: Which milestone each task belongs to
+- **Task ID index**: O(1) lookup by bug ID
+- **Milestone dependencies**: Precomputed transitive closure
+- **Unavailability ranges**: Converted to working-day indices
+
+## Parallel Execution
+
+### Worker Configuration
+
+- **2 workers** (fixed, not CPU-count based—more causes browser contention)
+- Each worker runs independent GA with different random seed
+- Best result across all workers is selected
+
+### Communication
+
+```
+Main Thread → Worker: {bugs, engineers, graph, milestones, generations}
+Worker → Main Thread: {type: 'improved', deadlinesMet, makespan, ...}
+Worker → Main Thread: {type: 'complete', schedule, bestAssignment}
+```
+
+## Exhaustive Mode
+
+When standard optimization isn't enough, exhaustive mode runs for 20 seconds:
+
+| Parameter | Standard | Exhaustive |
+|-----------|----------|------------|
+| Population | 40 | 400 |
+| Generations | 100 | 300 |
+| Rounds | 1 | Multiple |
+
+### Seeding Strategy
+
+After each round, top 5 assignments seed the next round's population:
+- Half the workers get seeded populations (exploitation)
+- Half start fresh (exploration)
+
+This balances intensification around good solutions with diversification to escape local optima.
+
+## Parameters Summary
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| Population size | 40 | Balance diversity vs evaluation cost |
+| Generations | 100 | Sufficient convergence for most cases |
+| Elite count | 4 | Preserve top 10% |
+| Tournament size | 3 | Good selection pressure |
+| Crossover rate | 80% | High recombination |
+| Mutation rate | 10% | Moderate exploration |
+| Local search swaps | 10 | Light intensification |
+| Workers | 2 | Browser parallelism sweet spot |
+
+## Performance
+
+Typical results on ~30 tasks, 5 engineers, 3 milestones:
+
+| Metric | Greedy | GA (2 workers) |
 |--------|--------|----------------|
-| Runtime | 2ms | 18s |
+| Runtime | 2ms | ~2-3s |
 | Deadlines met | 2/3 | 3/3 |
-| Makespan | 40 days | 38 days |
+| Reliability | 100% | ~93% |
 
-Greedy misses the Foxfooding deadline by 3 days. SA consistently finds a schedule meeting all deadlines.
-
-### Parallel SA (Best Improvement)
-
-Running multiple shorter SA instances in parallel and taking the best result:
-
-| Config | Reliability | Wall-clock (parallel) |
-|--------|-------------|-----------------------|
-| 1×100k | 100% | 17.75s |
-| 2×50k | 100% | 8.93s |
-| 5×20k | 100% | 3.60s |
-| 10×10k | 100% | 1.81s |
-
-**Key finding**: All parallel configurations achieve 100% reliability. With typical 4-8 CPU cores, **5×20k is the practical sweet spot**: 100% reliable in ~3.6s wall-clock (5x speedup).
-
-### Early Termination (Mixed Results)
-
-| Configuration | Reliability | Avg Runtime |
-|---------------|-------------|-------------|
-| Random init, no early term | **100%** | 17.9s |
-| Random init, 10k early term | 80% | 3.8s |
-| Random init, 5k early term | 40% | 1.7s |
-
-Early termination reduces runtime but hurts reliability. Not recommended when parallel execution is available.
-
-### Greedy Initialization (Harmful)
-
-| Configuration | Reliability |
-|---------------|-------------|
-| Random init, 10k early term | 80% |
-| Greedy init, 10k early term | 60% |
-
-**Greedy initialization is counterproductive**: The greedy solution is a local optimum that SA struggles to escape. Random initialization consistently outperforms it.
-
-### Recommendations
-
-- **Best approach**: Run N parallel Web Workers (N = CPU cores, typically 4-8), each running 20k iterations with random init. Take best result. ~3-4s wall-clock, 100% reliable.
-- **Single-threaded fallback**: 100k iterations (18s, 100% reliable)
-- **Don't use greedy init**: Creates a local optimum trap
-- **Don't use early termination alone**: Hurts reliability without parallelism to compensate
-
-## Potential Improvements
-
-### Near-term
-1. **Parallel SA**: Run multiple SA instances with different random seeds — *Tested: 5×20k parallel (limited by CPU cores) achieves 100% reliability in ~3.6s (5x speedup). Recommended.*
-2. ~~**Early termination**: Stop SA if no improvement for N iterations~~ — *Tested: Hurts reliability (80% at 10k threshold). Not recommended when parallelism available.*
-3. ~~**Better initial solution**: Use greedy result as SA starting point~~ — *Tested: Actually harmful—greedy is a local optimum trap*
-4. ~~**Hybrid SA+B&B**: Use SA for bulk, B&B for critical tail~~ — *Tested: No benefit. See details below.*
-
-### Hybrid SA+B&B (Failed Experiment)
-
-**Hypothesis**: Run SA for 70% of iterations, then use B&B to optimally schedule the last k tasks (the "tail").
-
-**Implementation**: SA assigns all tasks, then B&B explores all engineer assignments for the final 5 tasks in milestone order, using incremental end-time computation for efficiency.
-
-**Results** (5 runs, 28 tasks, 5 engineers):
-
-| Metric | Hybrid (14k SA + 5-task B&B) | Pure SA (8×10k parallel) |
-|--------|------------------------------|--------------------------|
-| Reliability | 100% | 100% |
-| Makespan | 40 days | 40 days |
-| Wall-clock | ~7s | ~3.6s |
-
-**Why it didn't help**: The tail tasks (last in milestone order) belong to MVP, which has the **latest deadline** and most slack. SA already finds near-optimal assignments for these tasks—B&B just confirms what SA found. A hybrid would only help if B&B ran on the **head** (Foxfooding tasks with tightest constraints), but that's architecturally harder since head assignments affect tail availability.
-
-**Conclusion**: Pure parallel SA remains the best approach for this problem size.
-
-### Medium-term
-1. ~~**Implement Tabu Search**~~ — *Implemented as Tabu-Enhanced SA. See results below.*
-2. **Add constraint propagation**: Reduce search space before optimization
-3. **Learn from history**: Use past schedules to warm-start optimization
-
-## Tabu-Enhanced SA (Implemented)
-
-Based on literature review ([Springer](https://link.springer.com/chapter/10.1007/978-3-031-19945-5_8), [ScienceDirect](https://www.sciencedirect.com/science/article/pii/S1877050925005113)).
-
-### Implementation Approach
-
-Classic Tabu Search evaluates ALL neighbors each iteration (O(n×m) evaluations), which is too expensive for our use case. Instead, we implemented **Tabu-Enhanced SA**:
-
-- Same single random move per iteration as SA
-- Same temperature-based acceptance logic
-- **Added**: Tabu list prevents cycling back to recent states
-- **Added**: Aspiration criteria allows tabu moves that beat global best
-
-**Parameters**:
-- Tabu tenure: sqrt(n) iterations
-- SA cooling rate: 0.9999
-
-### Experimental Results
-
-| Metric | Pure SA | Tabu-Enhanced SA |
-|--------|---------|------------------|
-| Reliability | 100% | 100% |
-| Avg time | ~7.5s | **~6.9s** |
-| Makespan | 40 days | 40 days |
-
-**Result**: ~8% speedup with same reliability. The tabu list helps avoid revisiting recent states, slightly accelerating convergence.
-
-### Failed Approaches
-
-1. **Classic Tabu Search** (evaluate all neighbors): Too slow—~7 minutes per run
-2. **Sampled Tabu Search** (evaluate 20 random neighbors): Still 3x slower than SA
-3. **Greedy Tabu Search** (no temperature): Less reliable than SA
-
-### Long-term
-1. **LP relaxation bounds**: Compute lower bounds to measure solution quality
-2. **Hybrid methods**: Combine metaheuristics with local search
-3. **Constraint Programming**: Use OR-Tools for more sophisticated solving
-
-## State of the Art
-
-For production systems with similar requirements:
-- Google OR-Tools CP-SAT solver handles precedence-constrained scheduling well
-- Gurobi/CPLEX for ILP formulations with optimality guarantees
-- OptaPlanner for Java-based constraint optimization
-
-Our browser-based approach trades solution quality for deployment simplicity (no solver dependencies, runs in client-side JavaScript).
+The GA reliably finds schedules meeting all deadlines when mathematically possible.
 
 ## References
 
-- Brucker, P. "Scheduling Algorithms" (2007)
+- Holland, J. "Genetic Algorithms" (1975)
+- Moscato, P. "Memetic Algorithms" (1989)
 - Kolisch, R. & Hartmann, S. "Experimental investigation of heuristics for RCPSP" (2006)
-- Błażewicz, J. et al. "Handbook on Scheduling" (2007)
-- Pinedo, M. "Scheduling: Theory, Algorithms, and Systems" (2016)

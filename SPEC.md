@@ -1,61 +1,190 @@
-### Enterprise Project Planner specification
+# Enterprise Project Planner Specification
 
-## Source data
+## Source Data
 
-# Bugzilla
+### Bugzilla
 
-Bugzilla is the main repository for project information. You can use the links below to fetch bugs and look at all the dependent bug trees.
+Bugzilla is the main repository for project information. The app fetches bugs and their dependency trees via the REST API.
 
-Bugzilla's API documentate is here:
-https://bugzilla.readthedocs.io/en/stable/api/index.html
-https://wiki.mozilla.org/Bugzilla:REST_API
+API documentation:
+- https://bugzilla.readthedocs.io/en/stable/api/index.html
+- https://wiki.mozilla.org/Bugzilla:REST_API
 
-# Project Milestones
+### Project Milestones
 
-Name, timing and master bug
+| Name | Deadline | Feature Freeze | Master Bug |
+|------|----------|----------------|------------|
+| Foxfooding | February 23, 2026 | February 16, 2026 | https://bugzilla.mozilla.org/show_bug.cgi?id=1980342 |
+| Customer Pilot | March 30, 2026 | March 23, 2026 | https://bugzilla.mozilla.org/show_bug.cgi?id=2012055 |
+| MVP | September 15, 2026 | September 8, 2026 | https://bugzilla.mozilla.org/show_bug.cgi?id=1980739 |
 
-Foxfooding, February 23rd 2026, https://bugzilla.mozilla.org/show_bug.cgi?id=1980342
-Customer Pilot, March 30th 2026, https://bugzilla.mozilla.org/show_bug.cgi?id=2012055
-MVP, September 15th 2026, https://bugzilla.mozilla.org/show_bug.cgi?id=1980739
+Feature freeze is 1 week before each deadline for QA, so development should finish before freeze.
 
-Feature freeze for QA 1 week before deadline, so development should finish before then.
+## Task Size
 
-# Task Size
+Found in Bugzilla whiteboard, format `[size=X]` where X is:
 
-Found in Bugzilla whiteboard, format [size=x], where x is
+| Score | Engineer Time | Working Days |
+|-------|---------------|--------------|
+| 1 | 1 day | 1 |
+| 2 | 1 week | 5 |
+| 3 | 2 weeks | 10 |
+| 4 | 4 weeks | 20 |
+| 5 | 12 weeks | 60 |
 
-Score   Engineer time
-1	    1 day
-2	    1 week
-3	    2 weeks
-4	    4 weeks
-5	    12 weeks
+### Fractional Sizes
 
-Bugs with a missing size estimate should be listed, you can add your own estimate as to the engineering complexity as an additional JSON in the source, but it should be marked in the output that these are not human verified.
+Fractional sizes like `[size=2.5]` or `[size=3.5]` are supported. Days are calculated by linear interpolation between integer values:
 
-# Engineering availability & assignment
+```
+days = round(lower_days + fraction × (upper_days - lower_days))
+```
 
-Janika Neuberger, JS & Rust
-Alexandre Lissy, C++, Rust, JS
-Gian-Carlo Pascutto, C++, Rust, JS
-Jonathan Mendez, C++, JS, Rust
+Example: size 2.5 → round(5 + 0.5 × (10 - 5)) = 8 days
 
-For bugs with a missing assignee, you can esimate effort (task size) increases by 25% for their second language, and by 50% for their third language. Some coloring in programmer assignment to show those mismatches would be nice. You can map tasks to the likely required languages in a JSON that you add in the source.
+### Default Size
 
-The JSON can provide for inputting (un)availability, for example during holidays.
+Bugs without a `[size=X]` whiteboard tag default to **size 3 (2 weeks / 10 working days)**. These are listed in a "Missing Sizes" table in the output.
 
-## Required output
+### Meta Bugs
 
-# Calculated planning
+Tracking bugs (detected by `[meta]` in whiteboard, `meta` keyword, or `[meta]` in title) take **0 days** and don't consume engineer time. They complete immediately when all their dependencies complete.
 
-After reconstructing the bug dependency graph, and calculating the task to language and missing size/effort to bug mappings, you should write JS code that recalculates a planning on the fly, and show the solution as a Gantt style graph on a webpage.
+## Engineering Availability
 
-You can generate a greedy, fast schedule on the fly and try to calculcate the globally optimal schedule in the background.
+### Team Members
 
-# Output
+| Name | Availability | Notes |
+|------|--------------|-------|
+| Janika Neuberger | 100% | |
+| Alexandre Lissy | 100% | |
+| Gian-Carlo Pascutto | 100% | |
+| Jonathan Mendez | 100% | |
+| Dave Townsend | 33% | Part-time on project |
+| Victor Lopez Garcia | 100% | Unavailable until April 2026 |
 
-The output of this project is a single webpage, with supporting JSON that is included, and JavaScript code that calculates the task planning on the fly and graphs the results as a Gantt graph, together with tables of missing/estimated efforts.
+### Availability Factor
 
-# Inconsistencies
+Each engineer has an availability factor (0.0-1.0). Task duration is scaled inversely:
 
-If you find any inconsistencies in the bugs, bug graphs, seemingly duplicate bugs, output them as a Markdown formatted ERRORS.md in the project dir.
+```
+actual_days = base_days / availability
+```
+
+Example: A 5-day task for an engineer with 33% availability takes ~15 working days.
+
+### Unavailability Periods
+
+Engineers can have unavailability periods (holidays, PTO) specified as date ranges in `data/engineers.json`. Tasks cannot be scheduled during these periods—the scheduler skips over them.
+
+### Locked Assignments
+
+If a bug has an assignee in Bugzilla that matches a known engineer's email, that assignment is "locked"—the optimizer will not reassign it. This respects explicit team decisions about who should work on what.
+
+External assignees (emails not in the engineer roster) are tracked separately and displayed as "External" in the UI.
+
+## Scheduling Algorithm
+
+### Greedy Schedule (Instant)
+
+Generated immediately on page load:
+1. Process milestones in deadline order (Foxfooding → Customer Pilot → MVP)
+2. For each milestone, topologically sort its dependencies
+3. Assign each task to the engineer who can complete it earliest
+4. Respect locked assignments (Bugzilla assignees)
+
+### Optimized Schedule (Background)
+
+Computed via parallel Web Workers using a Genetic Algorithm. Scoring priority:
+1. Deadlines met (maximize)
+2. Total lateness (minimize)
+3. Makespan (minimize)
+
+### Exhaustive Mode
+
+Extended 20-second search with larger population and multiple rounds for difficult schedules.
+
+See [JOB_SCHEDULING.md](JOB_SCHEDULING.md) for algorithm details.
+
+## Required Output
+
+### Gantt Chart
+
+A visual timeline showing:
+- All tasks with their scheduled start and end dates
+- Task dependencies (tasks wait for their blockers)
+- Milestone deadlines and freeze dates
+- Color coding for:
+  - **Normal tasks** - properly sized, assigned by scheduler
+  - **Estimated tasks** - missing size (defaulting to 2 weeks)
+  - **At-risk tasks** - scheduled past their milestone's freeze date
+- Engineer initials with color coding:
+  - `(XX)` - Bugzilla assignee (bold)
+  - `→[XX]` - Scheduler assigned (italic)
+
+Note: Resolved/closed bugs are filtered out and don't appear in the Gantt chart (milestone bugs are always included regardless of status).
+
+### Milestone Cards
+
+Summary cards showing for each milestone:
+- Total bugs and completed count
+- Estimated completion date
+- Days until deadline vs estimated completion
+- Risk assessment (on track / at risk)
+
+### Tables
+
+1. **Missing Sizes** - Lists all bugs defaulting to 2-week estimates
+2. **Deadline Risks** - Lists tasks that may miss their milestone freeze date
+3. **Milestone Mismatches** - Bugs where Bugzilla target_milestone differs from dependency-based milestone
+4. **Untriaged Bugs** - Bugs without severity (when S2+untriaged filter is active)
+
+### Optimization Log
+
+Real-time log showing:
+- Worker progress and improvements
+- Deadline achievements ("NEW DEADLINE MET!")
+- Makespan improvements
+- Completion status and timing
+
+## Filters
+
+Applied in order:
+1. **Resolved Filter** - Exclude RESOLVED/VERIFIED/CLOSED (milestone bugs exempt)
+2. **Component Filter** - Only "Client" component bugs (milestone bugs exempt)
+3. **Severity Filter** - S1, S1-S2 (default), S1+S2+untriaged, S1-S3, or All
+4. **Milestone Filter** - View-only filter to show single milestone's dependency tree
+
+## Data Files
+
+### data/engineers.json
+
+```json
+{
+  "engineers": [
+    {
+      "id": "janika",
+      "name": "Janika Neuberger",
+      "email": "jneuberger@mozilla.com",
+      "availability": 1.0,
+      "unavailability": []
+    },
+    {
+      "id": "dave",
+      "name": "Dave Townsend",
+      "email": "dtownsend@mozilla.com",
+      "availability": 0.33,
+      "unavailability": []
+    },
+    {
+      "id": "vlg",
+      "name": "Victor Lopez Garcia",
+      "email": "tbd@mozilla.com",
+      "availability": 1.0,
+      "unavailability": [
+        {"start": "2026-01-01", "end": "2026-04-01", "reason": "Not available yet"}
+      ]
+    }
+  ]
+}
+```

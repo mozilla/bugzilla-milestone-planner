@@ -8,13 +8,15 @@ A single-page web app that visualizes Mozilla Bugzilla project schedules as inte
 
 - Fetches bug data from Mozilla Bugzilla REST API
 - Builds dependency graphs from bug relationships
-- Supports multiple scheduling algorithms:
-  - **Greedy**: Fast, processes milestones in deadline order
-  - **Optimal**: Uses simulated annealing to minimize project completion time
+- Two scheduling modes:
+  - **Greedy**: Instant, processes milestones in deadline order
+  - **Optimized**: Genetic algorithm with parallel Web Workers
+  - **Exhaustive**: Extended 20-second search for difficult schedules
 - Interactive Gantt chart with drag-to-scroll and hover tooltips
 - Filters by severity, milestone, and component
 - Highlights deadline risks and missing size estimates
-- Exports schedule data as JSON
+- Color-coded engineer assignments
+- Real-time optimization progress log
 
 ## Quick Start
 
@@ -35,4 +37,6 @@ npm run test:all   # Both
 
 ## Documentation
 
-See [CLAUDE.md](CLAUDE.md) for architecture details, key constants, and common issues.
+- [CLAUDE.md](CLAUDE.md) - Developer guide: architecture, constants, common issues
+- [SPEC.md](SPEC.md) - Product specification: features, algorithms, data formats
+- [JOB_SCHEDULING.md](JOB_SCHEDULING.md) - Algorithm deep dive: GA implementation details
