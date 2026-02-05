@@ -16,8 +16,8 @@ import {
 
 // GA configuration
 const GA_POPULATION_SIZE = 40;          // Optimal: fast
-const GA_GENERATIONS = 100;             // Optimal: 40×100 ≈ 700ms-1.7s
-const GA_EXHAUSTIVE_POPULATION = 100;   // Exhaustive: more diversity
+const GA_GENERATIONS = 100;             // Optimal: 40×100 ≈ 130ms per worker
+const GA_EXHAUSTIVE_POPULATION = 600;   // Exhaustive: 6x to compensate for 2 workers (was 12×100)
 const GA_EXHAUSTIVE_GENERATIONS = 200;  // Exhaustive: deeper search
 
 
@@ -49,8 +49,8 @@ class EnterprisePlanner {
     this.exhaustiveBestAssignments = []; // Top assignments for seeding
 
     // Parallel GA configuration
-    const availableCores = navigator.hardwareConcurrency || 4;
-    this.numWorkers = Math.min(Math.max(availableCores - 1, 1), 12);
+    // Use 2 workers: optimal for browser parallelization (more workers cause contention)
+    this.numWorkers = 2;
 
     // Filters
     this.severityFilter = 'S2';
@@ -1294,7 +1294,7 @@ class EnterprisePlanner {
         ? this.lastFilteredBugs
         : this.filterBugsBySeverity(this.filterBugsByComponent(this.filterResolvedBugs(this.sortedBugs)));
 
-      this.exhaustiveEndTime = Date.now() + 60 * 1000;
+      this.exhaustiveEndTime = Date.now() + 20 * 1000;
       let baselineScore = this.greedyScore;
       let baselineSchedule = null;
       if (this.optimalSchedule) {
