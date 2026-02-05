@@ -783,9 +783,9 @@ class EnterprisePlanner {
     const generations = mode === 'exhaustive' ? GA_EXHAUSTIVE_GENERATIONS : GA_GENERATIONS;
     const totalEvaluations = this.numWorkers * populationSize * generations;
 
-    // In exhaustive mode, seed 75% of workers with best assignments
+    // In exhaustive mode, seed half the workers (ensure at least 1 fresh for exploration)
     const seededWorkerCount = mode === 'exhaustive'
-      ? Math.max(1, Math.round(this.numWorkers * 0.75))
+      ? Math.max(1, Math.min(this.numWorkers - 1, Math.floor(this.numWorkers / 2)))
       : 0;
 
     const isExhaustiveResume = mode === 'exhaustive' && options.preserveExhaustive && this.exhaustiveStartTime;
