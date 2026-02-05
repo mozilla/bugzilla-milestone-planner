@@ -348,7 +348,8 @@ export class GanttRenderer {
           end: this.formatDate(new Date()),
           progress: 100,
           custom_class: 'gantt-completed',
-          dependencies: ''
+          dependencies: '',
+          _fullSummary: task.bug.summary
         });
         continue;
       }
@@ -416,7 +417,8 @@ export class GanttRenderer {
         _engineerColor: this.getEngineerColor(displayName),
         _availability: task.engineer && Number.isFinite(task.engineer.availability)
           ? task.engineer.availability
-          : 1.0
+          : 1.0,
+        _fullSummary: task.bug.summary
       });
     }
 
@@ -856,9 +858,13 @@ export class GanttRenderer {
         ? `<p><strong>Size/Effort:</strong> ${size}${sizeNote} @ ${availabilityPct}% (${effort} days)</p>`
         : `<p><strong>Size/Effort:</strong> ${size}${sizeNote} (${effort} days)</p>`;
 
+    const title = task._fullSummary
+      ? `#${task.id}: ${task._fullSummary}`
+      : task.name;
+
     return `
       <div class="gantt-popup">
-        <h4>${task.name}</h4>
+        <h4>${title}</h4>
         <div class="popup-details">
           <p><strong>Engineer:</strong> ${engineer}${assignmentNote}</p>
           ${sizeEffortLine}
