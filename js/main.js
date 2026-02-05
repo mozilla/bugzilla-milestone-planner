@@ -394,19 +394,21 @@ class EnterprisePlanner {
   }
 
   /**
-   * Display version info from file's Last-Modified header
+   * Display version info from version.json (generated at build time)
    */
   async displayVersionInfo() {
     const versionEl = document.getElementById('version-info');
     if (!versionEl) return;
 
     try {
-      const response = await fetch('./js/main.js', { method: 'HEAD' });
-      const lastModified = response.headers.get('Last-Modified');
-      if (lastModified) {
-        const date = new Date(lastModified);
-        const formatted = date.toISOString().split('T')[0];
-        versionEl.textContent = formatted;
+      const response = await fetch('./version.json');
+      if (response.ok) {
+        const version = await response.json();
+        // Only show version in production (when we have a real commit hash)
+        if (version.commit && version.commit !== 'local') {
+          const shortCommit = version.commit.substring(0, 7);
+          versionEl.textContent = `${version.date} (${shortCommit})`;
+        }
       }
     } catch {
       // Silently ignore - version display is non-critical
