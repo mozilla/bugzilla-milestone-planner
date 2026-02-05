@@ -14,11 +14,11 @@ import {
   isBetterScore
 } from './optimizer-utils.js';
 
-// GA configuration
-const GA_POPULATION_SIZE = 40;          // Optimal: fast
-const GA_GENERATIONS = 100;             // Optimal: 40×100 ≈ 130ms per worker
-const GA_EXHAUSTIVE_POPULATION = 600;   // Exhaustive: 6x to compensate for 2 workers (was 12×100)
-const GA_EXHAUSTIVE_GENERATIONS = 200;  // Exhaustive: deeper search
+// GA configuration (tuned for 2 workers via benchmark)
+const GA_POPULATION_SIZE = 160;         // Optimal: 160×100 = 93% success rate
+const GA_GENERATIONS = 100;
+const GA_EXHAUSTIVE_POPULATION = 400;   // Exhaustive: 400×300 = 90% success, balanced rounds
+const GA_EXHAUSTIVE_GENERATIONS = 300;
 
 
 class EnterprisePlanner {
