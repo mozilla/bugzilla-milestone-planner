@@ -650,6 +650,14 @@ export class UIController {
     this.elements.errorsMarkdown.textContent = markdown;
   }
 
+  getSeverityFilter() {
+    return this.elements.severityFilter ? this.elements.severityFilter.value : 'S2';
+  }
+
+  getMilestoneFilter() {
+    return this.elements.milestoneFilter ? this.elements.milestoneFilter.value : '';
+  }
+
   /**
    * Set up event listeners
    * @param {Object} callbacks - Event callbacks

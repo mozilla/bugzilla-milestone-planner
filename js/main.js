@@ -94,6 +94,10 @@ class EnterprisePlanner {
       onScheduleTypeChange: (type) => this.onScheduleTypeChange(type)
     });
 
+    // Sync state from browser-restored select values
+    this.severityFilter = this.ui.getSeverityFilter();
+    this.milestoneFilter = this.ui.getMilestoneFilter();
+
     // Load static data and fetch bugs
     await this.loadStaticData();
     await this.fetchAndProcess();
