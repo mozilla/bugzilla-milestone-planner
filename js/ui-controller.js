@@ -9,6 +9,7 @@ export class UIController {
   constructor() {
     this.elements = {};
     this.milestoneStatus = new Map();
+    this.loadingSteps = new Map();
   }
 
   /**
@@ -126,6 +127,19 @@ export class UIController {
       `;
     }
 
+    for (const [, step] of this.loadingSteps) {
+      const statusIcon = this.getStatusIcon(step.status);
+      const detail = step.detail || '';
+
+      html += `
+        <div class="milestone-item milestone-${step.status}">
+          <span class="milestone-icon">${statusIcon}</span>
+          <span class="milestone-name">${step.label}</span>
+          <span class="milestone-deps">${detail}</span>
+        </div>
+      `;
+    }
+
     this.elements.milestonesList.innerHTML = html;
   }
 
@@ -154,6 +168,18 @@ export class UIController {
       milestone.depCount = depCount;
       this.renderMilestonesList();
     }
+  }
+
+  /**
+   * Update an extra loading step shown below milestones
+   * @param {string} id - Unique step identifier
+   * @param {string} label - Display label
+   * @param {string} status - 'pending', 'fetching', 'complete'
+   * @param {string} [detail] - Optional detail text (e.g. count)
+   */
+  updateLoadingStep(id, label, status, detail = '') {
+    this.loadingSteps.set(id, { label, status, detail });
+    this.renderMilestonesList();
   }
 
   /**

@@ -284,6 +284,40 @@ export class BugzillaAPI {
   }
 
   /**
+   * Fetch all open bugs in a product+component that have a milestone set.
+   * Used to detect bugs with target_milestone but not in any dependency tree.
+   * @param {string} product - e.g. 'Firefox Enterprise'
+   * @param {string} component - e.g. 'Client'
+   * @returns {Promise<Array<Object>>} Array of processed bug objects
+   */
+  async fetchMilestonedBugs(product, component) {
+    const params = new URLSearchParams({
+      product,
+      component,
+      include_fields: 'id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords,target_milestone',
+      f1: 'target_milestone',
+      o1: 'notequals',
+      v1: '---',
+      limit: '0'
+    });
+    for (const status of ['UNCONFIRMED', 'NEW', 'ASSIGNED', 'REOPENED']) {
+      params.append('bug_status', status);
+    }
+
+    const url = `${BUGZILLA_API_BASE}/bug?${params}`;
+    console.log(`[BugzillaAPI] Fetching milestoned bugs: ${url.substring(0, 120)}...`);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const data = await response.json();
+    const bugs = (data.bugs || []).map(raw => this.processBug(raw));
+    console.log(`[BugzillaAPI] Found ${bugs.length} milestoned bugs`);
+    return bugs;
+  }
+
+  /**
    * Get cached bug count
    */
   getCacheSize() {

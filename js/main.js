@@ -14,6 +14,15 @@ import {
   isBetterScore
 } from './optimizer-utils.js';
 
+// Map Bugzilla target_milestone values to our milestone names
+const MILESTONE_NAME_MAP = {
+  'foxfooding': 'Foxfooding',
+  'customer pilot': 'Customer Pilot',
+  'customerpilot': 'Customer Pilot',
+  'mvp': 'MVP',
+  '---': null  // Not set
+};
+
 // GA configuration (tuned for 2 workers via benchmark)
 const GA_POPULATION_SIZE = 160;         // Optimal: 160×100 = 93% success rate
 const GA_GENERATIONS = 100;
@@ -119,6 +128,7 @@ class EnterprisePlanner {
       for (const milestone of MILESTONES) {
         this.ui.updateMilestoneStatus(milestone.bugId, 'pending', 0);
       }
+      this.ui.updateLoadingStep('disconnected', 'Unconnected bugs', 'pending');
 
       // Fetch all dependencies
       console.log('Fetching bugs from Bugzilla...');
@@ -129,6 +139,20 @@ class EnterprisePlanner {
       console.log('Building dependency graph...');
       this.graph = new DependencyGraph();
       this.graph.buildFromBugs(this.bugs);
+
+      // Fetch milestoned bugs not in any dependency tree (non-fatal)
+      try {
+        const milestonedBugs = await this.api.fetchMilestonedBugs('Firefox Enterprise', 'Client');
+        this.disconnectedBugs = this.findDisconnectedBugs(milestonedBugs);
+        const count = this.disconnectedBugs.length;
+        this.ui.updateLoadingStep('disconnected', 'Unconnected bugs', 'complete',
+          count > 0 ? ` - ${count} found` : '');
+        console.log(`Found ${count} disconnected milestoned bugs`);
+      } catch (error) {
+        console.warn('Failed to fetch milestoned bugs (non-fatal):', error.message);
+        this.disconnectedBugs = [];
+        this.ui.updateLoadingStep('disconnected', 'Unconnected bugs', 'complete');
+      }
 
       // Detect errors
       const errors = this.detectErrors();
@@ -186,7 +210,10 @@ class EnterprisePlanner {
     const duplicates = this.graph.findDuplicateSummaries();
     const missingAssignees = this.graph.findMissingAssignees();
     const missingSizes = this.graph.findMissingSizes();
-    const milestoneMismatches = this.findMilestoneMismatches();
+    const milestoneMismatches = [
+      ...this.findMilestoneMismatches(),
+      ...(this.disconnectedBugs || [])
+    ];
 
     // Only include untriaged bugs if that filter is enabled
     const untriaged = this.severityFilter === 'S2+untriaged'
@@ -211,16 +238,6 @@ class EnterprisePlanner {
   findMilestoneMismatches() {
     const mismatches = [];
 
-    // Map target_milestone values to our milestone names
-    // Adjust this mapping based on actual Bugzilla values
-    const milestoneNameMap = {
-      'foxfooding': 'Foxfooding',
-      'customer pilot': 'Customer Pilot',
-      'customerpilot': 'Customer Pilot',
-      'mvp': 'MVP',
-      '---': null  // Not set
-    };
-
     // Build a map of bug ID -> dependency milestone (same logic as scheduler)
     const bugToDependencyMilestone = new Map();
     const sortedMilestones = [...MILESTONES].sort((a, b) =>
@@ -242,7 +259,7 @@ class EnterprisePlanner {
       if (!bug.targetMilestone || bug.targetMilestone === '---') continue;
 
       const normalizedTarget = bug.targetMilestone.toLowerCase().trim();
-      const mappedMilestone = milestoneNameMap[normalizedTarget];
+      const mappedMilestone = MILESTONE_NAME_MAP[normalizedTarget];
 
       // Skip if we don't recognize the milestone value
       if (mappedMilestone === undefined) continue;
@@ -268,6 +285,34 @@ class EnterprisePlanner {
     }
 
     return mismatches;
+  }
+
+  /**
+   * Find bugs that have a target_milestone in Bugzilla but are not in any
+   * milestone dependency tree. Returns mismatch objects compatible with
+   * findMilestoneMismatches() output (dependencyMilestone: null).
+   * @param {Array<Object>} milestonedBugs - bugs from fetchMilestonedBugs()
+   */
+  findDisconnectedBugs(milestonedBugs) {
+    const disconnected = [];
+    for (const bug of milestonedBugs) {
+      // Skip if already in a dependency tree
+      if (this.bugs.has(String(bug.id))) continue;
+
+      if (!bug.targetMilestone || bug.targetMilestone === '---') continue;
+      const normalizedTarget = bug.targetMilestone.toLowerCase().trim();
+      const mappedMilestone = MILESTONE_NAME_MAP[normalizedTarget];
+
+      // Skip unrecognized milestone values
+      if (mappedMilestone === undefined || mappedMilestone === null) continue;
+
+      disconnected.push({
+        bug,
+        targetMilestone: mappedMilestone,
+        dependencyMilestone: null
+      });
+    }
+    return disconnected;
   }
 
   /**
