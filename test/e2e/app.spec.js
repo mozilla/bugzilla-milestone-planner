@@ -81,7 +81,7 @@ test.describe('Enterprise Project Planner', () => {
       await expect(milestoneCards).toHaveCount(3);
 
       // Check milestone names (may include status icons like ✓)
-      await expect(page.locator('.milestone-card h4').first()).toContainText('Foxfooding');
+      await expect(page.locator('.milestone-card h4').first()).toContainText('Foxfooding Alpha');
     });
 
     test('should display legend', async ({ page }) => {

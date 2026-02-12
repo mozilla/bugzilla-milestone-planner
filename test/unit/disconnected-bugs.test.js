@@ -34,7 +34,7 @@ vi.mock('../../js/gantt-renderer.js', () => ({
     isPopupActive() { return false; }
   },
   MILESTONES: [
-    { name: 'Foxfooding', bugId: 100, deadline: new Date('2026-02-23'), freezeDate: new Date('2026-02-16') },
+    { name: 'Foxfooding Alpha', bugId: 100, deadline: new Date('2026-03-02'), freezeDate: new Date('2026-02-23') },
     { name: 'Customer Pilot', bugId: 200, deadline: new Date('2026-03-30'), freezeDate: new Date('2026-03-23') },
     { name: 'MVP', bugId: 300, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') }
   ]
@@ -71,7 +71,7 @@ describe('findDisconnectedBugs', () => {
     const result = app.findDisconnectedBugs(milestonedBugs);
     expect(result).toHaveLength(1);
     expect(result[0].bug.id).toBe(999);
-    expect(result[0].targetMilestone).toBe('Foxfooding');
+    expect(result[0].targetMilestone).toBe('Foxfooding Alpha');
     expect(result[0].dependencyMilestone).toBeNull();
   });
 
@@ -161,7 +161,7 @@ describe('detectErrors integration with disconnected bugs', () => {
 
     // Simulate disconnected bugs found during fetch
     app.disconnectedBugs = [
-      { bug: { id: 999, summary: 'Disconnected' }, targetMilestone: 'Foxfooding', dependencyMilestone: null }
+      { bug: { id: 999, summary: 'Disconnected' }, targetMilestone: 'Foxfooding Alpha', dependencyMilestone: null }
     ];
 
     const errors = app.detectErrors();

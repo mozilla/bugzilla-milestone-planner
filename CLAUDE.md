@@ -80,7 +80,7 @@ E2E tests expect the server on port 8081 (see playwright.config.js).
 
 | Name | Bug ID | Deadline | Feature Freeze |
 |------|--------|----------|----------------|
-| Foxfooding | 1980342 | Feb 23, 2026 | Feb 16, 2026 |
+| Foxfooding Alpha | 1980342 | Mar 2, 2026 | Feb 23, 2026 |
 | Customer Pilot | 2012055 | Mar 30, 2026 | Mar 23, 2026 |
 | MVP | 1980739 | Sep 15, 2026 | Sep 8, 2026 |
 

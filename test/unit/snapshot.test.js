@@ -14,10 +14,10 @@ import engineersData from '../../data/engineers.json' assert { type: 'json' };
 // Milestones with proper Date objects (matching gantt-renderer.js)
 const MILESTONES = [
   {
-    name: 'Foxfooding',
+    name: 'Foxfooding Alpha',
     bugId: 1980342,
-    deadline: new Date('2026-02-23'),
-    freezeDate: new Date('2026-02-16')
+    deadline: new Date('2026-03-02'),
+    freezeDate: new Date('2026-02-23')
   },
   {
     name: 'Customer Pilot',

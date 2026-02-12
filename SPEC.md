@@ -14,7 +14,7 @@ API documentation:
 
 | Name | Deadline | Feature Freeze | Master Bug |
 |------|----------|----------------|------------|
-| Foxfooding | February 23, 2026 | February 16, 2026 | https://bugzilla.mozilla.org/show_bug.cgi?id=1980342 |
+| Foxfooding Alpha | March 2, 2026 | February 23, 2026 | https://bugzilla.mozilla.org/show_bug.cgi?id=1980342 |
 | Customer Pilot | March 30, 2026 | March 23, 2026 | https://bugzilla.mozilla.org/show_bug.cgi?id=2012055 |
 | MVP | September 15, 2026 | September 8, 2026 | https://bugzilla.mozilla.org/show_bug.cgi?id=1980739 |
 
@@ -88,7 +88,7 @@ External assignees (emails not in the engineer roster) are tracked separately an
 ### Greedy Schedule (Instant)
 
 Generated immediately on page load:
-1. Process milestones in deadline order (Foxfooding → Customer Pilot → MVP)
+1. Process milestones in deadline order (Foxfooding Alpha → Customer Pilot → MVP)
 2. For each milestone, topologically sort its dependencies
 3. Assign each task to the engineer who can complete it earliest
 4. Respect locked assignments (Bugzilla assignees)

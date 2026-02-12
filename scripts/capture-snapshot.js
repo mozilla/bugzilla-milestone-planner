@@ -12,7 +12,7 @@ const BUGZILLA_API_BASE = 'https://bugzilla.mozilla.org/rest';
 const BATCH_SIZE = 100;
 
 const MILESTONES = [
-  { name: 'Foxfooding', bugId: 1980342 },
+  { name: 'Foxfooding Alpha', bugId: 1980342 },
   { name: 'Customer Pilot', bugId: 2012055 },
   { name: 'MVP', bugId: 1980739 }
 ];

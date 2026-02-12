@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Milestone Filter', () => {
-  test('should filter milestone cards when selecting Foxfooding', async ({ page }) => {
+  test('should filter milestone cards when selecting Foxfooding Alpha', async ({ page }) => {
     // Enable console logging
     page.on('console', msg => {
       console.log(`[Browser ${msg.type()}]`, msg.text());
@@ -30,8 +30,8 @@ test.describe('Milestone Filter', () => {
     const filterValue = await page.locator('#milestone-filter').inputValue();
     console.log(`Current filter value: "${filterValue}"`);
 
-    // Select Foxfooding from dropdown
-    console.log('Selecting Foxfooding...');
+    // Select Foxfooding Alpha from dropdown
+    console.log('Selecting Foxfooding Alpha...');
     await page.selectOption('#milestone-filter', '1980342');
 
     // Wait a moment for re-render
@@ -48,8 +48,8 @@ test.describe('Milestone Filter', () => {
     const cardContent = await page.locator('.milestone-card').allTextContents();
     console.log('Card contents:', cardContent);
 
-    // Verify only 1 card (Foxfooding)
+    // Verify only 1 card (Foxfooding Alpha)
     expect(afterCards).toBe(1);
-    expect(cardContent[0]).toContain('Foxfooding');
+    expect(cardContent[0]).toContain('Foxfooding Alpha');
   });
 });

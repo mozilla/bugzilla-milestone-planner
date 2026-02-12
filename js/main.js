@@ -16,7 +16,7 @@ import {
 
 // Map Bugzilla target_milestone values to our milestone names
 const MILESTONE_NAME_MAP = {
-  'foxfooding': 'Foxfooding',
+  'foxfooding': 'Foxfooding Alpha',
   'customer pilot': 'Customer Pilot',
   'customerpilot': 'Customer Pilot',
   'mvp': 'MVP',

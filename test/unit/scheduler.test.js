@@ -42,10 +42,10 @@ const testEngineers = [
 
 const testMilestones = [
   {
-    name: 'Foxfooding',
+    name: 'Foxfooding Alpha',
     bugId: 1980342,
-    deadline: new Date('2025-02-23'),
-    freezeDate: new Date('2025-02-16')
+    deadline: new Date('2025-03-02'),
+    freezeDate: new Date('2025-02-23')
   },
   {
     name: 'Customer Pilot',
@@ -479,7 +479,7 @@ describe('Scheduler', () => {
     it('should detect tasks ending after feature freeze', () => {
       // Create a task that ends after the freeze date
       const lateBug = {
-        id: 1980342, // Foxfooding milestone
+        id: 1980342, // Foxfooding Alpha milestone
         summary: 'Late task',
         status: 'NEW',
         dependsOn: [],
@@ -519,7 +519,7 @@ describe('Scheduler', () => {
     });
 
     it('should only flag tasks against their own milestone', () => {
-      // MVP milestone bug that ends after Foxfooding freeze but before MVP freeze
+      // MVP milestone bug that ends after Foxfooding Alpha freeze but before MVP freeze
       const mvpBug = {
         id: 1980739, // MVP milestone ID
         summary: 'MVP milestone bug',
@@ -535,9 +535,9 @@ describe('Scheduler', () => {
       scheduler.scheduleTasks([mvpBug], graph);
       const risks = scheduler.checkDeadlineRisks(testMilestones);
 
-      // MVP bug should not be flagged as risk for Foxfooding
+      // MVP bug should not be flagged as risk for Foxfooding Alpha
       const foxfoodingRisks = risks.filter(r =>
-        r.task.bug.id === 1980739 && r.milestone.name === 'Foxfooding'
+        r.task.bug.id === 1980739 && r.milestone.name === 'Foxfooding Alpha'
       );
       expect(foxfoodingRisks).toHaveLength(0);
     });

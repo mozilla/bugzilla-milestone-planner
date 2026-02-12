@@ -39,7 +39,7 @@ if (bug) {
 }
 
 const milestones = [
-  { name: 'Foxfooding', id: 1980342 },
+  { name: 'Foxfooding Alpha', id: 1980342 },
   { name: 'Customer Pilot', id: 2012055 },
   { name: 'MVP', id: 1980739 }
 ];
