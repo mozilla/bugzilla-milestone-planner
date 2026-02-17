@@ -6,22 +6,14 @@
 import { BugzillaAPI } from './bugzilla-api.js';
 import { DependencyGraph } from './dependency-graph.js';
 import { Scheduler } from './scheduler.js';
-import { GanttRenderer, MILESTONES } from './gantt-renderer.js';
+import { GanttRenderer } from './gantt-renderer.js';
 import { UIController } from './ui-controller.js';
 import {
   calculateWorkingDaysMakespan,
   computeScoreFromCompletions,
   isBetterScore
 } from './optimizer-utils.js';
-
-// Map Bugzilla target_milestone values to our milestone names
-const MILESTONE_NAME_MAP = {
-  'foxfooding': 'Foxfooding Alpha',
-  'customer pilot': 'Customer Pilot',
-  'customerpilot': 'Customer Pilot',
-  'mvp': 'MVP',
-  '---': null  // Not set
-};
+import { addWorkingDays } from './scheduler-core.js';
 
 // GA configuration (tuned for 2 workers via benchmark)
 const GA_POPULATION_SIZE = 160;         // Optimal: 160×100 = 93% success rate
@@ -38,6 +30,8 @@ class EnterprisePlanner {
     this.gantt = new GanttRenderer('gantt-chart');
     this.ui = new UIController();
 
+    this.milestones = [];
+    this.milestoneNameMap = {};
     this.engineers = [];
     this.bugs = new Map();
 
@@ -77,8 +71,12 @@ class EnterprisePlanner {
     // Display version info (fetch Last-Modified from main.js)
     this.displayVersionInfo();
 
-    // Initialize UI
-    this.ui.init();
+    // Load static data (milestones, engineers) before initializing UI
+    await this.loadStaticData();
+
+    // Set milestones on Gantt renderer and initialize UI
+    this.gantt.milestones = this.milestones;
+    this.ui.init(this.milestones);
     this.ui.showLoading();
 
     // Set up API callbacks
@@ -98,8 +96,7 @@ class EnterprisePlanner {
     this.severityFilter = this.ui.getSeverityFilter();
     this.milestoneFilter = this.ui.getMilestoneFilter();
 
-    // Load static data and fetch bugs
-    await this.loadStaticData();
+    // Fetch and process bugs
     await this.fetchAndProcess();
   }
 
@@ -108,11 +105,31 @@ class EnterprisePlanner {
    */
   async loadStaticData() {
     try {
-      // Load engineers
-      const engineersRes = await fetch('./data/engineers.json');
+      // Load engineers and milestones in parallel
+      const [engineersRes, milestonesRes] = await Promise.all([
+        fetch('./data/engineers.json'),
+        fetch('./data/milestones.json')
+      ]);
       const engineersData = await engineersRes.json();
       this.engineers = engineersData.engineers || [];
       console.log(`Loaded ${this.engineers.length} engineers`);
+
+      const milestonesData = await milestonesRes.json();
+      this.milestones = (milestonesData.milestones || []).map(m => ({
+        name: m.name,
+        bugId: m.bugId,
+        deadline: new Date(m.deadline),
+        freezeDate: addWorkingDays(new Date(m.deadline), -(m.freezeDays || 0))
+      }));
+      console.log(`Loaded ${this.milestones.length} milestones`);
+
+      // Derive milestone name map from loaded data
+      this.milestoneNameMap = { '---': null };
+      for (const m of milestonesData.milestones || []) {
+        if (m.bugzillaName) {
+          this.milestoneNameMap[m.bugzillaName.toLowerCase()] = m.name;
+        }
+      }
 
     } catch (error) {
       console.error('Error loading static data:', error);
@@ -126,10 +143,10 @@ class EnterprisePlanner {
   async fetchAndProcess() {
     try {
       // Get milestone bug IDs
-      const milestoneBugIds = MILESTONES.map(m => m.bugId);
+      const milestoneBugIds = this.milestones.map(m => m.bugId);
 
       // Update UI for each milestone as we process
-      for (const milestone of MILESTONES) {
+      for (const milestone of this.milestones) {
         this.ui.updateMilestoneStatus(milestone.bugId, 'pending', 0);
       }
       this.ui.updateLoadingStep('disconnected', 'Unconnected bugs', 'pending');
@@ -181,23 +198,23 @@ class EnterprisePlanner {
 
       // Schedule tasks for all milestones
       console.log('Scheduling tasks...');
-      this.scheduler = new Scheduler(this.engineers, MILESTONES);
+      this.scheduler = new Scheduler(this.engineers, this.milestones);
       const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
       console.log(`Scheduled ${schedule.length} tasks`);
 
       // Store full schedule and risks
       this.greedySchedule = schedule;
-      this.greedyScore = this.computeScheduleScore(schedule, MILESTONES);
+      this.greedyScore = this.computeScheduleScore(schedule, this.milestones);
       const unknownAssignees = this.collectUnknownAssignees();
       this.fullScheduleErrors = { ...errors, unknownAssignees };
-      this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(MILESTONES);
+      this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(this.milestones);
 
       // Render UI with milestone filter applied to view
       this.ui.showLoaded();
       this.rerenderWithMilestoneFilter();
 
       // Start optimal scheduler in background (for all milestones)
-      this.startOptimalScheduler(filteredBugs, MILESTONES);
+      this.startOptimalScheduler(filteredBugs, this.milestones);
 
     } catch (error) {
       console.error('Error during fetch and process:', error);
@@ -244,7 +261,7 @@ class EnterprisePlanner {
 
     // Build a map of bug ID -> dependency milestone (same logic as scheduler)
     const bugToDependencyMilestone = new Map();
-    const sortedMilestones = [...MILESTONES].sort((a, b) =>
+    const sortedMilestones = [...this.milestones].sort((a, b) =>
       a.deadline.getTime() - b.deadline.getTime()
     );
 
@@ -263,7 +280,7 @@ class EnterprisePlanner {
       if (!bug.targetMilestone || bug.targetMilestone === '---') continue;
 
       const normalizedTarget = bug.targetMilestone.toLowerCase().trim();
-      const mappedMilestone = MILESTONE_NAME_MAP[normalizedTarget];
+      const mappedMilestone = this.milestoneNameMap[normalizedTarget];
 
       // Skip if we don't recognize the milestone value
       if (mappedMilestone === undefined) continue;
@@ -305,7 +322,7 @@ class EnterprisePlanner {
 
       if (!bug.targetMilestone || bug.targetMilestone === '---') continue;
       const normalizedTarget = bug.targetMilestone.toLowerCase().trim();
-      const mappedMilestone = MILESTONE_NAME_MAP[normalizedTarget];
+      const mappedMilestone = this.milestoneNameMap[normalizedTarget];
 
       // Skip unrecognized milestone values
       if (mappedMilestone === undefined || mappedMilestone === null) continue;
@@ -347,7 +364,7 @@ class EnterprisePlanner {
   /**
    * Render all results
    */
-  renderResults(schedule, errors, risks, activeMilestones = MILESTONES) {
+  renderResults(schedule, errors, risks, activeMilestones = this.milestones) {
     // Render Gantt chart
     this.gantt.render(schedule, this.graph, this.engineers);
 
@@ -384,7 +401,7 @@ class EnterprisePlanner {
   calculateMilestoneCompletions(schedule) {
     const completions = new Map();
 
-    for (const milestone of MILESTONES) {
+    for (const milestone of this.milestones) {
       const bugId = String(milestone.bugId);
 
       // Find the milestone task in the schedule
@@ -471,7 +488,7 @@ class EnterprisePlanner {
     this.ui.updateProgress(progress);
 
     // Update milestone statuses based on fetched bugs
-    for (const milestone of MILESTONES) {
+    for (const milestone of this.milestones) {
       const bug = this.bugs.get(String(milestone.bugId));
       if (bug) {
         const depCount = this.countDependencies(milestone.bugId);
@@ -548,7 +565,7 @@ class EnterprisePlanner {
     const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
     return bugs.filter(bug => {
       // Always include milestone bugs (they represent the milestone itself)
-      if (MILESTONES.some(m => String(m.bugId) === String(bug.id))) return true;
+      if (this.milestones.some(m => String(m.bugId) === String(bug.id))) return true;
       // Exclude resolved bugs
       return !resolvedStatuses.includes(bug.status);
     });
@@ -560,7 +577,7 @@ class EnterprisePlanner {
   filterBugsByComponent(bugs) {
     return bugs.filter(bug => {
       // Always include milestone bugs
-      if (MILESTONES.some(m => String(m.bugId) === String(bug.id))) return true;
+      if (this.milestones.some(m => String(m.bugId) === String(bug.id))) return true;
       // Only include bugs from the Client component
       return bug.component === 'Client';
     });
@@ -575,7 +592,7 @@ class EnterprisePlanner {
     // Special case: S1+S2+untriaged
     if (this.severityFilter === 'S2+untriaged') {
       return bugs.filter(bug => {
-        if (MILESTONES.some(m => String(m.bugId) === String(bug.id))) return true;
+        if (this.milestones.some(m => String(m.bugId) === String(bug.id))) return true;
         const sev = bug.severity || 'N/A';
         return sev === 'S1' || sev === 'S2' || sev === 'N/A' || sev === '--';
       });
@@ -586,7 +603,7 @@ class EnterprisePlanner {
     if (maxIdx === -1) return bugs;
     const included = severityOrder.slice(0, maxIdx + 1);
     return bugs.filter(bug => {
-      if (MILESTONES.some(m => String(m.bugId) === String(bug.id))) return true;
+      if (this.milestones.some(m => String(m.bugId) === String(bug.id))) return true;
       return included.includes(bug.severity || 'N/A');
     });
   }
@@ -605,8 +622,8 @@ class EnterprisePlanner {
    * Get active milestones based on filter
    */
   getActiveMilestones() {
-    if (!this.milestoneFilter) return MILESTONES;
-    return MILESTONES.filter(m => String(m.bugId) === this.milestoneFilter);
+    if (!this.milestoneFilter) return this.milestones;
+    return this.milestones.filter(m => String(m.bugId) === this.milestoneFilter);
   }
 
   /**
@@ -622,7 +639,7 @@ class EnterprisePlanner {
     allBugs = this.filterBugsByMilestone(allBugs);
 
     // Exclude milestone bugs from stats (they're tracking bugs, not work)
-    const milestoneBugIds = new Set(MILESTONES.map(m => String(m.bugId)));
+    const milestoneBugIds = new Set(this.milestones.map(m => String(m.bugId)));
     allBugs = allBugs.filter(bug => !milestoneBugIds.has(String(bug.id)));
 
     // Split into completed vs open
@@ -693,19 +710,19 @@ class EnterprisePlanner {
     // Note: milestone filter is view-only, doesn't affect scheduling
     console.log(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved, Client only)`);
 
-    this.scheduler = new Scheduler(this.engineers, MILESTONES);
+    this.scheduler = new Scheduler(this.engineers, this.milestones);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
     this.greedySchedule = schedule;
-    this.greedyScore = this.computeScheduleScore(schedule, MILESTONES);
+    this.greedyScore = this.computeScheduleScore(schedule, this.milestones);
     const unknownAssignees = this.collectUnknownAssignees();
     this.fullScheduleErrors = { ...this.detectErrors(), unknownAssignees };
-    this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(MILESTONES);
+    this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(this.milestones);
 
     // Render with current milestone filter
     this.rerenderWithMilestoneFilter();
 
     if (filteredBugs.length > 0) {
-      this.startOptimalScheduler(filteredBugs, MILESTONES);
+      this.startOptimalScheduler(filteredBugs, this.milestones);
     }
   }
 
@@ -755,7 +772,7 @@ class EnterprisePlanner {
   /**
    * Compute schedule score using worker-compatible rules.
    */
-  computeScheduleScore(schedule, milestones = MILESTONES) {
+  computeScheduleScore(schedule, milestones = this.milestones) {
     if (!schedule || schedule.length === 0) {
       return { deadlinesMet: 0, totalLateness: Number.POSITIVE_INFINITY, makespan: Number.POSITIVE_INFINITY };
     }
@@ -782,7 +799,7 @@ class EnterprisePlanner {
   /**
    * Get milestone names that are met (end date on/before freeze date).
    */
-  getMetMilestoneNames(schedule, milestones = MILESTONES) {
+  getMetMilestoneNames(schedule, milestones = this.milestones) {
     if (!schedule || schedule.length === 0) return new Set();
     const completions = this.calculateMilestoneCompletions(schedule);
     const met = new Set();
@@ -808,7 +825,7 @@ class EnterprisePlanner {
     this.ui.showLoading();
 
     // Reset milestone status
-    for (const milestone of MILESTONES) {
+    for (const milestone of this.milestones) {
       this.ui.updateMilestoneStatus(milestone.bugId, 'pending', 0);
     }
 
@@ -818,7 +835,7 @@ class EnterprisePlanner {
   /**
    * Start the optimal scheduler with parallel workers
    */
-  startOptimalScheduler(sortedBugs, milestones = MILESTONES, options = {}) {
+  startOptimalScheduler(sortedBugs, milestones = this.milestones, options = {}) {
     // Stop any existing workers
     this.stopOptimalScheduler({
       preserveExhaustive: options.preserveExhaustive,
@@ -1159,7 +1176,7 @@ class EnterprisePlanner {
     console.log(`Best result from worker ${best.workerId}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan} days (found at gen ${best.bestFoundAtGeneration}/${best.totalGenerations}, ${convergencePct}%)`);
 
     const existingOptimalScore = this.optimalSchedule
-      ? this.computeScheduleScore(this.optimalSchedule, MILESTONES)
+      ? this.computeScheduleScore(this.optimalSchedule, this.milestones)
       : null;
 
     if (this.optimizerMode === 'exhaustive') {
@@ -1178,7 +1195,7 @@ class EnterprisePlanner {
           'running',
           `Exhaustive running... ${Math.ceil(timeRemaining / 1000)}s remaining`
         );
-        this.startOptimalScheduler(this.lastFilteredBugs, MILESTONES, { mode: 'exhaustive', preserveExhaustive: true });
+        this.startOptimalScheduler(this.lastFilteredBugs, this.milestones, { mode: 'exhaustive', preserveExhaustive: true });
         return;
       }
 
@@ -1349,7 +1366,7 @@ class EnterprisePlanner {
       let baselineScore = this.greedyScore;
       let baselineSchedule = null;
       if (this.optimalSchedule) {
-        const optimalScore = this.computeScheduleScore(this.optimalSchedule, MILESTONES);
+        const optimalScore = this.computeScheduleScore(this.optimalSchedule, this.milestones);
         if (isBetterScore(optimalScore, baselineScore)) {
           baselineScore = optimalScore;
           baselineSchedule = this.optimalSchedule;
@@ -1359,7 +1376,7 @@ class EnterprisePlanner {
       this.exhaustiveBestSchedule = baselineSchedule;
       this.exhaustiveWorkerStates = new Map();
       this.exhaustiveStartTime = Date.now();
-      this.startOptimalScheduler(filteredBugs, MILESTONES, {
+      this.startOptimalScheduler(filteredBugs, this.milestones, {
         mode: 'exhaustive',
         preserveExhaustive: true,
         preserveOptimal: true

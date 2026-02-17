@@ -3,8 +3,6 @@
  * DOM manipulation, progress display, and user interactions
  */
 
-import { MILESTONES } from './gantt-renderer.js';
-
 export class UIController {
   constructor() {
     this.elements = {};
@@ -15,7 +13,9 @@ export class UIController {
   /**
    * Initialize UI elements
    */
-  init() {
+  init(milestones = []) {
+    this.milestones = milestones;
+
     this.elements = {
       loadingPhase: document.getElementById('loading-phase'),
       loadedPhase: document.getElementById('loaded-phase'),
@@ -50,7 +50,7 @@ export class UIController {
     };
 
     // Initialize milestone status
-    for (const milestone of MILESTONES) {
+    for (const milestone of this.milestones) {
       this.milestoneStatus.set(milestone.bugId, {
         ...milestone,
         status: 'pending',

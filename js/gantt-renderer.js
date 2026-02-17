@@ -15,27 +15,6 @@ const ENGINEER_COLORS = [
   '#854d0e', // yellow
 ];
 
-// Milestones from SPEC.md
-const MILESTONES = [
-  {
-    name: 'Foxfooding Alpha',
-    bugId: 1980342,
-    deadline: new Date('2026-03-02'),
-    freezeDate: new Date('2026-02-23')
-  },
-  {
-    name: 'Customer Pilot',
-    bugId: 2012055,
-    deadline: new Date('2026-03-30'),
-    freezeDate: new Date('2026-03-23')
-  },
-  {
-    name: 'MVP',
-    bugId: 1980739,
-    deadline: new Date('2026-09-15'),
-    freezeDate: new Date('2026-09-08')
-  }
-];
 
 export function normalizeAssigneeHandle(assignee) {
   if (!assignee) return null;
@@ -224,8 +203,9 @@ function isElementOverlapping(a, b) {
 }
 
 export class GanttRenderer {
-  constructor(containerId) {
+  constructor(containerId, milestones = []) {
     this.containerId = containerId;
+    this.milestones = milestones;
     this.gantt = null;
     this.tasks = [];
     this.viewMode = 'Week';
@@ -336,7 +316,7 @@ export class GanttRenderer {
 
     for (const task of scheduledTasks) {
       // Skip milestone bugs - they're tracking bugs shown in milestone cards, not actual work
-      const isMilestoneBug = MILESTONES.some(m => String(m.bugId) === String(task.bug.id));
+      const isMilestoneBug = this.milestones.some(m => String(m.bugId) === String(task.bug.id));
       if (isMilestoneBug) continue;
 
       if (task.completed) {
@@ -935,7 +915,7 @@ export class GanttRenderer {
     const chartGroup = svg.querySelector('.grid');
     if (!chartGroup) return;
 
-    for (const milestone of MILESTONES) {
+    for (const milestone of this.milestones) {
       // Add freeze date line (dashed)
       this.addDateLine(svg, milestone.freezeDate, 'milestone-freeze',
         `${milestone.name} Freeze`);
@@ -1006,7 +986,7 @@ export class GanttRenderer {
    * Get milestones info
    */
   getMilestones() {
-    return MILESTONES;
+    return this.milestones;
   }
 
   /**
@@ -1027,5 +1007,4 @@ export class GanttRenderer {
   }
 }
 
-export { MILESTONES };
 export default GanttRenderer;

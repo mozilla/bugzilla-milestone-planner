@@ -12,12 +12,7 @@ import {
   normalizeStartDate
 } from './scheduler-core.js';
 
-// Default milestones (overridden by passed milestones)
-let activeMilestones = [
-  { name: 'Foxfooding Alpha', bugId: 1980342, deadline: new Date('2026-03-02'), freezeDate: new Date('2026-02-23') },
-  { name: 'Customer Pilot', bugId: 2012055, deadline: new Date('2026-03-30'), freezeDate: new Date('2026-03-23') },
-  { name: 'MVP', bugId: 1980739, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') }
-];
+let activeMilestones = [];
 
 // GA Parameters (tuned for speed: 40×100 is 2.5x faster than 50×200 baseline)
 const POPULATION_SIZE = 40;
