@@ -91,13 +91,14 @@ export function calculateEffort(bug, engineer) {
  * @returns {Date} End date
  */
 export function addWorkingDays(startDate, days, engineer = null) {
-  if (days <= 0) return new Date(startDate);
+  if (days === 0) return new Date(startDate);
 
   const result = new Date(startDate);
-  let remaining = days;
+  const step = days > 0 ? 1 : -1;
+  let remaining = Math.abs(days);
 
   while (remaining > 0) {
-    result.setDate(result.getDate() + 1);
+    result.setDate(result.getDate() + step);
 
     // Skip weekends
     const dayOfWeek = result.getDay();
