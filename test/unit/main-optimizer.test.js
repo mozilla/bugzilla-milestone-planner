@@ -32,11 +32,7 @@ vi.mock('../../js/gantt-renderer.js', () => ({
     constructor() {}
     render() {}
     isPopupActive() { return false; }
-  },
-  MILESTONES: [
-    { name: 'M1', bugId: 1, deadline: new Date('2026-02-01'), freezeDate: new Date('2026-01-25') },
-    { name: 'M2', bugId: 2, deadline: new Date('2026-03-01'), freezeDate: new Date('2026-02-25') }
-  ]
+  }
 }));
 
 vi.mock('../../js/ui-controller.js', () => ({
@@ -55,10 +51,17 @@ vi.mock('../../js/ui-controller.js', () => ({
   }
 }));
 
+// Synthetic milestones for testing
+const TEST_MILESTONES = [
+  { name: 'M1', bugId: 1, deadline: new Date('2026-02-01'), freezeDate: new Date('2026-01-25') },
+  { name: 'M2', bugId: 2, deadline: new Date('2026-03-01'), freezeDate: new Date('2026-02-25') }
+];
+
 describe('optimal scheduler integration (main)', () => {
   it('does not restart exhaustive search once all deadlines are met', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    app.milestones = TEST_MILESTONES;
 
     app.optimizerMode = 'exhaustive';
     app.exhaustiveEndTime = Date.now() + 30000;
@@ -92,6 +95,7 @@ describe('optimal scheduler integration (main)', () => {
   it('keeps greedy schedule when optimal results are worse', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    app.milestones = TEST_MILESTONES;
 
     app.optimizerMode = 'optimal';
     app.greedyScore = { deadlinesMet: 2, totalLateness: 0, makespan: 10 };
@@ -124,6 +128,7 @@ describe('optimal scheduler integration (main)', () => {
   it('does not log improvements that fail to beat greedy', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    app.milestones = TEST_MILESTONES;
 
     globalThis.Worker = class {
       constructor() {
@@ -165,6 +170,7 @@ describe('optimal scheduler integration (main)', () => {
   it('logs lateness improvements even if makespan regresses', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    app.milestones = TEST_MILESTONES;
 
     globalThis.Worker = class {
       constructor() {
@@ -215,6 +221,7 @@ describe('optimal scheduler integration (main)', () => {
   it('logs lateness improvements distinctly when makespan regresses', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    app.milestones = TEST_MILESTONES;
 
     globalThis.Worker = class {
       constructor() {
@@ -265,6 +272,7 @@ describe('optimal scheduler integration (main)', () => {
   it('does not log makespan improvements when lateness is worse', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    app.milestones = TEST_MILESTONES;
 
     globalThis.Worker = class {
       constructor() {
@@ -316,6 +324,7 @@ describe('optimal scheduler integration (main)', () => {
   it('wires exhaustive schedule selection to optimizer start', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    app.milestones = TEST_MILESTONES;
 
     app.lastFilteredBugs = [
       { id: 1, status: 'NEW', component: 'Client', severity: 'S2', dependsOn: [] }

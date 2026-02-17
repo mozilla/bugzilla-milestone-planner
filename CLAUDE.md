@@ -42,7 +42,7 @@ E2E tests expect the server on port 8081 (see playwright.config.js).
 
 - **js/scheduler-core.js** - Shared scheduling utilities
   - `calculateEffort()` - size to days with availability scaling
-  - `addWorkingDays()` - working day calculations (skips weekends)
+  - `addWorkingDays()` - working day calculations (skips weekends, supports negative days)
   - `calculateDaysFromSize()` - fractional size interpolation
   - `isResolved()` - bug status checks
 
@@ -61,7 +61,7 @@ E2E tests expect the server on port 8081 (see playwright.config.js).
   - Respects engineer unavailability periods
 
 - **js/gantt-renderer.js** - Frappe Gantt wrapper
-  - Contains `MILESTONES` constant with deadlines/freeze dates
+  - Accepts milestones via constructor parameter
   - Color codes tasks by status (estimated size, at-risk)
   - Engineer color-coded initials
   - Hover popups with task details
@@ -73,10 +73,11 @@ E2E tests expect the server on port 8081 (see playwright.config.js).
 ### Data Files
 
 - **data/engineers.json** - Team members with availability factors and unavailability periods
+- **data/milestones.json** - Milestone definitions with deadlines and freeze day offsets
 
 ## Key Constants
 
-### Milestones (in js/gantt-renderer.js)
+### Milestones (in data/milestones.json)
 
 | Name | Bug ID | Deadline | Feature Freeze |
 |------|--------|----------|----------------|

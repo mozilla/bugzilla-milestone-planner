@@ -32,12 +32,7 @@ vi.mock('../../js/gantt-renderer.js', () => ({
     constructor() {}
     render() {}
     isPopupActive() { return false; }
-  },
-  MILESTONES: [
-    { name: 'Foxfooding Alpha', bugId: 100, deadline: new Date('2026-03-02'), freezeDate: new Date('2026-02-23') },
-    { name: 'Customer Pilot', bugId: 200, deadline: new Date('2026-03-30'), freezeDate: new Date('2026-03-23') },
-    { name: 'MVP', bugId: 300, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') }
-  ]
+  }
 }));
 
 vi.mock('../../js/ui-controller.js', () => ({
@@ -56,10 +51,29 @@ vi.mock('../../js/ui-controller.js', () => ({
   }
 }));
 
+// Test milestones and name map (uses fake bugIds for isolation)
+const TEST_MILESTONES = [
+  { name: 'Foxfooding Alpha', bugId: 100, deadline: new Date('2026-03-02'), freezeDate: new Date('2026-02-23') },
+  { name: 'Customer Pilot', bugId: 200, deadline: new Date('2026-03-30'), freezeDate: new Date('2026-03-23') },
+  { name: 'MVP', bugId: 300, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') }
+];
+const TEST_MILESTONE_NAME_MAP = {
+  'foxfooding': 'Foxfooding Alpha',
+  'pilot': 'Customer Pilot',
+  'mvp': 'MVP',
+  '---': null
+};
+
+function setupApp(app) {
+  app.milestones = TEST_MILESTONES;
+  app.milestoneNameMap = TEST_MILESTONE_NAME_MAP;
+}
+
 describe('findDisconnectedBugs', () => {
   it('flags a bug not in any dependency tree with a recognized milestone', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    setupApp(app);
 
     // Simulate an existing dependency tree with one bug
     app.bugs = new Map([['1', { id: 1, dependsOn: [] }]]);
@@ -78,6 +92,7 @@ describe('findDisconnectedBugs', () => {
   it('does not flag a bug that already exists in the dependency tree', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    setupApp(app);
 
     app.bugs = new Map([['42', { id: 42, dependsOn: [] }]]);
 
@@ -92,6 +107,7 @@ describe('findDisconnectedBugs', () => {
   it('ignores bugs with --- milestone', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    setupApp(app);
     app.bugs = new Map();
 
     const milestonedBugs = [
@@ -105,6 +121,7 @@ describe('findDisconnectedBugs', () => {
   it('ignores bugs with unrecognized milestone values', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    setupApp(app);
     app.bugs = new Map();
 
     const milestonedBugs = [
@@ -118,6 +135,7 @@ describe('findDisconnectedBugs', () => {
   it('returns empty array for empty input', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    setupApp(app);
     app.bugs = new Map();
 
     const result = app.findDisconnectedBugs([]);
@@ -127,19 +145,20 @@ describe('findDisconnectedBugs', () => {
   it('maps case-insensitive milestone names correctly', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    setupApp(app);
     app.bugs = new Map();
 
     const milestonedBugs = [
-      { id: 1, summary: 'A', targetMilestone: 'CUSTOMER PILOT', dependsOn: [] },
+      { id: 1, summary: 'A', targetMilestone: 'PILOT', dependsOn: [] },
       { id: 2, summary: 'B', targetMilestone: 'mvp', dependsOn: [] },
-      { id: 3, summary: 'C', targetMilestone: 'CustomerPilot', dependsOn: [] }
+      { id: 3, summary: 'C', targetMilestone: 'Foxfooding', dependsOn: [] }
     ];
 
     const result = app.findDisconnectedBugs(milestonedBugs);
     expect(result).toHaveLength(3);
     expect(result[0].targetMilestone).toBe('Customer Pilot');
     expect(result[1].targetMilestone).toBe('MVP');
-    expect(result[2].targetMilestone).toBe('Customer Pilot');
+    expect(result[2].targetMilestone).toBe('Foxfooding Alpha');
   });
 });
 
@@ -147,6 +166,7 @@ describe('detectErrors integration with disconnected bugs', () => {
   it('merges disconnected bugs into milestoneMismatches', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    setupApp(app);
 
     // Set up minimal state so detectErrors doesn't crash
     app.graph = {
@@ -173,6 +193,7 @@ describe('detectErrors integration with disconnected bugs', () => {
   it('works when disconnectedBugs is undefined', async () => {
     const { default: EnterprisePlanner } = await import('../../js/main.js');
     const app = new EnterprisePlanner();
+    setupApp(app);
 
     app.graph = {
       detectCycles: () => [],

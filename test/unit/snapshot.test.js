@@ -8,30 +8,17 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Scheduler } from '../../js/scheduler.js';
 import { DependencyGraph } from '../../js/dependency-graph.js';
+import { addWorkingDays } from '../../js/scheduler-core.js';
 import snapshot from '../fixtures/live-snapshot.json' assert { type: 'json' };
 import engineersData from '../../data/engineers.json' assert { type: 'json' };
+import milestonesData from '../../data/milestones.json' assert { type: 'json' };
 
-// Milestones with proper Date objects (matching gantt-renderer.js)
-const MILESTONES = [
-  {
-    name: 'Foxfooding Alpha',
-    bugId: 1980342,
-    deadline: new Date('2026-03-02'),
-    freezeDate: new Date('2026-02-23')
-  },
-  {
-    name: 'Customer Pilot',
-    bugId: 2012055,
-    deadline: new Date('2026-03-30'),
-    freezeDate: new Date('2026-03-23')
-  },
-  {
-    name: 'MVP',
-    bugId: 1980739,
-    deadline: new Date('2026-09-15'),
-    freezeDate: new Date('2026-09-08')
-  }
-];
+const MILESTONES = milestonesData.milestones.map(m => ({
+  name: m.name,
+  bugId: m.bugId,
+  deadline: new Date(m.deadline),
+  freezeDate: addWorkingDays(new Date(m.deadline), -(m.freezeDays || 0))
+}));
 
 const RESOLVED_STATUSES = ['RESOLVED', 'VERIFIED', 'CLOSED'];
 const milestoneBugIds = MILESTONES.map(m => m.bugId);
