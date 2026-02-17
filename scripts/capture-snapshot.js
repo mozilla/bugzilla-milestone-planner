@@ -8,14 +8,16 @@
  * Outputs to: test/fixtures/live-snapshot.json
  */
 
+import { readFileSync } from 'fs';
+
 const BUGZILLA_API_BASE = 'https://bugzilla.mozilla.org/rest';
 const BATCH_SIZE = 100;
 
-const MILESTONES = [
-  { name: 'Foxfooding Alpha', bugId: 1980342 },
-  { name: 'Customer Pilot', bugId: 2012055 },
-  { name: 'MVP', bugId: 1980739 }
-];
+const milestonesData = JSON.parse(readFileSync(new URL('../data/milestones.json', import.meta.url)));
+const MILESTONES = milestonesData.milestones.map(m => ({
+  name: m.name,
+  bugId: m.bugId
+}));
 
 async function fetchBugs(bugIds) {
   if (bugIds.length === 0) return [];

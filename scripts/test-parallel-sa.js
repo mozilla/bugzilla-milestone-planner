@@ -18,12 +18,14 @@ import { fileURLToPath } from 'url';
 
 const snapshot = JSON.parse(readFileSync(new URL('../test/fixtures/live-snapshot.json', import.meta.url)));
 const engineersData = JSON.parse(readFileSync(new URL('../data/engineers.json', import.meta.url)));
+const milestonesData = JSON.parse(readFileSync(new URL('../data/milestones.json', import.meta.url)));
 
-const MILESTONES = [
-  { name: 'Foxfooding Alpha', bugId: 1980342, deadline: new Date('2026-03-02'), freezeDate: new Date('2026-02-23') },
-  { name: 'Customer Pilot', bugId: 2012055, deadline: new Date('2026-03-30'), freezeDate: new Date('2026-03-23') },
-  { name: 'MVP', bugId: 1980739, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') }
-];
+const MILESTONES = milestonesData.milestones.map(m => ({
+  name: m.name,
+  bugId: m.bugId,
+  deadline: new Date(m.deadline),
+  freezeDate: addWorkingDays(new Date(m.deadline), -(m.freezeDays || 0))
+}));
 
 const RESOLVED_STATUSES = ['RESOLVED', 'VERIFIED', 'CLOSED'];
 const milestoneBugIds = MILESTONES.map(m => m.bugId);

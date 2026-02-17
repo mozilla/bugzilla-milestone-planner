@@ -7,11 +7,13 @@
 import { Scheduler } from '../js/scheduler.js';
 import { DependencyGraph } from '../js/dependency-graph.js';
 import { isBetterScore } from '../js/optimizer-utils.js';
+import { addWorkingDays } from '../js/scheduler-core.js';
 import { readFileSync } from 'fs';
 
 // Load data
 const snapshot = JSON.parse(readFileSync(new URL('../test/fixtures/live-snapshot.json', import.meta.url)));
 const engineersData = JSON.parse(readFileSync(new URL('../data/engineers.json', import.meta.url)));
+const milestonesData = JSON.parse(readFileSync(new URL('../data/milestones.json', import.meta.url)));
 
 // Build optimizer engineers (matches main.js buildOptimizerEngineers)
 function buildOptimizerEngineers(bugs, baseEngineers) {
@@ -40,12 +42,13 @@ function buildOptimizerEngineers(bugs, baseEngineers) {
   return [...engineers, ...externals.values()];
 }
 
-// Production constants from main.js and worker
-const MILESTONES = [
-  { name: 'Foxfooding Alpha', bugId: 1980342, deadline: new Date('2026-03-02'), freezeDate: new Date('2026-02-23') },
-  { name: 'Customer Pilot', bugId: 2012055, deadline: new Date('2026-03-30'), freezeDate: new Date('2026-03-23') },
-  { name: 'MVP', bugId: 1980739, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') }
-];
+// Production constants from data/milestones.json
+const MILESTONES = milestonesData.milestones.map(m => ({
+  name: m.name,
+  bugId: m.bugId,
+  deadline: new Date(m.deadline),
+  freezeDate: addWorkingDays(new Date(m.deadline), -(m.freezeDays || 0))
+}));
 const RESOLVED_STATUSES = ['RESOLVED', 'VERIFIED', 'CLOSED'];
 const NUM_WORKERS = 12;
 const ITERATIONS_PER_WORKER = 10000;
