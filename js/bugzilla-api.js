@@ -290,10 +290,9 @@ export class BugzillaAPI {
    * @param {string} component - e.g. 'Client'
    * @returns {Promise<Array<Object>>} Array of processed bug objects
    */
-  async fetchMilestonedBugs(product, component) {
+  async fetchMilestonedBugs(product) {
     const params = new URLSearchParams({
       product,
-      component,
       include_fields: 'id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords,target_milestone',
       f1: 'target_milestone',
       o1: 'notequals',

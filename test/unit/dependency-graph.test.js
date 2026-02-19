@@ -250,7 +250,7 @@ describe('DependencyGraph', () => {
       expect(missing).toHaveLength(1);
     });
 
-    it('should exclude non-Client bugs', () => {
+    it('should include non-Client bugs', () => {
       graph.addNode({
         id: 1,
         summary: 'Non-client bug',
@@ -261,7 +261,7 @@ describe('DependencyGraph', () => {
 
       const missing = graph.findMissingAssignees();
 
-      expect(missing).toHaveLength(0);
+      expect(missing).toHaveLength(1);
     });
 
     it('should exclude resolved bugs', () => {
@@ -336,7 +336,7 @@ describe('DependencyGraph', () => {
       expect(ids).toContain(1000005);
     });
 
-    it('should exclude non-Client bugs', () => {
+    it('should include non-Client bugs', () => {
       graph.addNode({
         id: 1,
         summary: 'Non-client bug without size',
@@ -347,7 +347,7 @@ describe('DependencyGraph', () => {
 
       const missing = graph.findMissingSizes();
 
-      expect(missing).toHaveLength(0);
+      expect(missing).toHaveLength(1);
     });
 
     it('should exclude resolved bugs', () => {

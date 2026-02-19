@@ -132,9 +132,8 @@ Scoring priority: deadlines met > total lateness > makespan
 
 Filters are applied in this order:
 1. **Resolved Filter**: Excludes bugs with status RESOLVED, VERIFIED, or CLOSED (milestone bugs always included)
-2. **Component Filter**: Only bugs from "Client" component (milestone bugs always included)
-3. **Severity Filter**: Dropdown - S1 only, S1-S2 (default), S1+S2+untriaged (includes bugs without severity), S1-S3, or All
-4. **Milestone Filter**: Dropdown to show only bugs in a specific milestone's dependency tree (view-only, doesn't affect scheduling)
+2. **Severity Filter**: Dropdown - S1 only, S1-S2 (default), S1+S2+untriaged (includes bugs without severity), S1-S3, or All
+3. **Milestone Filter**: Dropdown to show only bugs in a specific milestone's dependency tree (view-only, doesn't affect scheduling)
 
 ## Testing
 

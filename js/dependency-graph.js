@@ -212,19 +212,17 @@ export class DependencyGraph {
   }
 
   /**
-   * Check if a bug is a schedulable work item (not meta, Client component, not resolved)
+   * Check if a bug is a schedulable work item (not meta, not resolved)
    * @param {Object} bug - Bug object
    * @param {Object} options - Filter options
    * @param {boolean} options.excludeMeta - Skip meta bugs (default: true)
-   * @param {boolean} options.clientOnly - Only include Client component (default: true)
    * @param {boolean} options.excludeResolved - Skip resolved/verified/closed (default: false)
    * @returns {boolean}
    */
   isSchedulableBug(bug, options = {}) {
-    const { excludeMeta = true, clientOnly = true, excludeResolved = false } = options;
+    const { excludeMeta = true, excludeResolved = false } = options;
 
     if (excludeMeta && bug.isMeta) return false;
-    if (clientOnly && bug.component !== 'Client') return false;
     if (excludeResolved) {
       const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
       if (resolvedStatuses.includes(bug.status)) return false;
@@ -233,7 +231,7 @@ export class DependencyGraph {
   }
 
   /**
-   * Find open bugs with no assignee (excludes meta, non-Client, and resolved bugs)
+   * Find open bugs with no assignee (excludes meta and resolved bugs)
    * @returns {Array<Object>} Array of bugs without assignees
    */
   findMissingAssignees() {
@@ -244,7 +242,7 @@ export class DependencyGraph {
   }
 
   /**
-   * Find open bugs with missing sizes (excludes meta bugs and non-Client bugs)
+   * Find open bugs with missing sizes (excludes meta and resolved bugs)
    * @returns {Array<Object>} Array of open bugs without sizes
    */
   findMissingSizes() {

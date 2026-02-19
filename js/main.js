@@ -163,7 +163,7 @@ class EnterprisePlanner {
 
       // Fetch milestoned bugs not in any dependency tree (non-fatal)
       try {
-        const milestonedBugs = await this.api.fetchMilestonedBugs('Firefox Enterprise', 'Client');
+        const milestonedBugs = await this.api.fetchMilestonedBugs('Firefox Enterprise');
         this.disconnectedBugs = this.findDisconnectedBugs(milestonedBugs);
         const count = this.disconnectedBugs.length;
         this.ui.updateLoadingStep('disconnected', 'Unconnected bugs', 'complete',
@@ -191,10 +191,9 @@ class EnterprisePlanner {
 
       // Apply filters (severity affects scheduling, milestone is view-only)
       let filteredBugs = this.filterResolvedBugs(this.sortedBugs);
-      filteredBugs = this.filterBugsByComponent(filteredBugs);
       filteredBugs = this.filterBugsBySeverity(filteredBugs);
       this.lastFilteredBugs = filteredBugs;
-      console.log(`Sorted ${this.sortedBugs.length} bugs, ${filteredBugs.length} after filters (excluding resolved, Client only)`);
+      console.log(`Sorted ${this.sortedBugs.length} bugs, ${filteredBugs.length} after filters (excluding resolved)`);
 
       // Schedule tasks for all milestones
       console.log('Scheduling tasks...');
@@ -572,18 +571,6 @@ class EnterprisePlanner {
   }
 
   /**
-   * Filter bugs by component (only Client component)
-   */
-  filterBugsByComponent(bugs) {
-    return bugs.filter(bug => {
-      // Always include milestone bugs
-      if (this.milestones.some(m => String(m.bugId) === String(bug.id))) return true;
-      // Only include bugs from the Client component
-      return bug.component === 'Client';
-    });
-  }
-
-  /**
    * Filter bugs by severity
    */
   filterBugsBySeverity(bugs) {
@@ -634,8 +621,7 @@ class EnterprisePlanner {
     const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
 
     // Get all bugs with component, severity, and milestone filters (but NOT resolved filter)
-    let allBugs = this.filterBugsByComponent(this.sortedBugs);
-    allBugs = this.filterBugsBySeverity(allBugs);
+    let allBugs = this.filterBugsBySeverity(this.sortedBugs);
     allBugs = this.filterBugsByMilestone(allBugs);
 
     // Exclude milestone bugs from stats (they're tracking bugs, not work)
@@ -704,11 +690,10 @@ class EnterprisePlanner {
   rescheduleWithFilter() {
     this.stopOptimalScheduler();
     let filteredBugs = this.filterResolvedBugs(this.sortedBugs);
-    filteredBugs = this.filterBugsByComponent(filteredBugs);
     filteredBugs = this.filterBugsBySeverity(filteredBugs);
     this.lastFilteredBugs = filteredBugs;
     // Note: milestone filter is view-only, doesn't affect scheduling
-    console.log(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved, Client only)`);
+    console.log(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved)`);
 
     this.scheduler = new Scheduler(this.engineers, this.milestones);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
@@ -1360,7 +1345,7 @@ class EnterprisePlanner {
     if (type === 'exhaustive') {
       const filteredBugs = this.lastFilteredBugs.length > 0
         ? this.lastFilteredBugs
-        : this.filterBugsBySeverity(this.filterBugsByComponent(this.filterResolvedBugs(this.sortedBugs)));
+        : this.filterBugsBySeverity(this.filterResolvedBugs(this.sortedBugs));
 
       this.exhaustiveEndTime = Date.now() + 20 * 1000;
       let baselineScore = this.greedyScore;
