@@ -22,21 +22,21 @@ describe('gantt renderer assignee display helpers', () => {
   });
 
   it('maps known assignees to engineer display names', () => {
-    const handleMap = buildEngineerHandleMap(engineersData.engineers);
+    const handleMap = buildEngineerHandleMap(engineersData.teams.flatMap(t => t.engineers));
     const assignee = getAssigneeDisplay('lissyx+mozillians@lissyx.dyndns.org', handleMap);
     expect(assignee.name).toBe('Alexandre Lissy');
     expect(assignee.initials).toBe('AL');
   });
 
   it('maps unknown assignees to External placeholder', () => {
-    const handleMap = buildEngineerHandleMap(engineersData.engineers);
+    const handleMap = buildEngineerHandleMap(engineersData.teams.flatMap(t => t.engineers));
     const assignee = getAssigneeDisplay('mozilla@mozilla.com', handleMap);
     expect(assignee.name).toBe('External');
     expect(assignee.initials).toBe('EX');
   });
 
   it('prefers original assignee for display when available', () => {
-    const handleMap = buildEngineerHandleMap(engineersData.engineers);
+    const handleMap = buildEngineerHandleMap(engineersData.teams.flatMap(t => t.engineers));
     const resolved = resolveEngineerDisplay({
       originalAssignee: 'jneuberger@mozilla.com',
       scheduledEngineerName: 'Alexandre Lissy',
@@ -48,7 +48,7 @@ describe('gantt renderer assignee display helpers', () => {
   });
 
   it('uses scheduler assignment when no assignee is set', () => {
-    const handleMap = buildEngineerHandleMap(engineersData.engineers);
+    const handleMap = buildEngineerHandleMap(engineersData.teams.flatMap(t => t.engineers));
     const resolved = resolveEngineerDisplay({
       originalAssignee: null,
       scheduledEngineerName: 'Alexandre Lissy',

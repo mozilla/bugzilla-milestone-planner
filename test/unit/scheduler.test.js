@@ -676,6 +676,118 @@ describe('Scheduler', () => {
     });
   });
 
+  describe('component-based assignment', () => {
+    it('should assign to team engineers when component matches', () => {
+      const engineers = [
+        { id: 'eng1', name: 'Engineer 1', email: 'eng1@example.com', availability: 1.0, unavailability: [] },
+        { id: 'eng2', name: 'Engineer 2', email: 'eng2@example.com', availability: 1.0, unavailability: [] }
+      ];
+      const componentTeamMap = new Map([
+        ['Client', { components: ['Client'], engineers }]
+      ]);
+
+      const localScheduler = new Scheduler(engineers, testMilestones, componentTeamMap);
+      const bug = {
+        id: 5001,
+        summary: 'Client bug',
+        status: 'NEW',
+        assignee: null,
+        dependsOn: [],
+        size: 1,
+        component: 'Client'
+      };
+
+      const bugMap = new Map();
+      bugMap.set(String(bug.id), bug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks([bug], graph);
+      expect(schedule[0].engineer.id).toBe('eng1');
+    });
+
+    it('should assign External for bugs in unmapped components', () => {
+      const engineers = [
+        { id: 'eng1', name: 'Engineer 1', email: 'eng1@example.com', availability: 1.0, unavailability: [] }
+      ];
+      const componentTeamMap = new Map([
+        ['Client', { components: ['Client'], engineers }]
+      ]);
+
+      const localScheduler = new Scheduler(engineers, testMilestones, componentTeamMap);
+      const bug = {
+        id: 5002,
+        summary: 'Server bug',
+        status: 'NEW',
+        assignee: null,
+        dependsOn: [],
+        size: 1,
+        component: 'Server'
+      };
+
+      const bugMap = new Map();
+      bugMap.set(String(bug.id), bug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks([bug], graph);
+      expect(schedule[0].engineer.name).toBe('External');
+      expect(schedule[0].engineer.isExternal).toBe(true);
+    });
+
+    it('should work without componentTeamMap (backward compat)', () => {
+      const engineers = [
+        { id: 'eng1', name: 'Engineer 1', email: 'eng1@example.com', availability: 1.0, unavailability: [] }
+      ];
+
+      const localScheduler = new Scheduler(engineers, testMilestones);
+      const bug = {
+        id: 5003,
+        summary: 'Any component bug',
+        status: 'NEW',
+        assignee: null,
+        dependsOn: [],
+        size: 1,
+        component: 'Server'
+      };
+
+      const bugMap = new Map();
+      bugMap.set(String(bug.id), bug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks([bug], graph);
+      // Without componentTeamMap, any non-external engineer can be assigned
+      expect(schedule[0].engineer.id).toBe('eng1');
+      expect(schedule[0].engineer.isExternal).toBeUndefined();
+    });
+
+    it('should still honor assigned engineer even with componentTeamMap', () => {
+      const engineers = [
+        { id: 'eng1', name: 'Engineer 1', email: 'eng1@example.com', availability: 1.0, unavailability: [] }
+      ];
+      const componentTeamMap = new Map([
+        ['Client', { components: ['Client'], engineers }]
+      ]);
+
+      const localScheduler = new Scheduler(engineers, testMilestones, componentTeamMap);
+      const bug = {
+        id: 5004,
+        summary: 'Bug assigned to known engineer in different component',
+        status: 'NEW',
+        assignee: 'eng1@example.com',
+        dependsOn: [],
+        size: 1,
+        component: 'Server'
+      };
+
+      const bugMap = new Map();
+      bugMap.set(String(bug.id), bug);
+      graph.buildFromBugs(bugMap);
+
+      const schedule = localScheduler.scheduleTasks([bug], graph);
+      // Hard lock to assigned engineer takes priority over component mapping
+      expect(schedule[0].engineer.id).toBe('eng1');
+    });
+  });
+
   describe('meta bugs', () => {
     it('should calculate 0 days effort for meta bugs', () => {
       const engineer = testEngineers[0];

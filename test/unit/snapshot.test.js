@@ -144,7 +144,7 @@ describe('Snapshot Processing', () => {
 
   describe('Greedy scheduler determinism', () => {
     it('should produce identical results on multiple runs', () => {
-      const engineers = engineersData.engineers;
+      const engineers = engineersData.teams.flatMap(t => t.engineers);
 
       // Run scheduler twice
       const scheduler1 = new Scheduler(engineers, MILESTONES);
@@ -176,7 +176,7 @@ describe('Snapshot Processing', () => {
     });
 
     it('should schedule all filtered bugs', () => {
-      const engineers = engineersData.engineers;
+      const engineers = engineersData.teams.flatMap(t => t.engineers);
       const scheduler = new Scheduler(engineers, MILESTONES);
       const schedule = scheduler.scheduleTasks(filteredBugs, graph);
 
@@ -185,7 +185,7 @@ describe('Snapshot Processing', () => {
     });
 
     it('should respect dependency constraints in schedule', () => {
-      const engineers = engineersData.engineers;
+      const engineers = engineersData.teams.flatMap(t => t.engineers);
       const scheduler = new Scheduler(engineers, MILESTONES);
       const schedule = scheduler.scheduleTasks(filteredBugs, graph);
 
@@ -215,7 +215,7 @@ describe('Snapshot Processing', () => {
     let stats;
 
     beforeAll(() => {
-      const engineers = engineersData.engineers;
+      const engineers = engineersData.teams.flatMap(t => t.engineers);
       const scheduler = new Scheduler(engineers, MILESTONES);
       schedule = scheduler.scheduleTasks(filteredBugs, graph);
       stats = scheduler.getStats();
@@ -322,9 +322,57 @@ describe('Snapshot Processing', () => {
   });
 });
 
+describe('Component-aware scheduling with real snapshot data', () => {
+  it('should assign External (not Client engineers) to unassigned non-Client bugs', () => {
+    // Build componentTeamMap the same way main.js does
+    const teams = engineersData.teams;
+    const engineers = teams.flatMap(t => t.engineers);
+    const componentTeamMap = new Map();
+    for (const team of teams) {
+      for (const comp of team.components) {
+        componentTeamMap.set(comp, team);
+      }
+    }
+
+    const bugMap = new Map();
+    for (const bug of snapshot.bugs) {
+      bugMap.set(String(bug.id), bug);
+    }
+
+    const graph = new DependencyGraph();
+    graph.buildFromBugs(bugMap);
+    const { sorted } = graph.topologicalSort();
+    const sortedBugs = sorted.map(id => bugMap.get(id)).filter(Boolean);
+
+    // Use all-severity filter to include untriaged non-Client bugs like 2012060
+    const allBugs = sortedBugs.filter(bug =>
+      milestoneBugIds.includes(bug.id) || !RESOLVED_STATUSES.includes(bug.status)
+    );
+
+    const scheduler = new Scheduler(engineers, MILESTONES, componentTeamMap);
+    const schedule = scheduler.scheduleTasks(allBugs, graph);
+
+    // Find scheduled non-Client unassigned bugs
+    const nonClientUnassigned = schedule.filter(t => {
+      if (t.completed || !t.bug.component) return false;
+      if (t.bug.component === 'Client') return false;
+      const a = t.bug.assignee;
+      return !a || a === 'nobody@mozilla.org';
+    });
+
+    // All such bugs should be assigned to External, not a Client engineer
+    const clientEngineerIds = new Set(engineers.map(e => e.id));
+    for (const task of nonClientUnassigned) {
+      if (!task.engineer) continue; // meta bugs have no engineer
+      expect(clientEngineerIds.has(task.engineer.id)).toBe(false);
+      expect(task.engineer.isExternal).toBe(true);
+    }
+  });
+});
+
 describe('Scheduler statistics consistency', () => {
   it('totalTasks should equal completedTasks + scheduledTasks', () => {
-    const engineers = engineersData.engineers;
+    const engineers = engineersData.teams.flatMap(t => t.engineers);
 
     // Apply filters
     const bugMap = new Map();

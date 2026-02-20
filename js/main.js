@@ -111,8 +111,15 @@ class EnterprisePlanner {
         fetch('./data/milestones.json')
       ]);
       const engineersData = await engineersRes.json();
-      this.engineers = engineersData.engineers || [];
-      console.log(`Loaded ${this.engineers.length} engineers`);
+      this.teams = engineersData.teams || [];
+      this.engineers = this.teams.flatMap(t => t.engineers);
+      this.componentTeamMap = new Map();
+      for (const team of this.teams) {
+        for (const comp of team.components) {
+          this.componentTeamMap.set(comp, team);
+        }
+      }
+      console.log(`Loaded ${this.engineers.length} engineers in ${this.teams.length} teams`);
 
       const milestonesData = await milestonesRes.json();
       this.milestones = (milestonesData.milestones || []).map(m => ({
@@ -197,7 +204,7 @@ class EnterprisePlanner {
 
       // Schedule tasks for all milestones
       console.log('Scheduling tasks...');
-      this.scheduler = new Scheduler(this.engineers, this.milestones);
+      this.scheduler = new Scheduler(this.engineers, this.milestones, this.componentTeamMap);
       const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
       console.log(`Scheduled ${schedule.length} tasks`);
 
@@ -695,7 +702,7 @@ class EnterprisePlanner {
     // Note: milestone filter is view-only, doesn't affect scheduling
     console.log(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved)`);
 
-    this.scheduler = new Scheduler(this.engineers, this.milestones);
+    this.scheduler = new Scheduler(this.engineers, this.milestones, this.componentTeamMap);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
     this.greedySchedule = schedule;
     this.greedyScore = this.computeScheduleScore(schedule, this.milestones);
@@ -883,12 +890,49 @@ class EnterprisePlanner {
     }
 
     const workerEngineers = this.buildOptimizerEngineers(sortedBugs);
+
+    // Build component-to-engineer-indices map for the worker
+    const componentEngineerMap = {};
+    if (this.componentTeamMap) {
+      for (const [component, team] of this.componentTeamMap) {
+        const indices = [];
+        for (const eng of team.engineers) {
+          const idx = workerEngineers.findIndex(we => we.id === eng.id);
+          if (idx !== -1) indices.push(idx);
+        }
+        componentEngineerMap[component] = indices;
+      }
+
+      // Find unmapped components from the bug set and route them to a shared External engineer
+      const unmappedComponents = new Set();
+      for (const bug of sortedBugs) {
+        if (bug.component && !componentEngineerMap[bug.component]) {
+          unmappedComponents.add(bug.component);
+        }
+      }
+      if (unmappedComponents.size > 0) {
+        workerEngineers.push({
+          id: 'external:unmapped',
+          name: 'External',
+          email: 'external@unmapped',
+          availability: 1.0,
+          unavailability: [],
+          isExternal: true
+        });
+        const externalIdx = workerEngineers.length - 1;
+        for (const comp of unmappedComponents) {
+          componentEngineerMap[comp] = [externalIdx];
+        }
+      }
+    }
+
     const workerData = {
       bugs: sortedBugs,
       engineers: workerEngineers,
       graph: graphEdges,
       generations,
       populationSize,
+      componentEngineerMap,
       milestones: milestones.map(m => ({
         name: m.name,
         bugId: m.bugId,

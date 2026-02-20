@@ -41,6 +41,9 @@ let cachedBugToMilestone = null;
 let cachedTaskIdIndex = null;
 let cachedMilestoneDeps = null;
 
+// Component-to-engineer-indices mapping (null = all non-external)
+let componentEngineerIndices = null;
+
 function buildEngineerEmailIndex(engineers) {
   const map = new Map();
   for (let i = 0; i < engineers.length; i++) {
@@ -68,8 +71,19 @@ self.onmessage = function(e) {
       generations,
       populationSize,
       id,
-      seedPopulation
+      seedPopulation,
+      componentEngineerMap
     } = data;
+
+    // Build component-to-engineer-indices map
+    if (componentEngineerMap && Object.keys(componentEngineerMap).length > 0) {
+      componentEngineerIndices = new Map();
+      for (const [component, indices] of Object.entries(componentEngineerMap)) {
+        componentEngineerIndices.set(component, indices);
+      }
+    } else {
+      componentEngineerIndices = null;
+    }
 
     workerId = id || 0;
     mutationRate = data.mutationRate || MUTATION_RATE;
@@ -283,14 +297,28 @@ function geneticAlgorithm(tasks, engineers, dependencyMap, generations, populati
   finishOptimization(tasks, engineers, dependencyMap, generations, bestFoundAtGeneration);
 }
 
+/**
+ * Get the engineer pool for a specific task based on its component.
+ * Returns component-specific indices if available, otherwise the full non-external pool.
+ */
+function getPoolForTask(task, nonExternalIndices) {
+  if (componentEngineerIndices && task.component) {
+    const pool = componentEngineerIndices.get(task.component);
+    if (pool && pool.length > 0) return pool;
+    // Component not mapped — use full pool (external engineers will handle in scheduler)
+  }
+  return nonExternalIndices;
+}
+
 function generateRandomAssignment(tasks, engineers, nonExternalIndices) {
   const assignment = [];
-  const pool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(engineers.length).keys()];
+  const fallbackPool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(engineers.length).keys()];
 
   for (const task of tasks) {
     if (task.lockedEngineerIndex !== null && task.lockedEngineerIndex !== undefined) {
       assignment.push(task.lockedEngineerIndex);
     } else {
+      const pool = getPoolForTask(task, fallbackPool);
       assignment.push(pool[Math.floor(Math.random() * pool.length)]);
     }
   }
@@ -341,10 +369,11 @@ function crossover(parent1, parent2, tasks, unlockedTasks) {
 }
 
 function mutate(individual, tasks, nonExternalIndices, unlockedTasks) {
-  const pool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(tasks.length).keys()];
+  const fallbackPool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(tasks.length).keys()];
 
   for (const taskIdx of unlockedTasks) {
     if (Math.random() < mutationRate) {
+      const pool = getPoolForTask(tasks[taskIdx], fallbackPool);
       individual[taskIdx] = pool[Math.floor(Math.random() * pool.length)];
     }
   }
@@ -359,13 +388,14 @@ function localSearch(individual, tasks, engineers, dependencyMap, nonExternalInd
     return { individual, score: currentScore };
   }
 
-  const pool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(engineers.length).keys()];
+  const fallbackPool = nonExternalIndices.length > 0 ? nonExternalIndices : [...Array(engineers.length).keys()];
   let best = [...individual];
   let bestScore = currentScore;
 
   for (let i = 0; i < localSearchSwaps; i++) {
     // Pick a random unlocked task and try a different engineer
     const taskIdx = unlockedTasks[Math.floor(Math.random() * unlockedTasks.length)];
+    const pool = getPoolForTask(tasks[taskIdx], fallbackPool);
     const oldEngineer = best[taskIdx];
     const newEngineer = pool[Math.floor(Math.random() * pool.length)];
 
@@ -723,6 +753,10 @@ function computeEndTimes(assignment, tasks, engineers, dependencyMap) {
       if (effort.isMeta) {
         startTime = earliestStart;
         endTime = earliestStart;
+      } else if (engineer.isExternal) {
+        // External = infinite pool: starts as soon as dependencies finish, no queue
+        startTime = earliestStart;
+        endTime = addWorkingDaysSkippingRanges(startTime, effort.days, null);
       } else {
         startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
         const ranges = unavailabilityRangesByEngineer ? unavailabilityRangesByEngineer[engineerIdx] : null;
@@ -813,6 +847,10 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
         startTime = earliestStart;
         endTime = earliestStart;
         assignedEngineer = null;
+      } else if (engineer.isExternal) {
+        // External = infinite pool: starts as soon as dependencies finish, no queue
+        startTime = earliestStart;
+        endTime = addWorkingDaysSkippingRanges(startTime, effort.days, null);
       } else {
         startTime = Math.max(engineerAvailable[engineerIdx], earliestStart);
         const ranges = unavailabilityRangesByEngineer ? unavailabilityRangesByEngineer[engineerIdx] : null;

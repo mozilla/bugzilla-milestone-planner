@@ -12,9 +12,10 @@ import {
 } from './scheduler-core.js';
 
 export class Scheduler {
-  constructor(engineers, milestones) {
+  constructor(engineers, milestones, componentTeamMap = null) {
     this.engineers = engineers;
     this.milestones = milestones;
+    this.componentTeamMap = componentTeamMap;
     this.schedule = [];
     this.engineerSchedules = new Map();
     this.warnings = [];
@@ -43,6 +44,25 @@ export class Scheduler {
   }
 
   /**
+   * Get engineers eligible to work on a bug based on its component.
+   * Returns the team's engineers if the bug's component is mapped,
+   * an empty array if the component has no team,
+   * or all non-external engineers if no componentTeamMap is set (backward compat).
+   */
+  getEligibleEngineers(bug) {
+    if (!this.componentTeamMap) {
+      // No map = backward compat: all non-external engineers
+      return this.engineers.filter(e => !e.isExternal);
+    }
+    const team = this.componentTeamMap.get(bug.component);
+    if (!team) {
+      // Component has no team — no eligible engineers
+      return [];
+    }
+    return team.engineers;
+  }
+
+  /**
    * Find the best available engineer for a task
    * @param {Object} bug - Bug object
    * @param {Date} earliestStart - Earliest possible start date
@@ -52,9 +72,12 @@ export class Scheduler {
     let bestMatch = null;
     let bestEndTime = Infinity;
 
+    const eligible = this.getEligibleEngineers(bug);
+    const eligibleIds = new Set(eligible.map(e => e.id));
+
     for (const [engineerId, schedule] of this.engineerSchedules) {
       const engineer = schedule.engineer;
-      if (engineer.isExternal) continue;
+      if (!eligibleIds.has(engineerId)) continue;
 
       const assignment = this.assignToEngineer(bug, engineer, earliestStart);
       if (!assignment) continue;
@@ -282,12 +305,17 @@ export class Scheduler {
     }
 
     if (!assignment) {
-      this.warnings.push({
-        type: 'no_engineer',
-        bug,
-        message: `No engineer available for bug ${bug.id}`
-      });
-      return;
+      // No eligible team engineer — assign as External
+      const externalEngineer = this.getOrCreateExternalEngineer(bug.assignee || `unassigned:${bug.component || 'unknown'}`);
+      assignment = this.assignToEngineer(bug, externalEngineer, earliestStart);
+      if (!assignment) {
+        this.warnings.push({
+          type: 'no_engineer',
+          bug,
+          message: `No engineer available for bug ${bug.id}`
+        });
+        return;
+      }
     }
 
     let { engineer, startDate, effort, endDate } = assignment;
@@ -297,6 +325,11 @@ export class Scheduler {
       startDate = earliestStart;
       endDate = earliestStart;
       engineer = null; // Meta bugs don't need an assigned engineer
+    } else if (engineer.isExternal) {
+      // External = infinite pool: each task starts as soon as dependencies allow.
+      // Never advance nextAvailable — a new external person handles each task independently.
+      startDate = earliestStart;
+      endDate = this.addWorkingDays(earliestStart, effort.days, engineer);
     } else {
       // Update engineer schedule
       const engineerSchedule = this.engineerSchedules.get(engineer.id);

@@ -1,46 +1,51 @@
 {
-  "engineers": [
+  "teams": [
     {
-      "id": "janika",
-      "name": "Janika Neuberger",
-      "email": "jneuberger@mozilla.com",
-      "availability": 1.0,
-      "unavailability": []
-    },
-    {
-      "id": "alissy",
-      "name": "Alexandre Lissy",
-      "email": "lissyx+mozillians@lissyx.dyndns.org",
-      "availability": 1.0,
-      "unavailability": []
-    },
-    {
-      "id": "gcp",
-      "name": "Gian-Carlo Pascutto",
-      "email": "gpascutto@mozilla.com",
-      "availability": 1.0,
-      "unavailability": []
-    },
-    {
-      "id": "jonathan",
-      "name": "Jonathan Mendez",
-      "email": "jmendez@mozilla.com",
-      "availability": 1.0,
-      "unavailability": []
-    },
-    {
-      "id": "dave",
-      "name": "Dave Townsend",
-      "email": "dtownsend@mozilla.com",
-      "availability": 0.33,
-      "unavailability": []
-    },
-    {
-      "id": "vlg",
-      "name": "Victor Lopez Garcia",
-      "email": "tbd@mozilla.com",
-      "availability": 1.0,
-      "unavailability": [{"start": "2026-01-01", "end": "2026-04-01", "reason": "Not available yet"}]
+      "components": ["Client"],
+      "engineers": [
+        {
+          "id": "janika",
+          "name": "Janika Neuberger",
+          "email": "jneuberger@mozilla.com",
+          "availability": 1.0,
+          "unavailability": []
+        },
+        {
+          "id": "alissy",
+          "name": "Alexandre Lissy",
+          "email": "lissyx+mozillians@lissyx.dyndns.org",
+          "availability": 1.0,
+          "unavailability": []
+        },
+        {
+          "id": "gcp",
+          "name": "Gian-Carlo Pascutto",
+          "email": "gpascutto@mozilla.com",
+          "availability": 1.0,
+          "unavailability": []
+        },
+        {
+          "id": "jonathan",
+          "name": "Jonathan Mendez",
+          "email": "jmendez@mozilla.com",
+          "availability": 1.0,
+          "unavailability": []
+        },
+        {
+          "id": "dave",
+          "name": "Dave Townsend",
+          "email": "dtownsend@mozilla.com",
+          "availability": 0.33,
+          "unavailability": []
+        },
+        {
+          "id": "vlg",
+          "name": "Victor Lopez Garcia",
+          "email": "tbd@mozilla.com",
+          "availability": 1.0,
+          "unavailability": [{"start": "2026-01-01", "end": "2026-04-01", "reason": "Not available yet"}]
+        }
+      ]
     }
   ],
   "_comment": "availability is a fraction (0.2 = 20% time), unavailability is an array of {start: 'YYYY-MM-DD', end: 'YYYY-MM-DD', reason: 'string'} for holidays/PTO"
