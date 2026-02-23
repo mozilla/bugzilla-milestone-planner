@@ -330,6 +330,13 @@ header p {
   overflow-x: auto;
 }
 
+.gantt-empty-notice {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .no-tasks {
   text-align: center;
   color: var(--text-muted);

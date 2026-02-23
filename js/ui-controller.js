@@ -25,7 +25,8 @@ export class UIController {
       milestonesList: document.getElementById('milestones-list'),
       recentBugs: document.getElementById('recent-bugs'),
       ganttContainer: document.getElementById('gantt-container'),
-      viewModeSelect: document.getElementById('view-mode'),
+      componentFilter: document.getElementById('component-filter'),
+      ganttEmpty: document.getElementById('gantt-empty'),
       milestoneFilter: document.getElementById('milestone-filter'),
       severityFilter: document.getElementById('severity-filter'),
       scheduleTypeSelect: document.getElementById('schedule-type'),
@@ -658,14 +659,46 @@ export class UIController {
     return this.elements.milestoneFilter ? this.elements.milestoneFilter.value : '';
   }
 
+  getComponentFilter() {
+    return this.elements.componentFilter ? this.elements.componentFilter.value : '';
+  }
+
+  showGanttEmpty(message) {
+    if (!this.elements.ganttEmpty) return;
+    this.elements.ganttEmpty.textContent = message;
+    this.elements.ganttEmpty.style.display = 'block';
+  }
+
+  hideGanttEmpty() {
+    if (!this.elements.ganttEmpty) return;
+    this.elements.ganttEmpty.style.display = 'none';
+  }
+
+  /**
+   * Populate the component filter dropdown with unique component names from the bug data.
+   * @param {string[]} components - Sorted list of component names
+   */
+  populateComponentFilter(components) {
+    if (!this.elements.componentFilter) return;
+    const current = this.elements.componentFilter.value;
+    this.elements.componentFilter.innerHTML = '<option value="">All</option>';
+    for (const comp of components) {
+      const opt = document.createElement('option');
+      opt.value = comp;
+      opt.textContent = comp;
+      if (comp === current) opt.selected = true;
+      this.elements.componentFilter.appendChild(opt);
+    }
+  }
+
   /**
    * Set up event listeners
    * @param {Object} callbacks - Event callbacks
    */
   setupEventListeners(callbacks) {
-    if (this.elements.viewModeSelect && callbacks.onViewModeChange) {
-      this.elements.viewModeSelect.addEventListener('change', (e) => {
-        callbacks.onViewModeChange(e.target.value);
+    if (this.elements.componentFilter && callbacks.onComponentFilter) {
+      this.elements.componentFilter.addEventListener('change', (e) => {
+        callbacks.onComponentFilter(e.target.value);
       });
     }
 

@@ -58,6 +58,7 @@ class EnterprisePlanner {
     // Filters
     this.severityFilter = 'S2';
     this.milestoneFilter = '';
+    this.componentFilter = '';
     this.sortedBugs = [];
     this.lastFilteredBugs = [];
   }
@@ -85,7 +86,7 @@ class EnterprisePlanner {
 
     // Set up UI event listeners
     this.ui.setupEventListeners({
-      onViewModeChange: (mode) => this.onViewModeChange(mode),
+      onComponentFilter: (component) => this.onComponentFilter(component),
       onMilestoneFilter: (bugId) => this.onMilestoneFilter(bugId),
       onSeverityFilter: (severity) => this.onSeverityFilter(severity),
       onRefresh: () => this.refresh(),
@@ -95,6 +96,7 @@ class EnterprisePlanner {
     // Sync state from browser-restored select values
     this.severityFilter = this.ui.getSeverityFilter();
     this.milestoneFilter = this.ui.getMilestoneFilter();
+    this.componentFilter = this.ui.getComponentFilter();
 
     // Fetch and process bugs
     await this.fetchAndProcess();
@@ -195,6 +197,15 @@ class EnterprisePlanner {
 
       // Get sorted bugs and store for filtering later
       this.sortedBugs = sorted.map(id => this.bugs.get(id)).filter(Boolean);
+
+      // Populate component filter: Firefox Enterprise components first, then "Other" if needed
+      const enterpriseComponents = [...new Set(
+        this.sortedBugs.filter(b => b.product === 'Firefox Enterprise' && b.component).map(b => b.component)
+      )].sort();
+      const hasOther = this.sortedBugs.some(b => b.product !== 'Firefox Enterprise' && b.component);
+      const components = hasOther ? [...enterpriseComponents, 'Other'] : enterpriseComponents;
+      this.ui.populateComponentFilter(components);
+      this.componentFilter = this.ui.getComponentFilter();
 
       // Apply filters (severity affects scheduling, milestone is view-only)
       let filteredBugs = this.filterResolvedBugs(this.sortedBugs);
@@ -536,10 +547,14 @@ class EnterprisePlanner {
   }
 
   /**
-   * View mode change handler
+   * Component filter handler - only changes the view, doesn't recompute schedule
    */
-  onViewModeChange(mode) {
-    this.gantt.setViewMode(mode);
+  onComponentFilter(component) {
+    console.log('Component filter changed to:', component || 'all');
+    this.componentFilter = component;
+    if (this.greedySchedule && this.greedySchedule.length > 0) {
+      this.rerenderWithMilestoneFilter();
+    }
   }
 
   /**
@@ -719,12 +734,21 @@ class EnterprisePlanner {
   }
 
   /**
-   * Re-render with milestone filter (view-only, no recomputation)
+   * Re-render with milestone and component filters applied (view-only, no recomputation)
    */
   rerenderWithMilestoneFilter() {
     const activeMilestones = this.getActiveMilestones();
-    const filteredSchedule = this.filterScheduleByMilestone(this.greedySchedule);
-    const filteredRisks = this.filterRisksByMilestone(this.fullScheduleRisks);
+    let filteredSchedule = this.filterScheduleByMilestone(this.greedySchedule);
+    filteredSchedule = this.filterScheduleByComponent(filteredSchedule);
+    let filteredRisks = this.filterRisksByMilestone(this.fullScheduleRisks);
+    filteredRisks = this.filterRisksByComponent(filteredRisks);
+
+    const activeFilters = this.componentFilter || this.milestoneFilter;
+    if (activeFilters && filteredSchedule.length === 0 && this.greedySchedule && this.greedySchedule.length > 0) {
+      this.ui.showGanttEmpty('All bugs filtered — try changing the Severity or Component filter.');
+    } else {
+      this.ui.hideGanttEmpty();
+    }
 
     this.renderResults(filteredSchedule, this.fullScheduleErrors, filteredRisks, activeMilestones);
   }
@@ -759,6 +783,30 @@ class EnterprisePlanner {
     return risks.filter(risk =>
       String(risk.milestone.bugId) === this.milestoneFilter
     );
+  }
+
+  /**
+   * Filter schedule to show only tasks for selected component.
+   * "Other" matches any bug whose product is not "Firefox Enterprise".
+   */
+  filterScheduleByComponent(schedule) {
+    if (!this.componentFilter || !schedule) return schedule;
+    if (this.componentFilter === 'Other') {
+      return schedule.filter(task => task.bug.product !== 'Firefox Enterprise');
+    }
+    return schedule.filter(task => task.bug.component === this.componentFilter);
+  }
+
+  /**
+   * Filter risks to show only those for selected component.
+   * "Other" matches any bug whose product is not "Firefox Enterprise".
+   */
+  filterRisksByComponent(risks) {
+    if (!this.componentFilter || !risks) return risks;
+    if (this.componentFilter === 'Other') {
+      return risks.filter(risk => risk.task.bug.product !== 'Firefox Enterprise');
+    }
+    return risks.filter(risk => risk.task.bug.component === this.componentFilter);
   }
 
   /**
@@ -1375,8 +1423,9 @@ class EnterprisePlanner {
     }
 
     if (fullSchedule) {
-      // Apply milestone filter to view
-      const schedule = this.filterScheduleByMilestone(fullSchedule);
+      // Apply milestone and component filters to view
+      let schedule = this.filterScheduleByMilestone(fullSchedule);
+      schedule = this.filterScheduleByComponent(schedule);
       this.gantt.render(schedule, this.graph, this.engineers);
 
       // Update milestone cards with new completion dates (respecting filter)
