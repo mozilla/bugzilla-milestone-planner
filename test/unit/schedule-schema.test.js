@@ -85,6 +85,53 @@ describe('Schedule entry schema consistency', () => {
         }
       }
     });
+
+    it('non-completed entries should have correct field types', () => {
+      const bugs = [
+        { id: 100, summary: 'Milestone', dependsOn: [101], blocks: [], status: 'NEW', assignee: 'nobody@mozilla.org', whiteboard: '[meta]', keywords: ['meta'], severity: 'S1', component: 'General' },
+        { id: 101, summary: 'Work item', dependsOn: [], blocks: [100], status: 'NEW', assignee: 'alice@mozilla.com', whiteboard: '[size=2]', keywords: [], severity: 'S1', size: 2, component: 'General' }
+      ];
+
+      const graph = new DependencyGraph();
+      for (const b of bugs) graph.addNode(b);
+      const sortedBugs = sortBugs(bugs, graph);
+
+      const scheduler = new Scheduler(engineers, milestones);
+      scheduler.scheduleTasks(sortedBugs, graph);
+
+      const nonCompleted = scheduler.schedule.filter(t => !t.completed);
+      expect(nonCompleted.length).toBeGreaterThan(0);
+
+      for (const entry of nonCompleted) {
+        // startDate and endDate are Date instances
+        expect(entry.startDate, `bug ${entry.bug.id}: startDate`).toBeInstanceOf(Date);
+        expect(entry.endDate, `bug ${entry.bug.id}: endDate`).toBeInstanceOf(Date);
+
+        // bug has id (number) and summary (string)
+        expect(typeof entry.bug.id, `bug ${entry.bug.id}: bug.id type`).toBe('number');
+        expect(typeof entry.bug.summary, `bug ${entry.bug.id}: bug.summary type`).toBe('string');
+
+        // effort has days (number), sizeEstimated (boolean), isMeta (boolean when present)
+        expect(typeof entry.effort.days, `bug ${entry.bug.id}: effort.days type`).toBe('number');
+        expect(typeof entry.effort.sizeEstimated, `bug ${entry.bug.id}: effort.sizeEstimated type`).toBe('boolean');
+        if ('isMeta' in entry.effort) {
+          expect(typeof entry.effort.isMeta, `bug ${entry.bug.id}: effort.isMeta type`).toBe('boolean');
+        }
+
+        // milestone is object with name, deadline, freezeDate — or null
+        if (entry.milestone !== null) {
+          expect(typeof entry.milestone.name, `bug ${entry.bug.id}: milestone.name type`).toBe('string');
+          expect(entry.milestone.deadline, `bug ${entry.bug.id}: milestone.deadline`).toBeInstanceOf(Date);
+          expect(entry.milestone.freezeDate, `bug ${entry.bug.id}: milestone.freezeDate`).toBeInstanceOf(Date);
+        }
+
+        // engineer has id and name — or null (meta bugs)
+        if (entry.engineer !== null) {
+          expect(entry.engineer, `bug ${entry.bug.id}: engineer`).toHaveProperty('id');
+          expect(entry.engineer, `bug ${entry.bug.id}: engineer`).toHaveProperty('name');
+        }
+      }
+    });
   });
 
   describe('GA worker output', () => {
