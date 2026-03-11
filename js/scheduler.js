@@ -452,22 +452,34 @@ export class Scheduler {
         }
       }
 
-      if (!task.milestone) continue; // Tasks without milestone aren't deadline risks
+      // Determine which milestone to check against:
+      // 1. The scheduler-assigned milestone (from dependency tree), or
+      // 2. The Bugzilla targetMilestone (for disconnected bugs)
+      let effectiveMilestone = task.milestone;
+      if (!effectiveMilestone && milestoneNameMap && task.bug.targetMilestone) {
+        const normalized = task.bug.targetMilestone.toLowerCase().trim();
+        const mappedName = milestoneNameMap[normalized];
+        if (mappedName) {
+          effectiveMilestone = milestoneInfo.find(m => m.name === mappedName) || null;
+        }
+      }
 
-      // Only check against the task's own milestone
-      if (task.endDate > task.milestone.freezeDate) {
+      if (!effectiveMilestone) continue; // No milestone from either source
+
+      // Check against the effective milestone's freeze/deadline
+      if (task.endDate > effectiveMilestone.freezeDate) {
         risks.push({
           task,
-          milestone: task.milestone,
+          milestone: effectiveMilestone,
           type: 'freeze',
-          message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${task.milestone.name} feature freeze ${this.formatDate(task.milestone.freezeDate)}`
+          message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${effectiveMilestone.name} feature freeze ${this.formatDate(effectiveMilestone.freezeDate)}`
         });
-      } else if (task.endDate > task.milestone.deadline) {
+      } else if (task.endDate > effectiveMilestone.deadline) {
         risks.push({
           task,
-          milestone: task.milestone,
+          milestone: effectiveMilestone,
           type: 'deadline',
-          message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${task.milestone.name} deadline ${this.formatDate(task.milestone.deadline)}`
+          message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${effectiveMilestone.name} deadline ${this.formatDate(effectiveMilestone.deadline)}`
         });
       }
     }

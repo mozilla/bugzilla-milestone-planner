@@ -92,8 +92,8 @@ describe('GanttRenderer isAtRisk', () => {
     expect(renderer.isAtRisk(task)).toBe(true);
   });
 
-  it('does NOT mark orphan task (milestone: null) as at-risk even if past freeze date', () => {
-    // Task not in any milestone's dependency tree — should not be at-risk
+  it('does NOT mark orphan task without targetMilestone as at-risk', () => {
+    // Task not in any milestone's dependency tree and no targetMilestone
     const task = makeTask({
       bugId: 2012425,
       endDate: '2026-04-01', // well past Customer Pilot freeze
@@ -102,12 +102,23 @@ describe('GanttRenderer isAtRisk', () => {
     expect(renderer.isAtRisk(task)).toBe(false);
   });
 
-  it('does NOT mark task as at-risk when milestone field is undefined', () => {
-    // Edge case: milestone field missing entirely — treated as no milestone
+  it('marks disconnected task as at-risk when targetMilestone matches active milestone', () => {
+    // Task not in dependency tree but Bugzilla says it belongs to Customer Pilot
     const task = makeTask({
-      bugId: 2012426,
-      endDate: '2026-04-01',
-      milestone: undefined
+      bugId: 2012427,
+      endDate: '2026-03-25', // past Customer Pilot freeze (Mar 23)
+      milestone: null,
+      targetMilestone: 'Pilot' // maps to 'Customer Pilot' via milestoneNameMap
+    });
+    expect(renderer.isAtRisk(task)).toBe(true);
+  });
+
+  it('does NOT mark disconnected task as at-risk when it finishes before freeze', () => {
+    const task = makeTask({
+      bugId: 2012428,
+      endDate: '2026-03-20', // before Customer Pilot freeze
+      milestone: null,
+      targetMilestone: 'Pilot'
     });
     expect(renderer.isAtRisk(task)).toBe(false);
   });
@@ -135,7 +146,7 @@ describe('GanttRenderer isAtRisk', () => {
     expect(safeTask.custom_class).not.toContain('gantt-at-risk');
   });
 
-  it('convertToGanttTasks does NOT assign gantt-at-risk class to orphan tasks without milestone', () => {
+  it('convertToGanttTasks does NOT assign gantt-at-risk class to orphan tasks without targetMilestone', () => {
     const graph = new DependencyGraph();
     const bugs = [
       { id: 2012055, summary: 'Customer Pilot', dependsOn: [3001], blocks: [], status: 'NEW' },
@@ -143,7 +154,7 @@ describe('GanttRenderer isAtRisk', () => {
     ];
     for (const b of bugs) graph.addNode(b);
 
-    // Task with milestone: null (orphan — not in any milestone)
+    // Task with milestone: null and no targetMilestone
     const scheduledTasks = [
       makeTask({ bugId: 3001, endDate: '2026-04-01', milestone: null })
     ];
@@ -167,10 +178,12 @@ describe('isAtRisk and checkDeadlineRisks consistency', () => {
     freezeDate: new Date('2026-03-23')
   };
   const milestones = [milestone];
+  const nameMap = { 'pilot': 'Customer Pilot' };
   let ganttRenderer;
 
   beforeAll(() => {
     ganttRenderer = new GanttRenderer('gantt-container', milestones);
+    ganttRenderer.milestoneNameMap = nameMap;
   });
 
   it('both flag task with milestone past freeze date', async () => {
@@ -248,6 +261,47 @@ describe('isAtRisk and checkDeadlineRisks consistency', () => {
     const ganttResult = ganttRenderer.isAtRisk(task);
     const scheduler = new Scheduler([], milestones);
     const risks = scheduler.checkDeadlineRisks(milestones, {}, [task]);
+
+    expect(ganttResult).toBe(false);
+    expect(risks.length).toBe(0);
+  });
+
+  it('both flag disconnected task with targetMilestone past freeze date', async () => {
+    const { Scheduler } = await import('../../js/scheduler.js');
+    const task = {
+      bug: { id: 5, summary: 'Disconnected late', targetMilestone: 'Pilot' },
+      startDate: new Date('2026-03-11'),
+      endDate: new Date('2026-03-25'),
+      engineer: { id: 'e1', name: 'Dev', availability: 1.0 },
+      effort: { days: 10, isMeta: false, sizeEstimated: false },
+      completed: false,
+      milestone: null // not in dependency tree
+    };
+
+    const ganttResult = ganttRenderer.isAtRisk(task);
+    const scheduler = new Scheduler([], milestones);
+    const risks = scheduler.checkDeadlineRisks(milestones, { milestoneNameMap: nameMap }, [task]);
+
+    expect(ganttResult).toBe(true);
+    expect(risks.length).toBe(1);
+    expect(risks[0].milestone.name).toBe('Customer Pilot');
+  });
+
+  it('neither flags disconnected task with targetMilestone before freeze date', async () => {
+    const { Scheduler } = await import('../../js/scheduler.js');
+    const task = {
+      bug: { id: 6, summary: 'Disconnected on time', targetMilestone: 'Pilot' },
+      startDate: new Date('2026-03-11'),
+      endDate: new Date('2026-03-20'),
+      engineer: { id: 'e1', name: 'Dev', availability: 1.0 },
+      effort: { days: 7, isMeta: false, sizeEstimated: false },
+      completed: false,
+      milestone: null
+    };
+
+    const ganttResult = ganttRenderer.isAtRisk(task);
+    const scheduler = new Scheduler([], milestones);
+    const risks = scheduler.checkDeadlineRisks(milestones, { milestoneNameMap: nameMap }, [task]);
 
     expect(ganttResult).toBe(false);
     expect(risks.length).toBe(0);
