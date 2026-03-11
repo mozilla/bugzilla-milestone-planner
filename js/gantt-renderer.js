@@ -469,17 +469,17 @@ export class GanttRenderer {
       on_view_change: (mode) => this.onViewChange(mode)
     });
 
-    // Add milestone markers
-    this.addMilestoneMarkers();
-
     // Apply engineer colors to task bars
     this.applyEngineerColors();
 
     // Update the legend with engineer colors
     this.updateEngineerLegend();
 
-    // Add hover and drag interactions after Gantt renders
-    setTimeout(() => this.setupInteractions(), 200);
+    // Add milestone markers and hover interactions after Gantt renders
+    setTimeout(() => {
+      this.addMilestoneMarkers();
+      this.setupInteractions();
+    }, 200);
 
     // Scroll to show the earliest task start date
     this.scrollToDate(this.earliestTaskDate);
@@ -764,40 +764,11 @@ export class GanttRenderer {
       const container = document.getElementById(this.containerId);
       if (!container) return;
 
-      const svg = container.querySelector('svg');
-      if (!svg) return;
+      const scrollX = this.dateToX(date);
+      if (scrollX == null) return;
 
-      // Get the date columns to calculate position
-      const dateTexts = svg.querySelectorAll('.lower-text');
-      if (dateTexts.length === 0) return;
-
-      // Find approximate column width based on view mode
-      const columnWidths = {
-        'Day': 38,
-        'Week': 140,
-        'Month': 120,
-        'Year': 120
-      };
+      const columnWidths = { 'Day': 38, 'Week': 140, 'Month': 120, 'Year': 120 };
       const columnWidth = columnWidths[this.viewMode] || 140;
-
-      // Calculate days from gantt start to target date
-      // Frappe Gantt adds ~1 month padding, so account for that
-      const ganttStart = this.gantt.gantt_start;
-      if (!ganttStart) return;
-
-      const daysDiff = Math.floor((date - ganttStart) / (1000 * 60 * 60 * 24));
-
-      // Calculate scroll position based on view mode
-      let scrollX = 0;
-      if (this.viewMode === 'Day') {
-        scrollX = daysDiff * columnWidth;
-      } else if (this.viewMode === 'Week') {
-        scrollX = (daysDiff / 7) * columnWidth;
-      } else if (this.viewMode === 'Month') {
-        scrollX = (daysDiff / 30) * columnWidth;
-      } else if (this.viewMode === 'Year') {
-        scrollX = (daysDiff / 365) * columnWidth;
-      }
 
       // Scroll with a small offset to show some context before the date
       container.scrollLeft = Math.max(0, scrollX - columnWidth);
@@ -865,6 +836,7 @@ export class GanttRenderer {
     this.viewMode = mode;
     // Frappe re-renders SVG on view changes; reapply decorations/handlers when ready.
     this.waitForGanttRender(() => {
+      this.addMilestoneMarkers();
       this.applyEngineerColors();
       this.setupInteractions();
     });
@@ -892,18 +864,82 @@ export class GanttRenderer {
   }
 
   /**
+   * Calculate the x pixel position for a date on the Gantt chart.
+   */
+  dateToX(date) {
+    const ganttStart = this.gantt && this.gantt.gantt_start;
+    if (!ganttStart) return null;
+
+    const columnWidths = { 'Day': 38, 'Week': 140, 'Month': 120, 'Year': 120 };
+    const columnWidth = columnWidths[this.viewMode] || 140;
+    const daysDiff = (date - ganttStart) / (1000 * 60 * 60 * 24);
+
+    if (this.viewMode === 'Day') return daysDiff * columnWidth;
+    if (this.viewMode === 'Week') return (daysDiff / 7) * columnWidth;
+    if (this.viewMode === 'Month') return (daysDiff / 30) * columnWidth;
+    return (daysDiff / 365) * columnWidth;
+  }
+
+  /**
    * Add milestone deadline markers to the chart
    */
   addMilestoneMarkers() {
-    const svg = document.querySelector(`#${this.containerId} svg`);
-    if (!svg) return;
+    if (!this.gantt) return;
+    // Frappe Gantt wraps the original SVG inside .gantt-container.
+    // The SVG with our containerId IS the rendered chart SVG.
+    const svg = document.getElementById(this.containerId);
+    if (!svg || svg.tagName.toLowerCase() !== 'svg') return;
 
-    // Get the chart dimensions
-    const chartGroup = svg.querySelector('.grid');
-    if (!chartGroup) return;
+    // Remove previous markers
+    svg.querySelectorAll('.milestone-marker-group').forEach(el => el.remove());
 
-    // Milestone date lines are not yet implemented.
-    // Positioning requires calculating exact x from Frappe Gantt's internal date scale.
+    const gridGroup = svg.querySelector('.grid');
+    if (!gridGroup) return;
+
+    // Use grid height for the lines
+    let chartHeight;
+    try { chartHeight = gridGroup.getBBox().height; } catch { return; }
+    // Header offset — lines start below the date headers
+    const headerHeight = 50;
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const colors = { deadline: '#ef4444', freeze: '#f59e0b' };
+
+    for (const milestone of this.milestones) {
+      for (const [type, date] of [['freeze', milestone.freezeDate], ['deadline', milestone.deadline]]) {
+        if (!date) continue;
+        const x = this.dateToX(date);
+        if (x == null) continue;
+
+        const g = document.createElementNS(ns, 'g');
+        g.classList.add('milestone-marker-group');
+
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', x);
+        line.setAttribute('y1', headerHeight);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', chartHeight);
+        line.setAttribute('stroke', colors[type]);
+        line.setAttribute('stroke-width', '1.5');
+        line.setAttribute('stroke-dasharray', '6,4');
+        line.setAttribute('opacity', '0.7');
+
+        const label = document.createElementNS(ns, 'text');
+        label.setAttribute('x', x + 4);
+        label.setAttribute('y', headerHeight + 14);
+        label.setAttribute('text-anchor', 'start');
+        label.setAttribute('font-size', '10');
+        label.setAttribute('font-weight', 'bold');
+        label.setAttribute('fill', colors[type]);
+        label.setAttribute('transform', `rotate(90, ${x + 4}, ${headerHeight + 14})`);
+        const suffix = type === 'freeze' ? ' freeze' : '';
+        label.textContent = `${milestone.name}${suffix}`;
+
+        g.appendChild(line);
+        g.appendChild(label);
+        svg.appendChild(g);
+      }
+    }
   }
 
   /**
