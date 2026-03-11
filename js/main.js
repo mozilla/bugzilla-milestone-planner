@@ -643,6 +643,37 @@ class EnterprisePlanner {
   }
 
   /**
+   * Get the schedule for the currently selected schedule type
+   */
+  getCurrentSchedule() {
+    if ((this.currentScheduleType === 'optimal' || this.currentScheduleType === 'exhaustive')
+        && this.optimalSchedule) {
+      return this.optimalSchedule;
+    }
+    return this.greedySchedule;
+  }
+
+  /**
+   * Compute deadline risks for an arbitrary schedule
+   */
+  computeRisksForSchedule(schedule) {
+    if (!schedule || !this.scheduler) return [];
+    return this.scheduler.checkDeadlineRisks(this.milestones, {
+      pastMilestones: this.pastMilestones,
+      milestoneNameMap: this.milestoneNameMap
+    }, schedule);
+  }
+
+  /**
+   * Get risks appropriate for the current schedule type
+   */
+  getCurrentRisks() {
+    const schedule = this.getCurrentSchedule();
+    if (schedule === this.greedySchedule) return this.fullScheduleRisks;
+    return this.computeRisksForSchedule(schedule);
+  }
+
+  /**
    * Compute stats from all bugs (not just filtered/scheduled)
    * Total and Completed include resolved bugs, Open is what's being scheduled
    */
@@ -662,23 +693,28 @@ class EnterprisePlanner {
     const openBugs = allBugs.filter(bug => !resolvedStatuses.includes(bug.status));
 
     // Get estimated size bugs from the current schedule (filtered by milestone)
-    let schedule = (this.currentScheduleType === 'optimal' || this.currentScheduleType === 'exhaustive') && this.optimalSchedule
-      ? this.optimalSchedule
-      : this.greedySchedule;
-    schedule = this.filterScheduleByMilestone(schedule);
+    let schedule = this.filterScheduleByMilestone(this.getCurrentSchedule());
     const estimatedBugs = schedule
       ? schedule.filter(t => t.effort && t.effort.sizeEstimated).map(t => t.bug)
       : [];
 
-    // Get project end date from scheduler
-    const schedulerStats = this.scheduler ? this.scheduler.getStats() : {};
+    // Get project end date from current schedule
+    const currentSchedule = this.getCurrentSchedule();
+    let latestEnd = null;
+    if (currentSchedule) {
+      for (const task of currentSchedule) {
+        if (task.endDate && (!latestEnd || task.endDate > latestEnd)) {
+          latestEnd = task.endDate;
+        }
+      }
+    }
 
     return {
       totalBugs: allBugs,
       completedBugs,
       openBugs,
       estimatedBugs,
-      latestEnd: schedulerStats.latestEnd
+      latestEnd
     };
   }
 
@@ -748,13 +784,15 @@ class EnterprisePlanner {
    */
   rerenderWithMilestoneFilter() {
     const activeMilestones = this.getActiveMilestones();
-    let filteredSchedule = this.filterScheduleByMilestone(this.greedySchedule);
+    const currentSchedule = this.getCurrentSchedule();
+    const currentRisks = this.getCurrentRisks();
+    let filteredSchedule = this.filterScheduleByMilestone(currentSchedule);
     filteredSchedule = this.filterScheduleByComponent(filteredSchedule);
-    let filteredRisks = this.filterRisksByMilestone(this.fullScheduleRisks);
+    let filteredRisks = this.filterRisksByMilestone(currentRisks);
     filteredRisks = this.filterRisksByComponent(filteredRisks);
 
     const activeFilters = this.componentFilter || this.milestoneFilter;
-    if (activeFilters && filteredSchedule.length === 0 && this.greedySchedule && this.greedySchedule.length > 0) {
+    if (activeFilters && filteredSchedule.length === 0 && currentSchedule && currentSchedule.length > 0) {
       this.ui.showGanttEmpty('All bugs filtered — try changing the Severity or Component filter.');
     } else {
       this.ui.hideGanttEmpty();
@@ -1423,27 +1461,8 @@ class EnterprisePlanner {
     this.currentScheduleType = type;
     this.ui.setScheduleType(type);
 
-    let fullSchedule;
-    if (type === 'greedy') {
-      fullSchedule = this.greedySchedule;
-    } else if (this.optimalSchedule) {
-      fullSchedule = this.optimalSchedule;
-    } else {
-      fullSchedule = this.greedySchedule;
-    }
-
-    if (fullSchedule) {
-      // Apply milestone and component filters to view
-      let schedule = this.filterScheduleByMilestone(fullSchedule);
-      schedule = this.filterScheduleByComponent(schedule);
-      this.gantt.render(schedule, this.graph, this.engineers);
-
-      // Update milestone cards with new completion dates (respecting filter)
-      const milestoneCompletions = this.calculateMilestoneCompletions(fullSchedule);
-      this.ui.renderMilestoneCards(this.getActiveMilestones(), milestoneCompletions);
-
-      console.log(`Switched to ${type} schedule`);
-    }
+    this.rerenderWithMilestoneFilter();
+    console.log(`Switched to ${type} schedule`);
 
     if (type === 'exhaustive') {
       const filteredBugs = this.lastFilteredBugs.length > 0

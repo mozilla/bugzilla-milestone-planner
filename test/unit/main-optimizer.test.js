@@ -45,6 +45,14 @@ vi.mock('../../js/ui-controller.js', () => ({
       this.enableScheduleToggle = vi.fn();
       this.setScheduleType = vi.fn();
       this.updateMilestoneStatus = vi.fn();
+      this.renderStats = vi.fn();
+      this.renderEstimatedTable = vi.fn();
+      this.renderRisksTable = vi.fn();
+      this.renderMilestoneMismatchesTable = vi.fn();
+      this.renderUntriagedTable = vi.fn();
+      this.renderErrorsMarkdown = vi.fn();
+      this.showGanttEmpty = vi.fn();
+      this.hideGanttEmpty = vi.fn();
     }
     init() {}
     showLoading() {}
@@ -330,11 +338,14 @@ describe('optimal scheduler integration (main)', () => {
       { id: 1, status: 'NEW', component: 'Client', severity: 'S2', dependsOn: [] }
     ];
     app.greedySchedule = [];
+    app.fullScheduleErrors = { milestoneMismatches: [], untriaged: [] };
+    app.fullScheduleRisks = [];
+    app.sortedBugs = [];
     app.graph = { getDependencies: () => [] };
     app.engineers = [];
+    app.scheduler = { getStats: () => ({}) };
     app.startOptimalScheduler = vi.fn();
     app.gantt.render = vi.fn();
-    app.ui.renderMilestoneCards = vi.fn();
 
     app.onScheduleTypeChange('exhaustive');
 

@@ -421,8 +421,9 @@ export class Scheduler {
    * @param {Object} [options.milestoneNameMap] - Map of lowercase Bugzilla milestone name to display name
    * @returns {Array<Object>} Tasks at risk
    */
-  checkDeadlineRisks(milestoneInfo, { pastMilestones, milestoneNameMap } = {}) {
+  checkDeadlineRisks(milestoneInfo, { pastMilestones, milestoneNameMap } = {}, schedule = null) {
     const risks = [];
+    const taskList = schedule || this.schedule;
 
     // Build set of past milestone names for quick lookup
     const pastMilestoneByName = new Map();
@@ -432,7 +433,7 @@ export class Scheduler {
       }
     }
 
-    for (const task of this.schedule) {
+    for (const task of taskList) {
       if (task.completed) continue;
 
       // Check if this open task belongs to a past milestone (overdue)

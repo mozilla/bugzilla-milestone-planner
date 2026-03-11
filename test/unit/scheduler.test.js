@@ -589,6 +589,45 @@ describe('Scheduler', () => {
       expect(overdueRisks[0].milestone.name).toBe('Foxfooding Alpha');
     });
 
+    it('should use provided schedule parameter instead of internal state', () => {
+      // Schedule a bug internally (creates internal state)
+      const internalBug = {
+        id: 77777,
+        summary: 'Internal bug',
+        status: 'NEW',
+        dependsOn: [],
+        size: 5 // Large — would be late
+      };
+
+      const bugMap = new Map();
+      bugMap.set('77777', internalBug);
+      graph.buildFromBugs(bugMap);
+      scheduler.scheduleTasks([internalBug], graph);
+
+      // Now pass an external schedule with a different task
+      const externalSchedule = [
+        {
+          bug: { id: 99999, summary: 'External bug', targetMilestone: null },
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-04-15'), // After Customer Pilot freeze
+          engineer: { id: 'eng1' },
+          effort: { days: 60 },
+          completed: false,
+          milestone: testMilestones[0] // Customer Pilot
+        }
+      ];
+
+      const risks = scheduler.checkDeadlineRisks(testMilestones, {}, externalSchedule);
+
+      // Should find risks from external schedule, not internal
+      const externalRisks = risks.filter(r => r.task.bug.id === 99999);
+      expect(externalRisks.length).toBe(1);
+
+      // Should NOT find risks from internal schedule
+      const internalRisks = risks.filter(r => r.task.bug.id === 77777);
+      expect(internalRisks.length).toBe(0);
+    });
+
     it('should not flag completed bugs from past milestones', () => {
       const doneBug = {
         id: 88889,

@@ -270,3 +270,60 @@ describe('component filter empty-state warning', () => {
     expect(app.ui.showGanttEmpty).not.toHaveBeenCalled();
   });
 });
+
+describe('rerenderWithMilestoneFilter respects active schedule type', () => {
+  it('uses optimal schedule when active', async () => {
+    const { default: App } = await import('../../js/main.js');
+    const app = new App();
+    app.milestones = [];
+    app.componentFilter = '';
+    app.milestoneFilter = '';
+
+    const greedyTask = makeTask(1, 'Firefox Enterprise', 'Client');
+    const optimalTask = makeTask(2, 'Firefox Enterprise', 'Console');
+
+    app.greedySchedule = [greedyTask];
+    app.optimalSchedule = [optimalTask];
+    app.currentScheduleType = 'optimal';
+    app.fullScheduleErrors = { milestoneMismatches: [], untriaged: [] };
+    app.fullScheduleRisks = [];
+    app.sortedBugs = [];
+    app.graph = { getDependencies: () => [] };
+    app.engineers = [];
+    app.scheduler = { checkDeadlineRisks: () => [] };
+    app.gantt.render = vi.fn();
+
+    app.rerenderWithMilestoneFilter();
+
+    // Gantt should have been rendered with the optimal task, not the greedy one
+    const renderedSchedule = app.gantt.render.mock.calls[0][0];
+    expect(renderedSchedule).toEqual([optimalTask]);
+  });
+
+  it('falls back to greedy when optimalSchedule is null', async () => {
+    const { default: App } = await import('../../js/main.js');
+    const app = new App();
+    app.milestones = [];
+    app.componentFilter = '';
+    app.milestoneFilter = '';
+
+    const greedyTask = makeTask(1, 'Firefox Enterprise', 'Client');
+
+    app.greedySchedule = [greedyTask];
+    app.optimalSchedule = null;
+    app.currentScheduleType = 'optimal';
+    app.fullScheduleErrors = { milestoneMismatches: [], untriaged: [] };
+    app.fullScheduleRisks = [];
+    app.sortedBugs = [];
+    app.graph = { getDependencies: () => [] };
+    app.engineers = [];
+    app.scheduler = { getStats: () => ({}) };
+    app.gantt.render = vi.fn();
+
+    app.rerenderWithMilestoneFilter();
+
+    // Should fall back to greedy schedule
+    const renderedSchedule = app.gantt.render.mock.calls[0][0];
+    expect(renderedSchedule).toEqual([greedyTask]);
+  });
+});
