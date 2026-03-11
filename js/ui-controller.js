@@ -377,7 +377,7 @@ export class UIController {
         <tbody>
     `;
 
-    for (const bug of bugs.slice(0, 20)) {
+    for (const bug of bugs) {
       html += `
         <tr>
           <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${bug.id}" target="_blank">${bug.id}</a></td>
@@ -387,11 +387,6 @@ export class UIController {
     }
 
     html += '</tbody></table>';
-
-    if (bugs.length > 20) {
-      html += `<p class="table-note">...and ${bugs.length - 20} more</p>`;
-    }
-
     this.elements.estimatedTable.innerHTML = html;
   }
 
@@ -426,7 +421,7 @@ export class UIController {
         <tbody>
     `;
 
-    for (const risk of risks.slice(0, 20)) {
+    for (const risk of risks) {
       const title = this.truncate(risk.task.bug.summary || '', 50);
       html += `
         <tr class="risk-${risk.type}">
@@ -476,7 +471,7 @@ export class UIController {
         <tbody>
     `;
 
-    for (const mismatch of mismatches.slice(0, 20)) {
+    for (const mismatch of mismatches) {
       const title = this.truncate(mismatch.bug.summary || '', 50);
       const depMilestone = mismatch.dependencyMilestone || '(not connected)';
       html += `
@@ -490,9 +485,6 @@ export class UIController {
     }
 
     html += '</tbody></table>';
-    if (mismatches.length > 20) {
-      html += `<p class="table-note">Showing 20 of ${mismatches.length} mismatches</p>`;
-    }
     this.elements.milestoneMismatchesTable.innerHTML = html;
   }
 
@@ -529,7 +521,7 @@ export class UIController {
         <tbody>
     `;
 
-    for (const bug of bugs.slice(0, 20)) {
+    for (const bug of bugs) {
       const title = this.truncate(bug.summary || '', 50);
       const assignee = bug.assignee && bug.assignee !== 'nobody@mozilla.org'
         ? bug.assignee.split('@')[0]
@@ -544,11 +536,6 @@ export class UIController {
     }
 
     html += '</tbody></table>';
-
-    if (bugs.length > 20) {
-      html += `<p class="table-note">...and ${bugs.length - 20} more</p>`;
-    }
-
     this.elements.untriagedTable.innerHTML = html;
   }
 
@@ -592,45 +579,33 @@ export class UIController {
 
     if (errors.missingAssignees && errors.missingAssignees.length > 0) {
       markdown += '## Missing Assignees\n\n';
-      for (const bug of errors.missingAssignees.slice(0, 50)) {
+      for (const bug of errors.missingAssignees) {
         markdown += `- Bug ${bug.id}: ${bug.summary}\n`;
-      }
-      if (errors.missingAssignees.length > 50) {
-        markdown += `\n...and ${errors.missingAssignees.length - 50} more\n`;
       }
       markdown += '\n';
     }
 
     if (errors.unknownAssignees && errors.unknownAssignees.length > 0) {
       markdown += '## Unknown Assignees (not in engineer list)\n\n';
-      for (const item of errors.unknownAssignees.slice(0, 50)) {
+      for (const item of errors.unknownAssignees) {
         const assignee = item.assignee || 'Unknown';
         markdown += `- Bug ${item.bug.id}: ${item.bug.summary} (assignee: ${assignee})\n`;
-      }
-      if (errors.unknownAssignees.length > 50) {
-        markdown += `\n...and ${errors.unknownAssignees.length - 50} more\n`;
       }
       markdown += '\n';
     }
 
     if (errors.missingSizes && errors.missingSizes.length > 0) {
       markdown += '## Missing Sizes\n\n';
-      for (const bug of errors.missingSizes.slice(0, 50)) {
+      for (const bug of errors.missingSizes) {
         markdown += `- Bug ${bug.id}: ${bug.summary}\n`;
-      }
-      if (errors.missingSizes.length > 50) {
-        markdown += `\n...and ${errors.missingSizes.length - 50} more\n`;
       }
       markdown += '\n';
     }
 
     if (errors.untriaged && errors.untriaged.length > 0) {
       markdown += '## Untriaged Bugs (no severity)\n\n';
-      for (const bug of errors.untriaged.slice(0, 50)) {
+      for (const bug of errors.untriaged) {
         markdown += `- Bug ${bug.id}: ${bug.summary}\n`;
-      }
-      if (errors.untriaged.length > 50) {
-        markdown += `\n...and ${errors.untriaged.length - 50} more\n`;
       }
       markdown += '\n';
     }
@@ -638,13 +613,10 @@ export class UIController {
     if (errors.milestoneMismatches && errors.milestoneMismatches.length > 0) {
       markdown += '## Milestone Mismatches\n\n';
       markdown += 'Bugs where Bugzilla milestone differs from dependency milestone:\n\n';
-      for (const m of errors.milestoneMismatches.slice(0, 50)) {
+      for (const m of errors.milestoneMismatches) {
         const depMs = m.dependencyMilestone || '(not connected)';
         markdown += `- Bug ${m.bug.id}: ${m.bug.summary}\n`;
         markdown += `  Bugzilla says "${m.targetMilestone}", dependencies say "${depMs}"\n`;
-      }
-      if (errors.milestoneMismatches.length > 50) {
-        markdown += `\n...and ${errors.milestoneMismatches.length - 50} more\n`;
       }
     }
 
