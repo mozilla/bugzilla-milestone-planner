@@ -424,19 +424,10 @@ export class GanttRenderer {
       }
     }
 
-    // If task has a specific milestone, check against that milestone's freeze date
+    // Check against the task's own milestone freeze date.
+    // Tasks without a milestone (orphans) are not blocking any deadline.
     if (task.milestone) {
       return task.endDate > task.milestone.freezeDate;
-    }
-
-    // Fallback: if milestone field is missing (e.g. GA worker output), check against
-    // the earliest milestone whose freeze date this task exceeds
-    if (this.milestones && this.milestones.length > 0) {
-      for (const m of this.milestones) {
-        if (m.freezeDate && task.endDate > m.freezeDate) {
-          return true;
-        }
-      }
     }
 
     return false;
