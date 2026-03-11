@@ -429,7 +429,16 @@ export class GanttRenderer {
       return task.endDate > task.milestone.freezeDate;
     }
 
-    // Tasks without a milestone are not at risk (they're not blocking any deadline)
+    // Fallback: if milestone field is missing (e.g. GA worker output), check against
+    // the earliest milestone whose freeze date this task exceeds
+    if (this.milestones && this.milestones.length > 0) {
+      for (const m of this.milestones) {
+        if (m.freezeDate && task.endDate > m.freezeDate) {
+          return true;
+        }
+      }
+    }
+
     return false;
   }
 

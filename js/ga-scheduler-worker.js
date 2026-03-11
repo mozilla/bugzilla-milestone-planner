@@ -868,7 +868,8 @@ function buildScheduleFromAssignment(assignment, tasks, engineers, dependencyMap
         endDate: addWorkingDays(today, endTime),
         engineer: assignedEngineer,
         effort,
-        completed: false
+        completed: false,
+        milestone: bugToMilestone.get(taskId) || null
       });
 
       processed.add(i);
