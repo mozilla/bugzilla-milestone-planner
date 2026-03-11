@@ -77,6 +77,8 @@ class EnterprisePlanner {
 
     // Set milestones on Gantt renderer and initialize UI
     this.gantt.milestones = this.milestones;
+    this.gantt.pastMilestones = this.pastMilestones;
+    this.gantt.milestoneNameMap = this.milestoneNameMap;
     this.ui.init(this.milestones);
     this.ui.showLoading();
 
@@ -132,9 +134,11 @@ class EnterprisePlanner {
       }));
       console.log(`Loaded ${this.milestones.length} milestones`);
 
-      // Derive milestone name map from loaded data
+      this.pastMilestones = milestonesData.pastMilestones || [];
+
+      // Derive milestone name map from loaded data (including past milestones)
       this.milestoneNameMap = { '---': null };
-      for (const m of milestonesData.milestones || []) {
+      for (const m of [...(milestonesData.milestones || []), ...this.pastMilestones]) {
         if (m.bugzillaName) {
           this.milestoneNameMap[m.bugzillaName.toLowerCase()] = m.name;
         }
@@ -224,7 +228,10 @@ class EnterprisePlanner {
       this.greedyScore = this.computeScheduleScore(schedule, this.milestones);
       const unknownAssignees = this.collectUnknownAssignees();
       this.fullScheduleErrors = { ...errors, unknownAssignees };
-      this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(this.milestones);
+      this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(this.milestones, {
+        pastMilestones: this.pastMilestones,
+        milestoneNameMap: this.milestoneNameMap
+      });
 
       // Render UI with milestone filter applied to view
       this.ui.showLoaded();
@@ -723,7 +730,10 @@ class EnterprisePlanner {
     this.greedyScore = this.computeScheduleScore(schedule, this.milestones);
     const unknownAssignees = this.collectUnknownAssignees();
     this.fullScheduleErrors = { ...this.detectErrors(), unknownAssignees };
-    this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(this.milestones);
+    this.fullScheduleRisks = this.scheduler.checkDeadlineRisks(this.milestones, {
+        pastMilestones: this.pastMilestones,
+        milestoneNameMap: this.milestoneNameMap
+      });
 
     // Render with current milestone filter
     this.rerenderWithMilestoneFilter();

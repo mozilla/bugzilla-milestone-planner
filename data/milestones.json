@@ -1,13 +1,6 @@
 {
   "milestones": [
     {
-      "name": "Foxfooding Alpha",
-      "bugId": 1980342,
-      "bugzillaName": "Foxfooding",
-      "deadline": "2026-03-02",
-      "freezeDays": 5
-    },
-    {
       "name": "Customer Pilot",
       "bugId": 2012055,
       "bugzillaName": "Pilot",
@@ -22,5 +15,12 @@
       "freezeDays": 5
     }
   ],
-  "_comment": "bugzillaName is the Bugzilla target_milestone value. freezeDays is working days before deadline for feature freeze."
+  "pastMilestones": [
+    {
+      "name": "Foxfooding Alpha",
+      "bugzillaName": "Foxfooding",
+      "deadline": "2026-03-02"
+    }
+  ],
+  "_comment": "bugzillaName is the Bugzilla target_milestone value. freezeDays is working days before deadline for feature freeze. pastMilestones are completed milestones whose Bugzilla name should still be recognized."
 }

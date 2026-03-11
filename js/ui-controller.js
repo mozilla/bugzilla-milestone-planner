@@ -434,7 +434,7 @@ export class UIController {
           <td title="${this.escapeHtml(risk.task.bug.summary || '')}">${this.escapeHtml(title)}</td>
           <td>${this.formatDate(risk.task.endDate)}</td>
           <td>${risk.milestone.name}</td>
-          <td>${risk.type === 'freeze' ? 'After Freeze' : 'After Deadline'}</td>
+          <td>${risk.type === 'overdue' ? 'Overdue' : risk.type === 'freeze' ? 'After Freeze' : 'After Deadline'}</td>
         </tr>
       `;
     }

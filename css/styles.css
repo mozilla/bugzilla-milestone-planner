@@ -627,6 +627,10 @@ header p {
   color: var(--text-muted);
 }
 
+.risk-overdue {
+  background: rgba(220, 38, 38, 0.2);
+}
+
 .risk-freeze {
   background: rgba(239, 68, 68, 0.1);
 }

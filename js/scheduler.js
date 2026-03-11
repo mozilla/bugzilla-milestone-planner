@@ -413,15 +413,44 @@ export class Scheduler {
 
   /**
    * Check for deadline risks
-   * Only flags tasks that are at risk for their own milestone
+   * Only flags tasks that are at risk for their own milestone.
+   * Also flags open tasks whose Bugzilla target_milestone matches a past milestone.
    * @param {Array<{bugId: number, deadline: Date, freezeDate: Date, name: string}>} milestoneInfo
+   * @param {Object} [options]
+   * @param {Array<{name: string, deadline: string}>} [options.pastMilestones] - Completed milestones
+   * @param {Object} [options.milestoneNameMap] - Map of lowercase Bugzilla milestone name to display name
    * @returns {Array<Object>} Tasks at risk
    */
-  checkDeadlineRisks(milestoneInfo) {
+  checkDeadlineRisks(milestoneInfo, { pastMilestones, milestoneNameMap } = {}) {
     const risks = [];
+
+    // Build set of past milestone names for quick lookup
+    const pastMilestoneByName = new Map();
+    if (pastMilestones) {
+      for (const pm of pastMilestones) {
+        pastMilestoneByName.set(pm.name, pm);
+      }
+    }
 
     for (const task of this.schedule) {
       if (task.completed) continue;
+
+      // Check if this open task belongs to a past milestone (overdue)
+      if (pastMilestoneByName.size > 0 && milestoneNameMap && task.bug.targetMilestone) {
+        const normalized = task.bug.targetMilestone.toLowerCase().trim();
+        const mappedName = milestoneNameMap[normalized];
+        const pastMs = mappedName && pastMilestoneByName.get(mappedName);
+        if (pastMs) {
+          risks.push({
+            task,
+            milestone: { name: pastMs.name, deadline: new Date(pastMs.deadline) },
+            type: 'overdue',
+            message: `Bug ${task.bug.id} is still open after ${pastMs.name} deadline (${pastMs.deadline})`
+          });
+          continue;
+        }
+      }
+
       if (!task.milestone) continue; // Tasks without milestone aren't deadline risks
 
       // Only check against the task's own milestone

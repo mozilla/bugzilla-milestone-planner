@@ -53,14 +53,13 @@ vi.mock('../../js/ui-controller.js', () => ({
 
 // Test milestones and name map (uses fake bugIds for isolation)
 const TEST_MILESTONES = [
-  { name: 'Foxfooding Alpha', bugId: 100, deadline: new Date('2026-03-02'), freezeDate: new Date('2026-02-23') },
   { name: 'Customer Pilot', bugId: 200, deadline: new Date('2026-03-30'), freezeDate: new Date('2026-03-23') },
   { name: 'MVP', bugId: 300, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') }
 ];
 const TEST_MILESTONE_NAME_MAP = {
-  'foxfooding': 'Foxfooding Alpha',
   'pilot': 'Customer Pilot',
   'mvp': 'MVP',
+  'foxfooding': 'Foxfooding Alpha',
   '---': null
 };
 
@@ -79,13 +78,13 @@ describe('findDisconnectedBugs', () => {
     app.bugs = new Map([['1', { id: 1, dependsOn: [] }]]);
 
     const milestonedBugs = [
-      { id: 999, summary: 'Disconnected bug', targetMilestone: 'Foxfooding', dependsOn: [] }
+      { id: 999, summary: 'Disconnected bug', targetMilestone: 'Pilot', dependsOn: [] }
     ];
 
     const result = app.findDisconnectedBugs(milestonedBugs);
     expect(result).toHaveLength(1);
     expect(result[0].bug.id).toBe(999);
-    expect(result[0].targetMilestone).toBe('Foxfooding Alpha');
+    expect(result[0].targetMilestone).toBe('Customer Pilot');
     expect(result[0].dependencyMilestone).toBeNull();
   });
 
@@ -181,7 +180,7 @@ describe('detectErrors integration with disconnected bugs', () => {
 
     // Simulate disconnected bugs found during fetch
     app.disconnectedBugs = [
-      { bug: { id: 999, summary: 'Disconnected' }, targetMilestone: 'Foxfooding Alpha', dependencyMilestone: null }
+      { bug: { id: 999, summary: 'Disconnected' }, targetMilestone: 'Customer Pilot', dependencyMilestone: null }
     ];
 
     const errors = app.detectErrors();

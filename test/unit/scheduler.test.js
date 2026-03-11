@@ -42,12 +42,6 @@ const testEngineers = [
 
 const testMilestones = [
   {
-    name: 'Foxfooding Alpha',
-    bugId: 1980342,
-    deadline: new Date('2025-03-02'),
-    freezeDate: new Date('2025-02-23')
-  },
-  {
     name: 'Customer Pilot',
     bugId: 2012055,
     deadline: new Date('2025-03-30'),
@@ -479,7 +473,7 @@ describe('Scheduler', () => {
     it('should detect tasks ending after feature freeze', () => {
       // Create a task that ends after the freeze date
       const lateBug = {
-        id: 1980342, // Foxfooding Alpha milestone
+        id: 2012055, // Customer Pilot milestone
         summary: 'Late task',
         status: 'NEW',
         dependsOn: [],
@@ -487,7 +481,7 @@ describe('Scheduler', () => {
       };
 
       const bugMap = new Map();
-      bugMap.set('1980342', lateBug);
+      bugMap.set('2012055', lateBug);
       graph.buildFromBugs(bugMap);
 
       const schedule = scheduler.scheduleTasks([lateBug], graph);
@@ -499,7 +493,7 @@ describe('Scheduler', () => {
 
     it('should not flag completed tasks as risks', () => {
       const completedBug = {
-        id: 1980342,
+        id: 2012055,
         summary: 'Completed milestone',
         status: 'RESOLVED',
         dependsOn: [],
@@ -507,7 +501,7 @@ describe('Scheduler', () => {
       };
 
       const bugMap = new Map();
-      bugMap.set('1980342', completedBug);
+      bugMap.set('2012055', completedBug);
       graph.buildFromBugs(bugMap);
 
       const schedule = scheduler.scheduleTasks([completedBug], graph);
@@ -519,7 +513,7 @@ describe('Scheduler', () => {
     });
 
     it('should only flag tasks against their own milestone', () => {
-      // MVP milestone bug that ends after Foxfooding Alpha freeze but before MVP freeze
+      // MVP milestone bug that ends after Customer Pilot freeze but before MVP freeze
       const mvpBug = {
         id: 1980739, // MVP milestone ID
         summary: 'MVP milestone bug',
@@ -535,11 +529,11 @@ describe('Scheduler', () => {
       scheduler.scheduleTasks([mvpBug], graph);
       const risks = scheduler.checkDeadlineRisks(testMilestones);
 
-      // MVP bug should not be flagged as risk for Foxfooding Alpha
-      const foxfoodingRisks = risks.filter(r =>
-        r.task.bug.id === 1980739 && r.milestone.name === 'Foxfooding Alpha'
+      // MVP bug should not be flagged as risk for Customer Pilot
+      const pilotRisks = risks.filter(r =>
+        r.task.bug.id === 1980739 && r.milestone.name === 'Customer Pilot'
       );
-      expect(foxfoodingRisks).toHaveLength(0);
+      expect(pilotRisks).toHaveLength(0);
     });
 
     it('should not flag tasks without a milestone', () => {
@@ -561,6 +555,68 @@ describe('Scheduler', () => {
       // Orphan bugs without milestone should not be flagged
       const orphanRisks = risks.filter(r => r.task.bug.id === 99999);
       expect(orphanRisks).toHaveLength(0);
+    });
+
+    it('should flag open bugs from past milestones as overdue', () => {
+      const overdueBug = {
+        id: 88888,
+        summary: 'Should have been done for Foxfooding',
+        status: 'NEW',
+        dependsOn: [],
+        size: 1,
+        targetMilestone: 'Foxfooding'
+      };
+
+      const bugMap = new Map();
+      bugMap.set('88888', overdueBug);
+      graph.buildFromBugs(bugMap);
+
+      scheduler.scheduleTasks([overdueBug], graph);
+
+      const pastMilestones = [
+        { name: 'Foxfooding Alpha', bugzillaName: 'Foxfooding', deadline: '2025-03-02' }
+      ];
+      const milestoneNameMap = { 'foxfooding': 'Foxfooding Alpha' };
+
+      const risks = scheduler.checkDeadlineRisks(testMilestones, {
+        pastMilestones,
+        milestoneNameMap
+      });
+
+      const overdueRisks = risks.filter(r => r.task.bug.id === 88888);
+      expect(overdueRisks).toHaveLength(1);
+      expect(overdueRisks[0].type).toBe('overdue');
+      expect(overdueRisks[0].milestone.name).toBe('Foxfooding Alpha');
+    });
+
+    it('should not flag completed bugs from past milestones', () => {
+      const doneBug = {
+        id: 88889,
+        summary: 'Done for Foxfooding',
+        status: 'RESOLVED',
+        dependsOn: [],
+        size: 1,
+        targetMilestone: 'Foxfooding'
+      };
+
+      const bugMap = new Map();
+      bugMap.set('88889', doneBug);
+      graph.buildFromBugs(bugMap);
+
+      scheduler.scheduleTasks([doneBug], graph);
+
+      const pastMilestones = [
+        { name: 'Foxfooding Alpha', bugzillaName: 'Foxfooding', deadline: '2025-03-02' }
+      ];
+      const milestoneNameMap = { 'foxfooding': 'Foxfooding Alpha' };
+
+      const risks = scheduler.checkDeadlineRisks(testMilestones, {
+        pastMilestones,
+        milestoneNameMap
+      });
+
+      const overdueRisks = risks.filter(r => r.task.bug.id === 88889);
+      expect(overdueRisks).toHaveLength(0);
     });
   });
 

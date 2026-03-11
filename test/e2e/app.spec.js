@@ -40,7 +40,7 @@ test.describe('Enterprise Project Planner', () => {
 
       // Should have 3 milestone items
       const milestoneItems = milestonesList.locator('.milestone-item');
-      await expect(milestoneItems).toHaveCount(3);
+      await expect(milestoneItems).toHaveCount(2);
     });
   });
 
@@ -78,10 +78,10 @@ test.describe('Enterprise Project Planner', () => {
       await expect(loadedPhase).toBeVisible({ timeout: 60000 });
 
       const milestoneCards = page.locator('.milestone-card');
-      await expect(milestoneCards).toHaveCount(3);
+      await expect(milestoneCards).toHaveCount(2);
 
       // Check milestone names (may include status icons like ✓)
-      await expect(page.locator('.milestone-card h4').first()).toContainText('Foxfooding Alpha');
+      await expect(page.locator('.milestone-card h4').first()).toContainText('Customer Pilot');
     });
 
     test('should display legend', async ({ page }) => {
@@ -139,9 +139,9 @@ test.describe('Enterprise Project Planner', () => {
 
       const milestoneFilter = page.locator('#milestone-filter');
 
-      // Filter by Foxfooding
-      await milestoneFilter.selectOption('1980342');
-      await expect(milestoneFilter).toHaveValue('1980342');
+      // Filter by Customer Pilot
+      await milestoneFilter.selectOption('2012055');
+      await expect(milestoneFilter).toHaveValue('2012055');
 
       // Reset to all
       await milestoneFilter.selectOption('');

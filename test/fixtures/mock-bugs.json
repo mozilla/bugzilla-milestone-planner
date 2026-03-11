@@ -2,24 +2,12 @@
   "description": "Mock bug data for testing - deterministic set with known graph structure",
   "bugs": [
     {
-      "id": 1980342,
-      "summary": "Foxfooding Alpha Milestone",
-      "status": "NEW",
-      "resolution": null,
-      "assigned_to": "gcp@example.com",
-      "depends_on": [1000001, 1000002, 1000003],
-      "blocks": [],
-      "whiteboard": "[size=1]",
-      "component": "Enterprise",
-      "product": "Firefox"
-    },
-    {
       "id": 2012055,
       "summary": "Customer Pilot Milestone",
       "status": "NEW",
       "resolution": null,
       "assigned_to": "alissy@example.com",
-      "depends_on": [1000004, 1000005],
+      "depends_on": [1000001, 1000002, 1000003, 1000004, 1000005],
       "blocks": [],
       "whiteboard": "[size=1]",
       "component": "Enterprise",
@@ -31,7 +19,7 @@
       "status": "NEW",
       "resolution": null,
       "assigned_to": "janika@example.com",
-      "depends_on": [1980342, 2012055, 1000006],
+      "depends_on": [2012055, 1000006],
       "blocks": [],
       "whiteboard": "[size=1]",
       "component": "Enterprise",
@@ -44,7 +32,7 @@
       "resolution": null,
       "assigned_to": "janika@example.com",
       "depends_on": [1000007],
-      "blocks": [1980342],
+      "blocks": [2012055],
       "whiteboard": "[size=3]",
       "component": "Authentication",
       "product": "Firefox"
@@ -56,7 +44,7 @@
       "resolution": "FIXED",
       "assigned_to": "jonathan@example.com",
       "depends_on": [],
-      "blocks": [1980342],
+      "blocks": [2012055],
       "whiteboard": "[size=2]",
       "component": "Frontend",
       "product": "Firefox"
@@ -68,7 +56,7 @@
       "resolution": null,
       "assigned_to": "alissy@example.com",
       "depends_on": [1000007],
-      "blocks": [1980342],
+      "blocks": [2012055],
       "whiteboard": "[size=4]",
       "component": "Backend Rust",
       "product": "Firefox"
@@ -199,7 +187,7 @@
     }
   ],
   "_test_expectations": {
-    "total_normal_bugs": 13,
+    "total_normal_bugs": 12,
     "completed_bugs": 2,
     "bugs_with_missing_size": 1,
     "bugs_with_missing_assignee": 2,

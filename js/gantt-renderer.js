@@ -206,6 +206,8 @@ export class GanttRenderer {
   constructor(containerId, milestones = []) {
     this.containerId = containerId;
     this.milestones = milestones;
+    this.pastMilestones = [];
+    this.milestoneNameMap = {};
     this.gantt = null;
     this.tasks = [];
     this.viewMode = 'Week';
@@ -407,10 +409,20 @@ export class GanttRenderer {
 
   /**
    * Check if task is at risk for its milestone
-   * Only marks at-risk if task ends after its own milestone's freeze date
+   * Marks at-risk if task ends after its own milestone's freeze date,
+   * or if the task belongs to a past milestone and is still open.
    */
   isAtRisk(task) {
     if (!task.endDate) return false;
+
+    // Check if this open task belongs to a past (completed) milestone
+    if (this.pastMilestones && this.milestoneNameMap && task.bug.targetMilestone) {
+      const normalized = task.bug.targetMilestone.toLowerCase().trim();
+      const mappedName = this.milestoneNameMap[normalized];
+      if (mappedName && this.pastMilestones.some(pm => pm.name === mappedName)) {
+        return true;
+      }
+    }
 
     // If task has a specific milestone, check against that milestone's freeze date
     if (task.milestone) {
