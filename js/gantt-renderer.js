@@ -424,22 +424,11 @@ export class GanttRenderer {
       }
     }
 
-    // Check against the task's own milestone freeze date
+    // Check against the task's own milestone freeze date.
+    // task.milestone is resolved upstream (dependency tree + targetMilestone),
+    // so this is the single source of truth.
     if (task.milestone) {
       return task.endDate > task.milestone.freezeDate;
-    }
-
-    // Task not in any dependency tree — check if Bugzilla targetMilestone
-    // maps to an active milestone whose freeze date this task exceeds
-    if (this.milestones && this.milestoneNameMap && task.bug.targetMilestone) {
-      const normalized = task.bug.targetMilestone.toLowerCase().trim();
-      const mappedName = this.milestoneNameMap[normalized];
-      if (mappedName) {
-        const m = this.milestones.find(ms => ms.name === mappedName);
-        if (m && m.freezeDate && task.endDate > m.freezeDate) {
-          return true;
-        }
-      }
     }
 
     return false;

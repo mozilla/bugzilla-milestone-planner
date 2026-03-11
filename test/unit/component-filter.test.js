@@ -327,3 +327,90 @@ describe('rerenderWithMilestoneFilter respects active schedule type', () => {
     expect(renderedSchedule).toEqual([greedyTask]);
   });
 });
+
+describe('resolveDisconnectedMilestones', () => {
+  const MS = {
+    name: 'Customer Pilot',
+    bugId: 2012055,
+    deadline: new Date('2026-03-30'),
+    freezeDate: new Date('2026-03-23')
+  };
+
+  it('assigns milestone to disconnected task with matching targetMilestone', async () => {
+    const { default: App } = await import('../../js/main.js');
+    const app = new App();
+    app.milestones = [MS];
+    app.milestoneNameMap = { 'pilot': 'Customer Pilot' };
+
+    const task = makeTask(1, 'Firefox Enterprise', 'Client');
+    task.milestone = null;
+    task.bug.targetMilestone = 'Pilot';
+
+    app.resolveDisconnectedMilestones([task]);
+
+    expect(task.milestone).toBe(MS);
+  });
+
+  it('does not overwrite existing milestone from dependency tree', async () => {
+    const { default: App } = await import('../../js/main.js');
+    const app = new App();
+    const otherMS = { name: 'MVP', bugId: 1980739, deadline: new Date('2026-09-15'), freezeDate: new Date('2026-09-08') };
+    app.milestones = [MS, otherMS];
+    app.milestoneNameMap = { 'pilot': 'Customer Pilot' };
+
+    const task = makeTask(1, 'Firefox Enterprise', 'Client');
+    task.milestone = otherMS;
+    task.bug.targetMilestone = 'Pilot';
+
+    app.resolveDisconnectedMilestones([task]);
+
+    // Should keep the dependency-tree milestone, not override
+    expect(task.milestone).toBe(otherMS);
+  });
+
+  it('leaves task alone when targetMilestone does not match any active milestone', async () => {
+    const { default: App } = await import('../../js/main.js');
+    const app = new App();
+    app.milestones = [MS];
+    app.milestoneNameMap = { 'pilot': 'Customer Pilot' };
+
+    const task = makeTask(1, 'Firefox Enterprise', 'Client');
+    task.milestone = null;
+    task.bug.targetMilestone = 'Unknown Milestone';
+
+    app.resolveDisconnectedMilestones([task]);
+
+    expect(task.milestone).toBeNull();
+  });
+
+  it('leaves task alone when targetMilestone is not set', async () => {
+    const { default: App } = await import('../../js/main.js');
+    const app = new App();
+    app.milestones = [MS];
+    app.milestoneNameMap = { 'pilot': 'Customer Pilot' };
+
+    const task = makeTask(1, 'Firefox Enterprise', 'Client');
+    task.milestone = null;
+    task.bug.targetMilestone = undefined;
+
+    app.resolveDisconnectedMilestones([task]);
+
+    expect(task.milestone).toBeNull();
+  });
+
+  it('skips completed tasks', async () => {
+    const { default: App } = await import('../../js/main.js');
+    const app = new App();
+    app.milestones = [MS];
+    app.milestoneNameMap = { 'pilot': 'Customer Pilot' };
+
+    const task = makeTask(1, 'Firefox Enterprise', 'Client');
+    task.milestone = null;
+    task.completed = true;
+    task.bug.targetMilestone = 'Pilot';
+
+    app.resolveDisconnectedMilestones([task]);
+
+    expect(task.milestone).toBeNull();
+  });
+});

@@ -225,6 +225,7 @@ class EnterprisePlanner {
 
       // Store full schedule and risks
       this.greedySchedule = schedule;
+      this.resolveDisconnectedMilestones(this.greedySchedule);
       this.greedyScore = this.computeScheduleScore(schedule, this.milestones);
       const unknownAssignees = this.collectUnknownAssignees();
       this.fullScheduleErrors = { ...errors, unknownAssignees };
@@ -674,6 +675,26 @@ class EnterprisePlanner {
   }
 
   /**
+   * Fill in task.milestone for disconnected bugs using Bugzilla targetMilestone.
+   * This ensures task.milestone is the single source of truth for all downstream
+   * consumers (Gantt isAtRisk, checkDeadlineRisks, stats, etc.).
+   */
+  resolveDisconnectedMilestones(schedule) {
+    if (!schedule || !this.milestoneNameMap) return;
+    for (const task of schedule) {
+      if (task.milestone || task.completed) continue;
+      const target = task.bug && task.bug.targetMilestone;
+      if (!target) continue;
+      const mappedName = this.milestoneNameMap[target.toLowerCase().trim()];
+      if (!mappedName) continue;
+      const ms = this.milestones.find(m => m.name === mappedName);
+      if (ms) {
+        task.milestone = ms;
+      }
+    }
+  }
+
+  /**
    * Compute stats from all bugs (not just filtered/scheduled)
    * Total and Completed include resolved bugs, Open is what's being scheduled
    */
@@ -763,6 +784,7 @@ class EnterprisePlanner {
     this.scheduler = new Scheduler(this.engineers, this.milestones, this.componentTeamMap);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
     this.greedySchedule = schedule;
+    this.resolveDisconnectedMilestones(this.greedySchedule);
     this.greedyScore = this.computeScheduleScore(schedule, this.milestones);
     const unknownAssignees = this.collectUnknownAssignees();
     this.fullScheduleErrors = { ...this.detectErrors(), unknownAssignees };
@@ -1352,6 +1374,7 @@ class EnterprisePlanner {
         startDate: task.startDate ? new Date(task.startDate) : null,
         endDate: task.endDate ? new Date(task.endDate) : null
       }));
+      this.resolveDisconnectedMilestones(this.optimalSchedule);
       const exhaustiveElapsedSec = this.exhaustiveStartTime
         ? (Date.now() - this.exhaustiveStartTime) / 1000
         : elapsedSec;
@@ -1388,6 +1411,7 @@ class EnterprisePlanner {
       startDate: task.startDate ? new Date(task.startDate) : null,
       endDate: task.endDate ? new Date(task.endDate) : null
     }));
+    this.resolveDisconnectedMilestones(this.optimalSchedule);
     this.ui.addOptimizationLogEntry(
       `Completed in ${elapsedSec.toFixed(1)}s. Best found at ${convergencePct}% of iterations.`,
       'status'
