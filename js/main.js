@@ -293,7 +293,7 @@ class EnterprisePlanner {
     for (const [bugId, bug] of this.bugs) {
       for (const milestone of sortedMilestones) {
         const milestoneId = String(milestone.bugId);
-        if (bugId === milestoneId || this.isDependencyOf(bugId, milestoneId)) {
+        if (bugId === milestoneId || this.graph.isTransitiveDependency(bugId, milestoneId)) {
           bugToDependencyMilestone.set(bugId, milestone);
           break;
         }
@@ -362,31 +362,6 @@ class EnterprisePlanner {
   }
 
   /**
-   * Check if bugId is a (transitive) dependency of targetId
-   */
-  isDependencyOf(bugId, targetId) {
-    const visited = new Set();
-    const queue = [targetId];
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (visited.has(current)) continue;
-      visited.add(current);
-
-      const bug = this.bugs.get(current);
-      if (!bug) continue;
-
-      for (const depId of bug.dependsOn || []) {
-        if (String(depId) === String(bugId)) return true;
-        if (!visited.has(String(depId))) {
-          queue.push(String(depId));
-        }
-      }
-    }
-    return false;
-  }
-
-  /**
    * Render all results
    */
   renderResults(schedule, errors, risks, activeMilestones = this.milestones) {
@@ -442,7 +417,7 @@ class EnterprisePlanner {
       }
 
       // Also check all dependencies - milestone completes when last dependency completes
-      const deps = this.getAllDependencies(bugId);
+      const deps = this.graph.getTransitiveDependencies(bugId);
       let latestEnd = completions.get(bugId) || null;
 
       for (const depId of deps) {
@@ -458,30 +433,6 @@ class EnterprisePlanner {
     }
 
     return completions;
-  }
-
-  /**
-   * Get all dependencies (transitive) for a bug
-   */
-  getAllDependencies(bugId) {
-    const visited = new Set();
-    const queue = [bugId];
-
-    while (queue.length > 0) {
-      const id = queue.shift();
-      if (visited.has(id)) continue;
-      visited.add(id);
-
-      const deps = this.graph.getDependencies(id);
-      for (const depId of deps) {
-        if (!visited.has(depId)) {
-          queue.push(depId);
-        }
-      }
-    }
-
-    visited.delete(bugId); // Don't include the bug itself
-    return visited;
   }
 
   /**
@@ -516,7 +467,7 @@ class EnterprisePlanner {
     for (const milestone of this.milestones) {
       const bug = this.bugs.get(String(milestone.bugId));
       if (bug) {
-        const depCount = this.countDependencies(milestone.bugId);
+        const depCount = this.graph.getTransitiveDependencies(String(milestone.bugId)).size;
         this.ui.updateMilestoneStatus(milestone.bugId, 'complete', depCount);
       }
     }
@@ -527,31 +478,6 @@ class EnterprisePlanner {
    */
   onBugDiscovered(bug) {
     this.ui.addRecentBug(bug);
-  }
-
-  /**
-   * Count dependencies for a milestone
-   */
-  countDependencies(bugId) {
-    const visited = new Set();
-    const queue = [String(bugId)];
-
-    while (queue.length > 0) {
-      const id = queue.shift();
-      if (visited.has(id)) continue;
-      visited.add(id);
-
-      const bug = this.bugs.get(id);
-      if (bug && bug.dependsOn) {
-        for (const depId of bug.dependsOn) {
-          if (!visited.has(String(depId))) {
-            queue.push(String(depId));
-          }
-        }
-      }
-    }
-
-    return visited.size - 1; // Exclude the milestone itself
   }
 
   /**
@@ -630,7 +556,7 @@ class EnterprisePlanner {
    */
   filterBugsByMilestone(bugs) {
     if (!this.milestoneFilter) return bugs;
-    const deps = this.getAllDependencies(this.milestoneFilter);
+    const deps = this.graph.getTransitiveDependencies(this.milestoneFilter);
     deps.add(this.milestoneFilter);
     return bugs.filter(bug => deps.has(String(bug.id)));
   }
@@ -840,7 +766,7 @@ class EnterprisePlanner {
    */
   filterScheduleByMilestone(schedule) {
     if (!this.milestoneFilter || !schedule) return schedule;
-    const deps = this.getAllDependencies(this.milestoneFilter);
+    const deps = this.graph.getTransitiveDependencies(this.milestoneFilter);
     deps.add(this.milestoneFilter);
     return schedule.filter(task => deps.has(String(task.bug.id)));
   }

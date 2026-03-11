@@ -341,7 +341,7 @@ describe('optimal scheduler integration (main)', () => {
     app.fullScheduleErrors = { milestoneMismatches: [], untriaged: [] };
     app.fullScheduleRisks = [];
     app.sortedBugs = [];
-    app.graph = { getDependencies: () => [] };
+    app.graph = { getDependencies: () => [], getTransitiveDependencies: () => new Set() };
     app.engineers = [];
     app.scheduler = { getStats: () => ({}) };
     app.startOptimalScheduler = vi.fn();

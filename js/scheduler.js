@@ -210,7 +210,7 @@ export class Scheduler {
         const milestoneId = String(milestone.bugId);
 
         // Check if this bug is the milestone itself or a dependency of the milestone
-        if (bugId === milestoneId || this.isDependencyOf(bugId, milestoneId, graph)) {
+        if (bugId === milestoneId || graph.isTransitiveDependency(bugId, milestoneId)) {
           bugToMilestone.get(milestoneId).add(bugId);
           break; // Assign to earliest milestone only
         }
@@ -218,30 +218,6 @@ export class Scheduler {
     }
 
     return bugToMilestone;
-  }
-
-  /**
-   * Check if bugId is a (transitive) dependency of targetId
-   */
-  isDependencyOf(bugId, targetId, graph) {
-    const visited = new Set();
-    const queue = [targetId];
-
-    while (queue.length > 0) {
-      const currentId = queue.shift();
-      if (visited.has(currentId)) continue;
-      visited.add(currentId);
-
-      const deps = graph.getDependencies(currentId);
-      for (const depId of deps) {
-        if (depId === bugId) return true;
-        if (!visited.has(depId)) {
-          queue.push(depId);
-        }
-      }
-    }
-
-    return false;
   }
 
   /**

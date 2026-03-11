@@ -11,6 +11,22 @@ export class DependencyGraph {
   }
 
   /**
+   * Create a lightweight DependencyGraph from a plain adjacency list.
+   * Only populates edges (no nodes or reverseEdges), sufficient for
+   * transitive traversal methods used in the GA worker.
+   * @param {Map<string, string[]>|Object} adjacency - Map or object of id -> dependency IDs
+   * @returns {DependencyGraph}
+   */
+  static fromAdjacencyList(adjacency) {
+    const graph = new DependencyGraph();
+    const entries = adjacency instanceof Map ? adjacency : Object.entries(adjacency);
+    for (const [id, deps] of entries) {
+      graph.edges.set(String(id), new Set((deps || []).map(String)));
+    }
+    return graph;
+  }
+
+  /**
    * Add a bug node to the graph
    * @param {Object} bug - Bug object with id, dependsOn, etc.
    */
@@ -338,6 +354,64 @@ export class DependencyGraph {
     }
 
     return path;
+  }
+
+  /**
+   * Get all transitive dependencies of a bug (BFS).
+   * @param {string} id - Bug ID
+   * @returns {Set<string>} Set of all reachable dependency IDs (excluding id itself)
+   */
+  getTransitiveDependencies(id) {
+    const startId = String(id);
+    const visited = new Set();
+    const queue = [startId];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (visited.has(current)) continue;
+      visited.add(current);
+
+      const deps = this.edges.get(current);
+      if (deps) {
+        for (const depId of deps) {
+          if (!visited.has(depId)) {
+            queue.push(depId);
+          }
+        }
+      }
+    }
+
+    visited.delete(startId);
+    return visited;
+  }
+
+  /**
+   * Check if bugId is a transitive dependency of targetId.
+   * @param {string} bugId - The potential dependency
+   * @param {string} targetId - The bug to search from
+   * @returns {boolean}
+   */
+  isTransitiveDependency(bugId, targetId) {
+    const needle = String(bugId);
+    const visited = new Set();
+    const queue = [String(targetId)];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (visited.has(current)) continue;
+      visited.add(current);
+
+      const deps = this.edges.get(current);
+      if (!deps) continue;
+      for (const depId of deps) {
+        if (depId === needle) return true;
+        if (!visited.has(depId)) {
+          queue.push(depId);
+        }
+      }
+    }
+
+    return false;
   }
 
   /**

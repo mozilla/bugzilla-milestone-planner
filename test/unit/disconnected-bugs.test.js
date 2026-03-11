@@ -174,7 +174,8 @@ describe('detectErrors integration with disconnected bugs', () => {
       findDuplicateSummaries: () => [],
       findMissingAssignees: () => [],
       findMissingSizes: () => [],
-      findUntriagedBugs: () => []
+      findUntriagedBugs: () => [],
+      isTransitiveDependency: () => false
     };
     app.bugs = new Map([['1', { id: 1, targetMilestone: '---', dependsOn: [] }]]);
 
@@ -200,7 +201,8 @@ describe('detectErrors integration with disconnected bugs', () => {
       findDuplicateSummaries: () => [],
       findMissingAssignees: () => [],
       findMissingSizes: () => [],
-      findUntriagedBugs: () => []
+      findUntriagedBugs: () => [],
+      isTransitiveDependency: () => false
     };
     app.bugs = new Map();
 

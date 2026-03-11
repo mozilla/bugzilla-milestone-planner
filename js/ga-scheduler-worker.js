@@ -12,6 +12,7 @@ import {
 } from './scheduler-core.js';
 
 import { countWorkingDays } from './optimizer-utils.js';
+import { DependencyGraph } from './dependency-graph.js';
 
 let activeMilestones = [];
 
@@ -37,6 +38,7 @@ let workerId = 0;
 let cachedBugToMilestone = null;
 let cachedTaskIdIndex = null;
 let cachedMilestoneDeps = null;
+let depGraph = null;
 
 // Component-to-engineer-indices mapping (null = all non-external)
 let componentEngineerIndices = null;
@@ -447,6 +449,9 @@ function getNonExternalIndices(engineers) {
  * These don't change between iterations since they only depend on the dependency graph.
  */
 function precomputeCaches(tasks, dependencyMap) {
+  // Build a lightweight DependencyGraph for transitive traversal
+  depGraph = DependencyGraph.fromAdjacencyList(dependencyMap);
+
   const sortedMilestones = [...activeMilestones].sort((a, b) =>
     a.deadline.getTime() - b.deadline.getTime()
   );
@@ -454,7 +459,7 @@ function precomputeCaches(tasks, dependencyMap) {
   // Precompute transitive dependencies for each milestone
   cachedMilestoneDeps = new Map();
   for (const m of sortedMilestones) {
-    cachedMilestoneDeps.set(String(m.bugId), getAllDependencies(m.bugId, dependencyMap));
+    cachedMilestoneDeps.set(String(m.bugId), depGraph.getTransitiveDependencies(m.bugId));
   }
 
   // Assign bugs to milestones using precomputed deps (O(1) lookups)
@@ -483,6 +488,7 @@ function assignBugsToMilestones(tasks, dependencyMap) {
     return cachedBugToMilestone;
   }
 
+  const graph = depGraph || DependencyGraph.fromAdjacencyList(dependencyMap);
   const bugToMilestone = new Map();
   const sortedMilestones = [...activeMilestones].sort((a, b) =>
     a.deadline.getTime() - b.deadline.getTime()
@@ -492,7 +498,7 @@ function assignBugsToMilestones(tasks, dependencyMap) {
     const bugId = String(task.id);
     for (const milestone of sortedMilestones) {
       const milestoneId = String(milestone.bugId);
-      if (bugId === milestoneId || isDependencyOf(bugId, milestoneId, dependencyMap)) {
+      if (bugId === milestoneId || graph.isTransitiveDependency(bugId, milestoneId)) {
         bugToMilestone.set(bugId, milestone);
         break;
       }
@@ -502,51 +508,10 @@ function assignBugsToMilestones(tasks, dependencyMap) {
   return bugToMilestone;
 }
 
-function isDependencyOf(bugId, targetId, dependencyMap) {
-  const visited = new Set();
-  const queue = [targetId];
-
-  while (queue.length > 0) {
-    const currentId = queue.shift();
-    if (visited.has(currentId)) continue;
-    visited.add(currentId);
-
-    const deps = dependencyMap.get(currentId) || [];
-    for (const depId of deps) {
-      if (String(depId) === bugId) return true;
-      if (!visited.has(String(depId))) {
-        queue.push(String(depId));
-      }
-    }
-  }
-
-  return false;
-}
-
-function getAllDependencies(bugId, dependencyMap) {
-  const visited = new Set();
-  const queue = [String(bugId)];
-
-  while (queue.length > 0) {
-    const id = queue.shift();
-    if (visited.has(id)) continue;
-    visited.add(id);
-
-    const deps = dependencyMap.get(id) || [];
-    for (const depId of deps) {
-      if (!visited.has(String(depId))) {
-        queue.push(String(depId));
-      }
-    }
-  }
-
-  visited.delete(String(bugId));
-  return visited;
-}
-
 function getMilestoneCompletionDays(milestoneBugId, taskEndTimes, dependencyMap) {
-  // Use cached deps if available, otherwise compute
-  const deps = cachedMilestoneDeps?.get(String(milestoneBugId)) || getAllDependencies(milestoneBugId, dependencyMap);
+  // Use cached deps if available, otherwise compute from graph
+  const graph = depGraph || DependencyGraph.fromAdjacencyList(dependencyMap);
+  const deps = cachedMilestoneDeps?.get(String(milestoneBugId)) || graph.getTransitiveDependencies(milestoneBugId);
   let maxEndDays = taskEndTimes[String(milestoneBugId)] || 0;
 
   for (const depId of deps) {
