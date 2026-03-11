@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import engineersData from '../../data/engineers.json' assert { type: 'json' };
 import {
   normalizeAssigneeHandle,
-  deriveInitialsFromHandle,
   buildEngineerHandleMap,
   getAssigneeDisplay,
   resolveEngineerDisplay
@@ -13,12 +12,6 @@ describe('gantt renderer assignee display helpers', () => {
     expect(normalizeAssigneeHandle('jneuberger@mozilla.com')).toBe('jneuberger');
     expect(normalizeAssigneeHandle('lissyx+mozillians@lissyx.dyndns.org')).toBe('lissyx');
     expect(normalizeAssigneeHandle('john.smith@mozilla.com')).toBe('johnsmith');
-  });
-
-  it('derives initials from common Mozilla-style handles', () => {
-    expect(deriveInitialsFromHandle('jneuberger')).toBe('JN');
-    expect(deriveInitialsFromHandle('gpascutto')).toBe('GP');
-    expect(deriveInitialsFromHandle('dtownsend')).toBe('DT');
   });
 
   it('maps known assignees to engineer display names', () => {

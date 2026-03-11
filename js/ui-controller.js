@@ -355,7 +355,7 @@ export class UIController {
    * Shared table renderer. Handles card show/hide, Bugzilla link, empty state,
    * and table HTML generation for all data tables.
    */
-  _renderTable(tableEl, { card, link, items, bugIds, columns, emptyMessage, rowClass }) {
+  _renderTable(tableEl, { card, cardDisplay = 'block', link, items, bugIds, columns, emptyMessage, rowClass }) {
     if (!tableEl) return;
 
     this.setBugzillaLink(link, bugIds);
@@ -366,7 +366,7 @@ export class UIController {
       return;
     }
 
-    if (card) card.style.display = card === this.elements.untriagedCard ? '' : 'block';
+    if (card) card.style.display = cardDisplay;
 
     let html = '<table><thead><tr>';
     for (const col of columns) html += `<th>${col.header}</th>`;
@@ -439,6 +439,7 @@ export class UIController {
   renderUntriagedTable(bugs) {
     this._renderTable(this.elements.untriagedTable, {
       card: this.elements.untriagedCard,
+      cardDisplay: '',
       link: this.elements.untriagedLink,
       items: bugs,
       bugIds: (bugs || []).map(b => b?.id).filter(Boolean),

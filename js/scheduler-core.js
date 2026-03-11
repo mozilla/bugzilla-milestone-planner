@@ -86,6 +86,27 @@ export function calculateEffort(bug, engineer) {
 }
 
 /**
+ * Check if a date is an available working day for the given engineer.
+ * Returns false for weekends and engineer unavailability periods.
+ */
+export function isAvailableDay(date, engineer = null) {
+  const dayOfWeek = date.getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) return false;
+
+  if (engineer && engineer.unavailability) {
+    const dateStr = formatLocalDate(date);
+    const isUnavailable = engineer.unavailability.some(period => {
+      const start = formatLocalDate(new Date(period.start));
+      const end = formatLocalDate(new Date(period.end));
+      return dateStr >= start && dateStr <= end;
+    });
+    if (isUnavailable) return false;
+  }
+
+  return true;
+}
+
+/**
  * Add working days to a date (skip weekends)
  * @param {Date} startDate - Starting date
  * @param {number} days - Number of working days to add
@@ -101,22 +122,7 @@ export function addWorkingDays(startDate, days, engineer = null) {
 
   while (remaining > 0) {
     result.setDate(result.getDate() + step);
-
-    // Skip weekends
-    const dayOfWeek = result.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
-
-    // Skip engineer unavailability periods
-    if (engineer && engineer.unavailability) {
-      const dateStr = formatLocalDate(result);
-      const isUnavailable = engineer.unavailability.some(period => {
-        const start = formatLocalDate(new Date(period.start));
-        const end = formatLocalDate(new Date(period.end));
-        return dateStr >= start && dateStr <= end;
-      });
-      if (isUnavailable) continue;
-    }
-
+    if (!isAvailableDay(result, engineer)) continue;
     remaining--;
   }
 
@@ -128,28 +134,10 @@ export function addWorkingDays(startDate, days, engineer = null) {
  */
 export function normalizeStartDate(startDate, engineer = null) {
   const result = new Date(startDate);
-  while (true) {
-    const dayOfWeek = result.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      result.setDate(result.getDate() + 1);
-      continue;
-    }
-
-    if (engineer && engineer.unavailability) {
-      const dateStr = formatLocalDate(result);
-      const isUnavailable = engineer.unavailability.some(period => {
-        const start = formatLocalDate(new Date(period.start));
-        const end = formatLocalDate(new Date(period.end));
-        return dateStr >= start && dateStr <= end;
-      });
-      if (isUnavailable) {
-        result.setDate(result.getDate() + 1);
-        continue;
-      }
-    }
-
-    return result;
+  while (!isAvailableDay(result, engineer)) {
+    result.setDate(result.getDate() + 1);
   }
+  return result;
 }
 
 /**

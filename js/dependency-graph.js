@@ -3,6 +3,8 @@
  * DAG construction, topological sort using Kahn's algorithm, and cycle detection
  */
 
+import { isResolved } from './scheduler-core.js';
+
 export class DependencyGraph {
   constructor() {
     this.nodes = new Map(); // id -> bug data
@@ -240,8 +242,7 @@ export class DependencyGraph {
 
     if (excludeMeta && bug.isMeta) return false;
     if (excludeResolved) {
-      const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
-      if (resolvedStatuses.includes(bug.status)) return false;
+      if (isResolved(bug)) return false;
     }
     return true;
   }

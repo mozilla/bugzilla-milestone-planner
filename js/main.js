@@ -13,7 +13,7 @@ import {
   computeScoreFromCompletions,
   isBetterScore
 } from './optimizer-utils.js';
-import { addWorkingDays } from './scheduler-core.js';
+import { addWorkingDays, isResolved } from './scheduler-core.js';
 import { debugLog } from './utils.js';
 
 // GA configuration (tuned for 2 workers via benchmark)
@@ -520,12 +520,11 @@ class EnterprisePlanner {
    * Filter out resolved/fixed bugs
    */
   filterResolvedBugs(bugs) {
-    const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
     return bugs.filter(bug => {
       // Always include milestone bugs (they represent the milestone itself)
       if (this.milestones.some(m => String(m.bugId) === String(bug.id))) return true;
       // Exclude resolved bugs
-      return !resolvedStatuses.includes(bug.status);
+      return !isResolved(bug);
     });
   }
 
@@ -628,8 +627,6 @@ class EnterprisePlanner {
    * Total and Completed include resolved bugs, Open is what's being scheduled
    */
   computeStats() {
-    const resolvedStatuses = ['RESOLVED', 'VERIFIED', 'CLOSED'];
-
     // Get all bugs with component, severity, and milestone filters (but NOT resolved filter)
     let allBugs = this.filterBugsBySeverity(this.sortedBugs);
     allBugs = this.filterBugsByMilestone(allBugs);
@@ -639,8 +636,8 @@ class EnterprisePlanner {
     allBugs = allBugs.filter(bug => !milestoneBugIds.has(String(bug.id)));
 
     // Split into completed vs open
-    const completedBugs = allBugs.filter(bug => resolvedStatuses.includes(bug.status));
-    const openBugs = allBugs.filter(bug => !resolvedStatuses.includes(bug.status));
+    const completedBugs = allBugs.filter(bug => isResolved(bug));
+    const openBugs = allBugs.filter(bug => !isResolved(bug));
 
     // Get estimated size bugs from the current schedule (filtered by milestone)
     let schedule = this.filterScheduleByMilestone(this.getCurrentSchedule());

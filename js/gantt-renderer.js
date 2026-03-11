@@ -37,22 +37,6 @@ export function deriveHandleFromName(name) {
   return handle || null;
 }
 
-export function deriveInitialsFromHandle(handle) {
-  if (!handle) return '?';
-  const parts = handle.split(/[^a-zA-Z]+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
-  }
-  if (parts.length === 1) {
-    const token = parts[0];
-    if (token.length >= 2) {
-      return `${token.charAt(0)}${token.charAt(1)}`.toUpperCase();
-    }
-    return token.charAt(0).toUpperCase();
-  }
-  return '?';
-}
-
 export function buildEngineerHandleMap(engineers) {
   const map = new Map();
   const emailMap = new Map();
