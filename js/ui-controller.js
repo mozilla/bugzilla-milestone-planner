@@ -350,193 +350,102 @@ export class UIController {
   }
 
   /**
-   * Render estimated sizes table
-   * @param {Array<Object>} bugs - Bugs with estimated sizes
+   * Shared table renderer. Handles card show/hide, Bugzilla link, empty state,
+   * and table HTML generation for all data tables.
    */
+  _renderTable(tableEl, { card, link, items, bugIds, columns, emptyMessage, rowClass }) {
+    if (!tableEl) return;
+
+    this.setBugzillaLink(link, bugIds);
+
+    if (!items || items.length === 0) {
+      if (card) card.style.display = 'none';
+      tableEl.innerHTML = emptyMessage ? `<p>${emptyMessage}</p>` : '';
+      return;
+    }
+
+    if (card) card.style.display = card === this.elements.untriagedCard ? '' : 'block';
+
+    let html = '<table><thead><tr>';
+    for (const col of columns) html += `<th>${col.header}</th>`;
+    html += '</tr></thead><tbody>';
+
+    for (const item of items) {
+      const cls = rowClass ? rowClass(item) : '';
+      html += cls ? `<tr class="${cls}">` : '<tr>';
+      for (const col of columns) html += `<td>${col.render(item)}</td>`;
+      html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+    tableEl.innerHTML = html;
+  }
+
+  _bugLink(id) {
+    return `<a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${id}" target="_blank">${id}</a>`;
+  }
+
+  _titleCell(summary, maxLen = 50) {
+    return `<span title="${this.escapeHtml(summary || '')}">${this.escapeHtml(this.truncate(summary || '', maxLen))}</span>`;
+  }
+
   renderEstimatedTable(bugs) {
-    if (!this.elements.estimatedTable) return;
-
-    this.setBugzillaLink(
-      this.elements.missingSizesLink,
-      (bugs || []).map(b => b?.id).filter(Boolean)
-    );
-
-    if (bugs.length === 0) {
-      this.elements.estimatedTable.innerHTML = '<p>No estimated sizes</p>';
-      return;
-    }
-
-    let html = `
-      <table>
-        <thead>
-          <tr>
-            <th>Bug ID</th>
-            <th>Summary</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    for (const bug of bugs) {
-      html += `
-        <tr>
-          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${bug.id}" target="_blank">${bug.id}</a></td>
-          <td title="${this.escapeHtml(bug.summary)}">${this.escapeHtml(this.truncate(bug.summary, 60))}</td>
-        </tr>
-      `;
-    }
-
-    html += '</tbody></table>';
-    this.elements.estimatedTable.innerHTML = html;
+    this._renderTable(this.elements.estimatedTable, {
+      link: this.elements.missingSizesLink,
+      items: bugs,
+      bugIds: (bugs || []).map(b => b?.id).filter(Boolean),
+      emptyMessage: 'No estimated sizes',
+      columns: [
+        { header: 'Bug ID', render: b => this._bugLink(b.id) },
+        { header: 'Summary', render: b => this._titleCell(b.summary, 60) }
+      ]
+    });
   }
 
-  /**
-   * Render deadline risks table
-   * @param {Array<Object>} risks - Deadline risk items
-   */
   renderRisksTable(risks) {
-    if (!this.elements.risksTable) return;
-
-    this.setBugzillaLink(
-      this.elements.deadlineRisksLink,
-      (risks || []).map(risk => risk?.task?.bug?.id).filter(Boolean)
-    );
-
-    if (risks.length === 0) {
-      this.elements.risksTable.innerHTML = '<p>No deadline risks detected</p>';
-      return;
-    }
-
-    let html = `
-      <table>
-        <thead>
-          <tr>
-            <th>Bug ID</th>
-            <th>Title</th>
-            <th>End Date</th>
-            <th>Milestone</th>
-            <th>Risk Type</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    for (const risk of risks) {
-      const title = this.truncate(risk.task.bug.summary || '', 50);
-      html += `
-        <tr class="risk-${risk.type}">
-          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${risk.task.bug.id}" target="_blank">${risk.task.bug.id}</a></td>
-          <td title="${this.escapeHtml(risk.task.bug.summary || '')}">${this.escapeHtml(title)}</td>
-          <td>${this.formatDate(risk.task.endDate)}</td>
-          <td>${risk.milestone.name}</td>
-          <td>${risk.type === 'overdue' ? 'Overdue' : risk.type === 'freeze' ? 'After Freeze' : 'After Deadline'}</td>
-        </tr>
-      `;
-    }
-
-    html += '</tbody></table>';
-    this.elements.risksTable.innerHTML = html;
+    this._renderTable(this.elements.risksTable, {
+      link: this.elements.deadlineRisksLink,
+      items: risks,
+      bugIds: (risks || []).map(r => r?.task?.bug?.id).filter(Boolean),
+      emptyMessage: 'No deadline risks detected',
+      rowClass: r => `risk-${r.type}`,
+      columns: [
+        { header: 'Bug ID', render: r => this._bugLink(r.task.bug.id) },
+        { header: 'Title', render: r => this._titleCell(r.task.bug.summary) },
+        { header: 'End Date', render: r => this.formatDate(r.task.endDate) },
+        { header: 'Milestone', render: r => r.milestone.name },
+        { header: 'Risk Type', render: r => r.type === 'overdue' ? 'Overdue' : r.type === 'freeze' ? 'After Freeze' : 'After Deadline' }
+      ]
+    });
   }
 
-  /**
-   * Render milestone mismatches table
-   * @param {Array<Object>} mismatches - Bugs with milestone inconsistencies
-   */
   renderMilestoneMismatchesTable(mismatches) {
-    if (!this.elements.milestoneMismatchesTable || !this.elements.milestoneMismatchesCard) return;
-
-    // Hide the card if no mismatches
-    if (!mismatches || mismatches.length === 0) {
-      this.elements.milestoneMismatchesCard.style.display = 'none';
-      this.setBugzillaLink(this.elements.milestoneMismatchesLink, []);
-      return;
-    }
-
-    this.elements.milestoneMismatchesCard.style.display = 'block';
-    this.setBugzillaLink(
-      this.elements.milestoneMismatchesLink,
-      mismatches.map(mismatch => mismatch?.bug?.id).filter(Boolean)
-    );
-
-    let html = `
-      <table>
-        <thead>
-          <tr>
-            <th>Bug ID</th>
-            <th>Title</th>
-            <th>Bugzilla Milestone</th>
-            <th>Dependency Milestone</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    for (const mismatch of mismatches) {
-      const title = this.truncate(mismatch.bug.summary || '', 50);
-      const depMilestone = mismatch.dependencyMilestone || '(not connected)';
-      html += `
-        <tr>
-          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${mismatch.bug.id}" target="_blank">${mismatch.bug.id}</a></td>
-          <td title="${this.escapeHtml(mismatch.bug.summary || '')}">${this.escapeHtml(title)}</td>
-          <td>${mismatch.targetMilestone}</td>
-          <td>${depMilestone}</td>
-        </tr>
-      `;
-    }
-
-    html += '</tbody></table>';
-    this.elements.milestoneMismatchesTable.innerHTML = html;
+    this._renderTable(this.elements.milestoneMismatchesTable, {
+      card: this.elements.milestoneMismatchesCard,
+      link: this.elements.milestoneMismatchesLink,
+      items: mismatches,
+      bugIds: (mismatches || []).map(m => m?.bug?.id).filter(Boolean),
+      columns: [
+        { header: 'Bug ID', render: m => this._bugLink(m.bug.id) },
+        { header: 'Title', render: m => this._titleCell(m.bug.summary) },
+        { header: 'Bugzilla Milestone', render: m => m.targetMilestone },
+        { header: 'Dependency Milestone', render: m => m.dependencyMilestone || '(not connected)' }
+      ]
+    });
   }
 
-  /**
-   * Render untriaged bugs table
-   * @param {Array<Object>} bugs - Untriaged bugs (no severity set)
-   */
   renderUntriagedTable(bugs) {
-    if (!this.elements.untriagedTable || !this.elements.untriagedCard) return;
-
-    // Hide the card if no untriaged bugs
-    if (!bugs || bugs.length === 0) {
-      this.elements.untriagedCard.style.display = 'none';
-      this.setBugzillaLink(this.elements.untriagedLink, []);
-      return;
-    }
-
-    // Show the card
-    this.elements.untriagedCard.style.display = '';
-    this.setBugzillaLink(
-      this.elements.untriagedLink,
-      bugs.map(bug => bug?.id).filter(Boolean)
-    );
-
-    let html = `
-      <table>
-        <thead>
-          <tr>
-            <th>Bug ID</th>
-            <th>Title</th>
-            <th>Assignee</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    for (const bug of bugs) {
-      const title = this.truncate(bug.summary || '', 50);
-      const assignee = bug.assignee && bug.assignee !== 'nobody@mozilla.org'
-        ? bug.assignee.split('@')[0]
-        : 'Unassigned';
-      html += `
-        <tr>
-          <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=${bug.id}" target="_blank">${bug.id}</a></td>
-          <td title="${this.escapeHtml(bug.summary || '')}">${this.escapeHtml(title)}</td>
-          <td>${this.escapeHtml(assignee)}</td>
-        </tr>
-      `;
-    }
-
-    html += '</tbody></table>';
-    this.elements.untriagedTable.innerHTML = html;
+    this._renderTable(this.elements.untriagedTable, {
+      card: this.elements.untriagedCard,
+      link: this.elements.untriagedLink,
+      items: bugs,
+      bugIds: (bugs || []).map(b => b?.id).filter(Boolean),
+      columns: [
+        { header: 'Bug ID', render: b => this._bugLink(b.id) },
+        { header: 'Title', render: b => this._titleCell(b.summary) },
+        { header: 'Assignee', render: b => this.escapeHtml(b.assignee && b.assignee !== 'nobody@mozilla.org' ? b.assignee.split('@')[0] : 'Unassigned') }
+      ]
+    });
   }
 
   /**
