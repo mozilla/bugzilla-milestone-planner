@@ -3,6 +3,9 @@
  * Color coding, milestone markers, and dependency visualization
  */
 
+import { escapeHtml, debugLog } from './utils.js';
+import { normalizeAssigneeEmail } from './scheduler-core.js';
+
 // Distinct colors for engineers (intentionally dark to keep inverted text readable on dark bars).
 const ENGINEER_COLORS = [
   '#1e40af', // blue
@@ -22,11 +25,6 @@ export function normalizeAssigneeHandle(assignee) {
   const withoutTag = localPart.split('+')[0];
   const normalized = withoutTag.toLowerCase().replace(/[^a-z]/g, '');
   return normalized || null;
-}
-
-export function normalizeAssigneeEmail(assignee) {
-  if (!assignee || !assignee.includes('@')) return null;
-  return assignee.trim().toLowerCase();
 }
 
 export function deriveHandleFromName(name) {
@@ -844,14 +842,14 @@ export class GanttRenderer {
         : `<p><strong>Size/Effort:</strong> ${size}${sizeNote} (${effort} days)</p>`;
 
     const title = task._fullSummary
-      ? `#${task.id}: ${task._fullSummary}`
-      : task.name;
+      ? `#${task.id}: ${escapeHtml(task._fullSummary)}`
+      : escapeHtml(task.name);
 
     return `
       <div class="gantt-popup">
         <h4>${title}</h4>
         <div class="popup-details">
-          <p><strong>Engineer:</strong> ${engineer}${assignmentNote}</p>
+          <p><strong>Engineer:</strong> ${escapeHtml(engineer)}${assignmentNote}</p>
           ${sizeEffortLine}
           <p><strong>Start:</strong> ${task.start}</p>
           <p><strong>End:</strong> ${task.end}</p>
@@ -866,14 +864,14 @@ export class GanttRenderer {
    * Handle task click
    */
   onTaskClick(task) {
-    console.log('Task clicked:', task.id);
+    debugLog('Task clicked:', task.id);
   }
 
   /**
    * Handle date change (if editing enabled)
    */
   onDateChange(task, start, end) {
-    console.log('Date changed:', task.id, start, end);
+    debugLog('Date changed:', task.id, start, end);
   }
 
   /**

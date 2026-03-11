@@ -14,6 +14,7 @@ import {
   isBetterScore
 } from './optimizer-utils.js';
 import { addWorkingDays } from './scheduler-core.js';
+import { debugLog } from './utils.js';
 
 // GA configuration (tuned for 2 workers via benchmark)
 const GA_POPULATION_SIZE = 160;         // Optimal: 160×100 = 93% success rate
@@ -67,7 +68,7 @@ class EnterprisePlanner {
    * Initialize the application
    */
   async init() {
-    console.log('Initializing Enterprise Project Planner...');
+    debugLog('Initializing Enterprise Project Planner...');
 
     // Display version info (fetch Last-Modified from main.js)
     this.displayVersionInfo();
@@ -123,7 +124,7 @@ class EnterprisePlanner {
           this.componentTeamMap.set(comp, team);
         }
       }
-      console.log(`Loaded ${this.engineers.length} engineers in ${this.teams.length} teams`);
+      debugLog(`Loaded ${this.engineers.length} engineers in ${this.teams.length} teams`);
 
       const milestonesData = await milestonesRes.json();
       this.milestones = (milestonesData.milestones || []).map(m => ({
@@ -132,7 +133,7 @@ class EnterprisePlanner {
         deadline: new Date(m.deadline),
         freezeDate: addWorkingDays(new Date(m.deadline), -(m.freezeDays || 0))
       }));
-      console.log(`Loaded ${this.milestones.length} milestones`);
+      debugLog(`Loaded ${this.milestones.length} milestones`);
 
       this.pastMilestones = milestonesData.pastMilestones || [];
 
@@ -165,12 +166,12 @@ class EnterprisePlanner {
       this.ui.updateLoadingStep('disconnected', 'Unconnected bugs', 'pending');
 
       // Fetch all dependencies
-      console.log('Fetching bugs from Bugzilla...');
+      debugLog('Fetching bugs from Bugzilla...');
       this.bugs = await this.api.fetchAllDependencies(milestoneBugIds);
-      console.log(`Fetched ${this.bugs.size} bugs total`);
+      debugLog(`Fetched ${this.bugs.size} bugs total`);
 
       // Build dependency graph
-      console.log('Building dependency graph...');
+      debugLog('Building dependency graph...');
       this.graph = new DependencyGraph();
       this.graph.buildFromBugs(this.bugs);
 
@@ -181,7 +182,7 @@ class EnterprisePlanner {
         const count = this.disconnectedBugs.length;
         this.ui.updateLoadingStep('disconnected', 'Unconnected bugs', 'complete',
           count > 0 ? ` - ${count} found` : '');
-        console.log(`Found ${count} disconnected milestoned bugs`);
+        debugLog(`Found ${count} disconnected milestoned bugs`);
       } catch (error) {
         console.warn('Failed to fetch milestoned bugs (non-fatal):', error.message);
         this.disconnectedBugs = [];
@@ -215,13 +216,13 @@ class EnterprisePlanner {
       let filteredBugs = this.filterResolvedBugs(this.sortedBugs);
       filteredBugs = this.filterBugsBySeverity(filteredBugs);
       this.lastFilteredBugs = filteredBugs;
-      console.log(`Sorted ${this.sortedBugs.length} bugs, ${filteredBugs.length} after filters (excluding resolved)`);
+      debugLog(`Sorted ${this.sortedBugs.length} bugs, ${filteredBugs.length} after filters (excluding resolved)`);
 
       // Schedule tasks for all milestones
-      console.log('Scheduling tasks...');
+      debugLog('Scheduling tasks...');
       this.scheduler = new Scheduler(this.engineers, this.milestones, this.componentTeamMap);
       const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
-      console.log(`Scheduled ${schedule.length} tasks`);
+      debugLog(`Scheduled ${schedule.length} tasks`);
 
       // Store full schedule and risks
       this.greedySchedule = schedule;
@@ -389,9 +390,9 @@ class EnterprisePlanner {
     this.ui.renderErrorsMarkdown(errors);
 
     // Log summary
-    console.log('Schedule stats:', stats);
-    console.log('Errors:', errors);
-    console.log('Risks:', risks.length);
+    debugLog('Schedule stats:', stats);
+    debugLog('Errors:', errors);
+    debugLog('Risks:', risks.length);
   }
 
   /**
@@ -463,6 +464,8 @@ class EnterprisePlanner {
   onProgress(progress) {
     this.ui.updateProgress(progress);
 
+    if (!this.bugs.size || !this.graph) return;
+
     // Update milestone statuses based on fetched bugs
     for (const milestone of this.milestones) {
       const bug = this.bugs.get(String(milestone.bugId));
@@ -484,7 +487,7 @@ class EnterprisePlanner {
    * Component filter handler - only changes the view, doesn't recompute schedule
    */
   onComponentFilter(component) {
-    console.log('Component filter changed to:', component || 'all');
+    debugLog('Component filter changed to:', component || 'all');
     this.componentFilter = component;
     if (this.greedySchedule && this.greedySchedule.length > 0) {
       this.rerenderWithMilestoneFilter();
@@ -495,7 +498,7 @@ class EnterprisePlanner {
    * Milestone filter handler - only changes the view, doesn't recompute schedule
    */
   onMilestoneFilter(bugId) {
-    console.log('Milestone filter changed to:', bugId || 'all');
+    debugLog('Milestone filter changed to:', bugId || 'all');
     this.milestoneFilter = bugId;
     if (this.greedySchedule && this.greedySchedule.length > 0) {
       this.rerenderWithMilestoneFilter();
@@ -506,7 +509,7 @@ class EnterprisePlanner {
    * Severity filter handler
    */
   onSeverityFilter(severity) {
-    console.log('Severity filter changed to:', severity || 'all');
+    debugLog('Severity filter changed to:', severity || 'all');
     this.severityFilter = severity;
     if (this.sortedBugs.length > 0) {
       this.rescheduleWithFilter();
@@ -705,7 +708,7 @@ class EnterprisePlanner {
     filteredBugs = this.filterBugsBySeverity(filteredBugs);
     this.lastFilteredBugs = filteredBugs;
     // Note: milestone filter is view-only, doesn't affect scheduling
-    console.log(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved)`);
+    debugLog(`Re-scheduling: ${filteredBugs.length} bugs (excluding resolved)`);
 
     this.scheduler = new Scheduler(this.engineers, this.milestones, this.componentTeamMap);
     const schedule = this.scheduler.scheduleTasks(filteredBugs, this.graph);
@@ -814,20 +817,6 @@ class EnterprisePlanner {
     }
 
     const completions = this.calculateMilestoneCompletions(schedule);
-    let deadlinesMet = 0;
-    let totalLateness = 0;
-
-    for (const milestone of milestones) {
-      const endDate = completions.get(String(milestone.bugId));
-      if (!endDate) continue;
-      if (endDate <= milestone.freezeDate) {
-        deadlinesMet++;
-      } else {
-        const daysLate = Math.ceil((endDate - milestone.freezeDate) / (1000 * 60 * 60 * 24));
-        totalLateness += daysLate;
-      }
-    }
-
     const makespan = calculateWorkingDaysMakespan(schedule);
     return computeScoreFromCompletions(completions, milestones, makespan);
   }
@@ -852,7 +841,7 @@ class EnterprisePlanner {
    * Refresh data from Bugzilla
    */
   async refresh() {
-    console.log('Refreshing data...');
+    debugLog('Refreshing data...');
 
     // Stop any running optimizer
     this.stopOptimalScheduler();
@@ -1010,7 +999,7 @@ class EnterprisePlanner {
           switch (type) {
             case 'log':
               // Don't forward individual worker logs to UI
-              console.log(`[Worker ${workerId}]`, data.message);
+              debugLog(`[Worker ${workerId}]`, data.message);
               break;
 
             case 'progress':
@@ -1246,7 +1235,7 @@ class EnterprisePlanner {
     const convergencePct = best.totalGenerations > 0
       ? ((best.bestFoundAtGeneration / best.totalGenerations) * 100).toFixed(0)
       : 0;
-    console.log(`Best result from worker ${best.workerId}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan} days (found at gen ${best.bestFoundAtGeneration}/${best.totalGenerations}, ${convergencePct}%)`);
+    debugLog(`Best result from worker ${best.workerId}: ${best.deadlinesMet}/${numMilestones} deadlines, ${best.makespan} days (found at gen ${best.bestFoundAtGeneration}/${best.totalGenerations}, ${convergencePct}%)`);
 
     const existingOptimalScore = this.optimalSchedule
       ? this.computeScheduleScore(this.optimalSchedule, this.milestones)
@@ -1392,7 +1381,7 @@ class EnterprisePlanner {
     this.ui.setScheduleType(type);
 
     this.rerenderWithMilestoneFilter();
-    console.log(`Switched to ${type} schedule`);
+    debugLog(`Switched to ${type} schedule`);
 
     if (type === 'exhaustive') {
       const filteredBugs = this.lastFilteredBugs.length > 0
@@ -1424,7 +1413,7 @@ class EnterprisePlanner {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, starting Enterprise Planner...');
+  debugLog('DOM loaded, starting Enterprise Planner...');
   const app = new EnterprisePlanner();
   app.init().catch(error => {
     console.error('Application initialization failed:', error);

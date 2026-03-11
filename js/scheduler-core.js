@@ -3,6 +3,8 @@
  * Used by both the main scheduler and the web worker
  */
 
+import { formatLocalDate } from './utils.js';
+
 // Size to days mapping (fractional sizes interpolate)
 export const SIZE_TO_DAYS = {
   1: 1,
@@ -106,10 +108,10 @@ export function addWorkingDays(startDate, days, engineer = null) {
 
     // Skip engineer unavailability periods
     if (engineer && engineer.unavailability) {
-      const dateStr = result.toISOString().split('T')[0];
+      const dateStr = formatLocalDate(result);
       const isUnavailable = engineer.unavailability.some(period => {
-        const start = new Date(period.start).toISOString().split('T')[0];
-        const end = new Date(period.end).toISOString().split('T')[0];
+        const start = formatLocalDate(new Date(period.start));
+        const end = formatLocalDate(new Date(period.end));
         return dateStr >= start && dateStr <= end;
       });
       if (isUnavailable) continue;
@@ -134,10 +136,10 @@ export function normalizeStartDate(startDate, engineer = null) {
     }
 
     if (engineer && engineer.unavailability) {
-      const dateStr = result.toISOString().split('T')[0];
+      const dateStr = formatLocalDate(result);
       const isUnavailable = engineer.unavailability.some(period => {
-        const start = new Date(period.start).toISOString().split('T')[0];
-        const end = new Date(period.end).toISOString().split('T')[0];
+        const start = formatLocalDate(new Date(period.start));
+        const end = formatLocalDate(new Date(period.end));
         return dateStr >= start && dateStr <= end;
       });
       if (isUnavailable) {

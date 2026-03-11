@@ -3,6 +3,8 @@
  * DOM manipulation, progress display, and user interactions
  */
 
+import { escapeHtml, formatLocalDate } from './utils.js';
+
 export class UIController {
   constructor() {
     this.elements = {};
@@ -195,7 +197,7 @@ export class UIController {
     item.innerHTML = `
       <span class="bug-tree">\u2514\u2500</span>
       <span class="bug-id">${bug.id}:</span>
-      <span class="bug-summary">"${this.truncate(bug.summary, 50)}"</span>
+      <span class="bug-summary">"${escapeHtml(this.truncate(bug.summary, 50))}"</span>
     `;
 
     // Keep only last 5 items
@@ -711,7 +713,7 @@ export class UIController {
    */
   formatDate(date) {
     if (!date) return 'N/A';
-    return date.toISOString().split('T')[0];
+    return formatLocalDate(date);
   }
 
   /**
@@ -724,13 +726,10 @@ export class UIController {
   }
 
   /**
-   * Escape HTML special characters using DOM
+   * Escape HTML special characters
    */
   escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return escapeHtml(str);
   }
 }
 

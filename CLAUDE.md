@@ -13,7 +13,7 @@ npm run test:all      # Run both unit and E2E tests
 npm run serve         # Start dev server on port 8080
 ```
 
-E2E tests expect the server on port 8081 (see playwright.config.js).
+E2E tests expect the server on port 8080 (see playwright.config.js).
 
 ## Architecture
 

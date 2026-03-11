@@ -12,7 +12,7 @@ test.describe('Milestone Filter', () => {
     });
 
     // Go to the app
-    await page.goto('http://localhost:8081/index.html');
+    await page.goto('/index.html');
 
     // Wait for loaded phase to appear (data fetched)
     console.log('Waiting for app to load...');

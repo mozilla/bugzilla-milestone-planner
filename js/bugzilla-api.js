@@ -3,6 +3,8 @@
  * Fetches bugs and their dependencies from bugzilla.mozilla.org
  */
 
+import { debugLog } from './utils.js';
+
 const BUGZILLA_API_BASE = 'https://bugzilla.mozilla.org/rest';
 const BATCH_SIZE = 100;
 
@@ -93,11 +95,11 @@ export class BugzillaAPI {
 
     const url = `${BUGZILLA_API_BASE}/bug?id=${uncachedIds.join(',')}&include_fields=id,summary,status,resolution,assigned_to,depends_on,blocks,whiteboard,component,product,severity,keywords,target_milestone`;
 
-    console.log(`[BugzillaAPI] Fetching URL: ${url.substring(0, 100)}...`);
+    debugLog(`[BugzillaAPI] Fetching URL: ${url.substring(0, 100)}...`);
 
     try {
       const response = await fetch(url);
-      console.log(`[BugzillaAPI] Response status: ${response.status}`);
+      debugLog(`[BugzillaAPI] Response status: ${response.status}`);
 
       if (!response.ok) {
         const text = await response.text();
@@ -106,7 +108,7 @@ export class BugzillaAPI {
       }
 
       const data = await response.json();
-      console.log(`[BugzillaAPI] Received ${data.bugs ? data.bugs.length : 0} bugs in response`);
+      debugLog(`[BugzillaAPI] Received ${data.bugs ? data.bugs.length : 0} bugs in response`);
 
       if (data.bugs) {
         for (const rawBug of data.bugs) {
@@ -212,7 +214,7 @@ export class BugzillaAPI {
     this.fetchedCount = 0;
     this.totalDiscovered = rootBugIds.length;
 
-    console.log(`[BugzillaAPI] Starting fetch with milestones: ${rootBugIds.join(', ')}`);
+    debugLog(`[BugzillaAPI] Starting fetch with milestones: ${rootBugIds.join(', ')}`);
     this.reportProgress('starting', `Starting with ${rootBugIds.length} milestone bugs...`);
 
     let iteration = 0;
@@ -228,12 +230,12 @@ export class BugzillaAPI {
         fetched.add(id);
       });
 
-      console.log(`[BugzillaAPI] Iteration ${iteration}: Fetching batch of ${batch.length} bugs: ${batch.slice(0, 5).join(', ')}${batch.length > 5 ? '...' : ''}`);
+      debugLog(`[BugzillaAPI] Iteration ${iteration}: Fetching batch of ${batch.length} bugs: ${batch.slice(0, 5).join(', ')}${batch.length > 5 ? '...' : ''}`);
       this.reportProgress('fetching', `Fetching batch of ${batch.length} bugs...`);
 
       try {
         const bugs = await this.fetchBugs(batch);
-        console.log(`[BugzillaAPI] Received ${bugs.length} bugs`);
+        debugLog(`[BugzillaAPI] Received ${bugs.length} bugs`);
 
         for (const bug of bugs) {
           if (!bug) continue;
@@ -241,7 +243,7 @@ export class BugzillaAPI {
 
           // Add dependencies to fetch queue
           if (bug.dependsOn.length > 0) {
-            console.log(`[BugzillaAPI] Bug ${bug.id} (${bug.product}) depends on: ${bug.dependsOn.join(', ')}`);
+            debugLog(`[BugzillaAPI] Bug ${bug.id} (${bug.product}) depends on: ${bug.dependsOn.join(', ')}`);
           }
           for (const depId of bug.dependsOn) {
             const depIdStr = String(depId);
@@ -271,7 +273,7 @@ export class BugzillaAPI {
       console.warn(`[BugzillaAPI] Reached max iterations (${MAX_ITERATIONS}), stopping`);
     }
 
-    console.log(`[BugzillaAPI] Complete: ${allBugs.size} bugs fetched, ${failedIds.size} failed`);
+    debugLog(`[BugzillaAPI] Complete: ${allBugs.size} bugs fetched, ${failedIds.size} failed`);
     this.reportProgress('complete', `Fetched ${allBugs.size} bugs (${failedIds.size} failed)`);
     return allBugs;
   }
@@ -304,7 +306,7 @@ export class BugzillaAPI {
     }
 
     const url = `${BUGZILLA_API_BASE}/bug?${params}`;
-    console.log(`[BugzillaAPI] Fetching milestoned bugs: ${url.substring(0, 120)}...`);
+    debugLog(`[BugzillaAPI] Fetching milestoned bugs: ${url.substring(0, 120)}...`);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -312,7 +314,7 @@ export class BugzillaAPI {
     }
     const data = await response.json();
     const bugs = (data.bugs || []).map(raw => this.processBug(raw));
-    console.log(`[BugzillaAPI] Found ${bugs.length} milestoned bugs`);
+    debugLog(`[BugzillaAPI] Found ${bugs.length} milestoned bugs`);
     return bugs;
   }
 

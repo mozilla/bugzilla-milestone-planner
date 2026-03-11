@@ -10,6 +10,7 @@ import {
   normalizeAssigneeEmail,
   normalizeStartDate
 } from './scheduler-core.js';
+import { formatLocalDate, debugLog } from './utils.js';
 
 export class Scheduler {
   constructor(engineers, milestones, componentTeamMap = null) {
@@ -131,9 +132,9 @@ export class Scheduler {
       a.deadline.getTime() - b.deadline.getTime()
     );
 
-    console.log(`[Scheduler] Processing ${sortedMilestones.length} milestones in deadline order:`);
+    debugLog(`[Scheduler] Processing ${sortedMilestones.length} milestones in deadline order:`);
     for (const m of sortedMilestones) {
-      console.log(`  - ${m.name}: deadline ${this.formatDate(m.deadline)}`);
+      debugLog(`  - ${m.name}: deadline ${this.formatDate(m.deadline)}`);
     }
 
     // Process each milestone in sequence
@@ -153,7 +154,7 @@ export class Scheduler {
       });
       const unlockedBugs = milestoneBugs.filter(bug => !lockedBugs.includes(bug));
 
-      console.log(`[Scheduler] Milestone ${milestone.name}: ${milestoneBugs.length} bugs (${lockedBugs.length} locked, ${unlockedBugs.length} unlocked)`);
+      debugLog(`[Scheduler] Milestone ${milestone.name}: ${milestoneBugs.length} bugs (${lockedBugs.length} locked, ${unlockedBugs.length} unlocked)`);
 
       // Schedule locked bugs first (in topological order)
       for (const bug of lockedBugs) {
@@ -171,7 +172,7 @@ export class Scheduler {
     const remainingBugs = sortedBugs.filter(bug => !scheduledIds.has(String(bug.id)));
 
     if (remainingBugs.length > 0) {
-      console.log(`[Scheduler] Scheduling ${remainingBugs.length} remaining bugs not in any milestone`);
+      debugLog(`[Scheduler] Scheduling ${remainingBugs.length} remaining bugs not in any milestone`);
       for (const bug of remainingBugs) {
         this.scheduleBug(bug, graph, taskEndDates, today);
       }
@@ -431,19 +432,13 @@ export class Scheduler {
       if (!task.milestone) continue; // Tasks without milestone aren't deadline risks
 
       // Only check against the task's own milestone
+      // Note: freezeDate <= deadline, so endDate > freezeDate covers both cases
       if (task.endDate > task.milestone.freezeDate) {
         risks.push({
           task,
           milestone: task.milestone,
           type: 'freeze',
           message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${task.milestone.name} feature freeze ${this.formatDate(task.milestone.freezeDate)}`
-        });
-      } else if (task.endDate > task.milestone.deadline) {
-        risks.push({
-          task,
-          milestone: task.milestone,
-          type: 'deadline',
-          message: `Bug ${task.bug.id} ends ${this.formatDate(task.endDate)}, after ${task.milestone.name} deadline ${this.formatDate(task.milestone.deadline)}`
         });
       }
     }
@@ -455,7 +450,7 @@ export class Scheduler {
    * Format date as YYYY-MM-DD
    */
   formatDate(date) {
-    return date.toISOString().split('T')[0];
+    return formatLocalDate(date);
   }
 
   /**
