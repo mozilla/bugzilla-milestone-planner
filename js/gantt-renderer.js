@@ -154,14 +154,6 @@ function relativeLuminance({ r, g, b }) {
   return 0.2126 * R + 0.7152 * G + 0.0722 * B;
 }
 
-function contrastRatio(colorA, colorB) {
-  const lumA = relativeLuminance(colorA);
-  const lumB = relativeLuminance(colorB);
-  const lighter = Math.max(lumA, lumB);
-  const darker = Math.min(lumA, lumB);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
 function isDarkColor(color) {
   const rgb = parseColorToRgb(color);
   if (!rgb) return false;
@@ -928,24 +920,8 @@ export class GanttRenderer {
     const chartGroup = svg.querySelector('.grid');
     if (!chartGroup) return;
 
-    for (const milestone of this.milestones) {
-      // Add freeze date line (dashed)
-      this.addDateLine(svg, milestone.freezeDate, 'milestone-freeze',
-        `${milestone.name} Freeze`);
-
-      // Add deadline line (solid)
-      this.addDateLine(svg, milestone.deadline, 'milestone-deadline',
-        `${milestone.name} Deadline`);
-    }
-  }
-
-  /**
-   * Add a vertical date line to the chart
-   */
-  addDateLine(svg, date, className, label) {
-    // This is a simplified implementation
-    // Full implementation would calculate exact x position based on date
-    // For now, we rely on CSS styling of milestone markers
+    // Milestone date lines are not yet implemented.
+    // Positioning requires calculating exact x from Frappe Gantt's internal date scale.
   }
 
   /**

@@ -1459,26 +1459,6 @@ class EnterprisePlanner {
   }
 
   /**
-   * Calculate makespan (project end date) from schedule
-   */
-  calculateMakespan(schedule) {
-    if (!schedule || schedule.length === 0) return 0;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let maxEnd = today;
-    for (const task of schedule) {
-      if (task.endDate && task.endDate > maxEnd) {
-        maxEnd = task.endDate;
-      }
-    }
-
-    // Return days from today
-    return (maxEnd - today) / (1000 * 60 * 60 * 24);
-  }
-
-  /**
    * Handle schedule type change (greedy vs optimal)
    */
   onScheduleTypeChange(type) {

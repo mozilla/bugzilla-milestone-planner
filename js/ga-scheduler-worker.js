@@ -8,9 +8,10 @@ import {
   calculateEffort,
   addWorkingDays,
   isResolved,
-  normalizeAssigneeEmail,
-  normalizeStartDate
+  normalizeAssigneeEmail
 } from './scheduler-core.js';
+
+import { countWorkingDays } from './optimizer-utils.js';
 
 let activeMilestones = [];
 
@@ -24,10 +25,6 @@ const GENERATIONS_DEFAULT = 100;
 
 // Memetic parameters (local search on elite individuals)
 const LOCAL_SEARCH_SWAPS = 10;   // Random swaps to try per elite individual
-
-// Scoring weights (same as SA)
-const DEADLINE_WEIGHT = 5000;
-const LATENESS_WEIGHT = 100;
 
 // State
 let bestScore = { deadlinesMet: -1, totalLateness: Infinity, makespan: Infinity };
@@ -631,20 +628,6 @@ function buildUnavailabilityRanges(engineers, today) {
     ranges[i] = merged;
   }
   return ranges;
-}
-
-function countWorkingDays(startDate, endDate) {
-  if (!startDate || !endDate || endDate <= startDate) return 0;
-  const current = new Date(startDate);
-  let days = 0;
-  while (current < endDate) {
-    current.setDate(current.getDate() + 1);
-    const day = current.getDay();
-    if (day !== 0 && day !== 6) {
-      days += 1;
-    }
-  }
-  return days;
 }
 
 function adjustStartForUnavailability(start, ranges) {
