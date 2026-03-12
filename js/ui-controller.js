@@ -651,9 +651,7 @@ export class UIController {
     const optimalOption = this.elements.scheduleTypeSelect.querySelector('option[value="optimal"]');
     if (optimalOption) {
       optimalOption.disabled = !enabled;
-      if (enabled) {
-        optimalOption.textContent = 'Optimized';
-      }
+      optimalOption.textContent = 'Optimized';
     }
   }
 
